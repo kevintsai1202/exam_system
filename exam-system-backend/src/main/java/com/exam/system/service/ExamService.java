@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +36,12 @@ public class ExamService {
     private final StudentRepository studentRepository;
     private final QRCodeService qrCodeService;
     private final WebSocketService webSocketService;
+    private final StatisticsService statisticsService;
+
+    /**
+     * 定時任務執行器 - 用於在題目時間到後推送統計
+     */
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
 
     /**
      * 建立新測驗
@@ -209,6 +218,18 @@ public class ExamService {
 
         // 透過 WebSocket 廣播題目
         webSocketService.broadcastQuestion(examId, WebSocketMessage.questionStarted(questionData));
+
+        // 安排定時任務：在題目時間到後自動推送統計
+        final Long finalQuestionId = question.getId();
+        final Long finalExamId = examId;
+        scheduler.schedule(() -> {
+            try {
+                log.info("題目時間到，自動推送統計 - examId: {}, questionId: {}", finalExamId, finalQuestionId);
+                statisticsService.updateQuestionStatistics(finalExamId, finalQuestionId);
+            } catch (Exception e) {
+                log.error("自動推送統計失敗 - examId: {}, questionId: {}", finalExamId, finalQuestionId, e);
+            }
+        }, exam.getQuestionTimeLimit(), TimeUnit.SECONDS);
 
         log.info("Question {} started for exam: {}", questionIndex, examId);
     }

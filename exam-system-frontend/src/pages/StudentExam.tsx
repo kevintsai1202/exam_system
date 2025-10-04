@@ -8,12 +8,14 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { answerApi } from '../services/apiService';
 import { useStudentStore } from '../store';
-import { useExamWebSocket, useMediaQuery, useResponsiveValue, useMessage } from '../hooks';
+import { useExamWebSocket, useQuestionWebSocket, useMediaQuery, useResponsiveValue, useMessage } from '../hooks';
 import OptionButton from '../components/OptionButton';
 import { Message } from '../components/Message';
 import CountdownTimer from '../components/CountdownTimer';
 import { AvatarDisplay } from '../components/AvatarSelector';
-import type { WebSocketMessage, QuestionOption } from '../types';
+import BarChart from '../components/BarChart';
+import PieChart from '../components/PieChart';
+import type { WebSocketMessage, QuestionOption, StatisticsDTO } from '../types';
 
 /**
  * 學員答題頁面
@@ -38,6 +40,7 @@ export const StudentExam: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTimerExpired, setIsTimerExpired] = useState(false);
   const [examStatus, setExamStatus] = useState<'CREATED' | 'STARTED' | 'ENDED'>('CREATED');
+  const [questionStats, setQuestionStats] = useState<StatisticsDTO.QuestionStatistics | null>(null);
 
   /**
    * WebSocket 訊息處理
@@ -70,7 +73,16 @@ export const StudentExam: React.FC = () => {
       setSelectedOptionId(null);
       setHasSubmitted(false);
       setIsTimerExpired(false); // 重置計時器到期狀態
+      setQuestionStats(null); // 清除舊的統計資料
       setExamStatus('STARTED'); // 更新測驗狀態為進行中
+    }
+  }, []);
+
+  const handleStatisticsUpdated = useCallback((message: WebSocketMessage) => {
+    console.log('[StudentExam] 統計更新:', message);
+    const msg = message as any;
+    if (msg.data) {
+      setQuestionStats(msg.data);
     }
   }, []);
 
@@ -91,6 +103,13 @@ export const StudentExam: React.FC = () => {
       onQuestionStarted: handleQuestionStarted,
       onTimerUpdate: handleTimerExpired,
     }
+  );
+
+  // 訂閱當前題目統計
+  useQuestionWebSocket(
+    examId ? parseInt(examId) : null,
+    currentQuestion?.questionId ?? null,
+    handleStatisticsUpdated
   );
 
   /**
@@ -364,6 +383,49 @@ export const StudentExam: React.FC = () => {
                 }}
               >
                 ⏰ 時間已到，無法作答
+              </div>
+            )}
+
+            {/* 統計圖表區域 - 在已提交或時間到期後顯示 */}
+            {(hasSubmitted || isTimerExpired) && questionStats && (
+              <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '2px solid #e0e0e0' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: isMobile ? '18px' : '20px', fontWeight: '600', color: '#1976d2' }}>
+                  📊 大家的答題統計
+                </h3>
+
+                {/* 圖表顯示 */}
+                {questionStats.chartType === 'BAR' ? (
+                  <BarChart
+                    data={questionStats.optionStatistics}
+                    dataType="option"
+                    height={isMobile ? 250 : 300}
+                  />
+                ) : (
+                  <PieChart
+                    data={questionStats.optionStatistics}
+                    dataType="option"
+                    height={isMobile ? 300 : 400}
+                  />
+                )}
+
+                {/* 統計資訊 */}
+                <div
+                  style={{
+                    marginTop: '20px',
+                    padding: isMobile ? '12px' : '16px',
+                    backgroundColor: '#e8f5e9',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '13px' : '14px',
+                    border: '1px solid #4caf50'
+                  }}
+                >
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                    📝 總答題人數：{questionStats.totalAnswers} 人
+                  </p>
+                  <p style={{ margin: 0, fontWeight: '500' }}>
+                    ✅ 正確率：{questionStats.correctRate.toFixed(1)}%
+                  </p>
+                </div>
               </div>
             )}
           </div>
