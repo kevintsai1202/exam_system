@@ -272,6 +272,90 @@ public class ExamService {
     }
 
     /**
+     * 複製測驗
+     *
+     * @param examId 原測驗 ID
+     * @return 新建立的測驗 DTO
+     */
+    @Transactional
+    public ExamDTO duplicateExam(Long examId) {
+        log.info("Duplicating exam: {}", examId);
+
+        // 查找原測驗
+        Exam originalExam = findExamById(examId);
+
+        // 生成唯一的 accessCode
+        String accessCode = generateUniqueAccessCode();
+
+        // 建立新測驗（複製基本資訊）
+        Exam newExam = Exam.builder()
+                .title(originalExam.getTitle() + " (複製)")
+                .description(originalExam.getDescription())
+                .questionTimeLimit(originalExam.getQuestionTimeLimit())
+                .cumulativeChartType(originalExam.getCumulativeChartType())
+                .leaderboardTopN(originalExam.getLeaderboardTopN())
+                .status(ExamStatus.CREATED)
+                .accessCode(accessCode)
+                .currentQuestionIndex(0)
+                .build();
+
+        newExam = examRepository.save(newExam);
+        log.debug("New exam created with ID: {}", newExam.getId());
+
+        // 查詢原測驗的所有題目（包含選項）
+        List<Question> originalQuestions = questionRepository.findByExamIdWithOptions(examId);
+
+        // 複製所有題目和選項
+        for (Question originalQuestion : originalQuestions) {
+            // 建立新題目
+            Question newQuestion = Question.builder()
+                    .exam(newExam)
+                    .questionOrder(originalQuestion.getQuestionOrder())
+                    .questionText(originalQuestion.getQuestionText())
+                    .chartType(originalQuestion.getChartType())
+                    .correctOptionId(0L) // 暫時設定為 0
+                    .build();
+
+            // 複製選項
+            for (QuestionOption originalOption : originalQuestion.getOptions()) {
+                QuestionOption newOption = QuestionOption.builder()
+                        .question(newQuestion)
+                        .optionOrder(originalOption.getOptionOrder())
+                        .optionText(originalOption.getOptionText())
+                        .build();
+                newQuestion.addOption(newOption);
+            }
+
+            // 儲存新題目（cascade 會自動儲存所有選項）
+            newQuestion = questionRepository.save(newQuestion);
+
+            // 找到正確答案選項並設定 correctOptionId
+            Long correctOptionId = newQuestion.getOptions().stream()
+                    .filter(opt -> {
+                        // 根據選項順序找到對應的原選項
+                        QuestionOption originalOption = originalQuestion.getOptions().stream()
+                                .filter(o -> o.getOptionOrder().equals(opt.getOptionOrder()))
+                                .findFirst()
+                                .orElse(null);
+                        // 檢查原選項是否為正確答案
+                        return originalOption != null &&
+                               originalOption.getId().equals(originalQuestion.getCorrectOptionId());
+                    })
+                    .findFirst()
+                    .map(QuestionOption::getId)
+                    .orElseThrow(() -> new BusinessException("DATA_ERROR", "找不到正確答案選項"));
+
+            newQuestion.setCorrectOptionId(correctOptionId);
+            questionRepository.save(newQuestion);
+        }
+
+        log.info("Exam duplicated successfully: {} -> {}", examId, newExam.getId());
+
+        // 轉換為 DTO 並返回
+        return convertToDTO(newExam);
+    }
+
+    /**
      * 取得測驗的所有題目
      *
      * @param examId 測驗 ID

@@ -7,6 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
+import { useMessage } from '../hooks';
+import { Message } from '../components/Message';
 import type { Exam, ExamStatus } from '../types';
 
 /**
@@ -14,6 +16,7 @@ import type { Exam, ExamStatus } from '../types';
  */
 export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const message = useMessage();
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +55,24 @@ export const InstructorDashboard: React.FC = () => {
    */
   const handleMonitorExam = (examId: number) => {
     navigate(`/instructor/exam/${examId}/monitor`);
+  };
+
+  /**
+   * 複製測驗
+   */
+  const handleDuplicateExam = async (examId: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // 防止觸發卡片的點擊事件
+
+    try {
+      const duplicatedExam = await examApi.duplicateExam(examId);
+      message.success(`測驗「${duplicatedExam.title}」已成功複製！`);
+
+      // 重新載入測驗列表
+      const data = await examApi.getAllExams();
+      setExams(data);
+    } catch (err: any) {
+      message.error(err.message || '複製測驗失敗');
+    }
   };
 
   /**
@@ -118,14 +139,26 @@ export const InstructorDashboard: React.FC = () => {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        padding: '40px 20px',
-      }}
-    >
+    <>
+      {/* Message 訊息提示 */}
+      {message.messages.map((msg) => (
+        <Message
+          key={msg.key}
+          content={msg.content}
+          type={msg.type}
+          duration={msg.duration}
+          onClose={() => message.close(msg.key)}
+        />
+      ))}
+
       <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: '#f5f5f5',
+          padding: '40px 20px',
+        }}
+      >
+        <div
         style={{
           maxWidth: '1200px',
           margin: '0 auto',
@@ -342,10 +375,38 @@ export const InstructorDashboard: React.FC = () => {
                     color: '#999',
                     borderTop: '1px solid #f0f0f0',
                     paddingTop: '12px',
+                    marginBottom: '12px',
                   }}
                 >
                   建立時間：{new Date(exam.createdAt).toLocaleString('zh-TW')}
                 </div>
+
+                {/* 複製按鈕 */}
+                <button
+                  onClick={(e) => handleDuplicateExam(exam.id, e)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#1976d2',
+                    backgroundColor: '#e3f2fd',
+                    border: '1px solid #1976d2',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1976d2';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e3f2fd';
+                    e.currentTarget.style.color = '#1976d2';
+                  }}
+                >
+                  📋 複製測驗
+                </button>
               </div>
             ))}
           </div>
@@ -389,6 +450,7 @@ export const InstructorDashboard: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

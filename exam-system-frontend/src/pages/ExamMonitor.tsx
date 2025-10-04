@@ -289,12 +289,11 @@ export const ExamMonitor: React.FC = () => {
    */
   const handleEndExam = async () => {
     if (!examId) return;
-    if (!confirm('確定要結束測驗嗎？')) return;
 
     try {
       const exam = await examApi.endExam(parseInt(examId));
       setCurrentExam(exam);
-      message.success('測驗已結束！');
+      message.success('測驗已結束！排行榜已推送給所有學員');
     } catch (err: any) {
       message.error(err.message || '結束測驗失敗');
     }

@@ -109,6 +109,17 @@ public class ExamController {
     }
 
     /**
+     * 複製測驗
+     * POST /api/exams/{examId}/duplicate
+     */
+    @PostMapping("/{examId}/duplicate")
+    public ResponseEntity<ExamDTO> duplicateExam(@PathVariable Long examId) {
+        log.info("Duplicating exam: {}", examId);
+        ExamDTO duplicatedExam = examService.duplicateExam(examId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(duplicatedExam);
+    }
+
+    /**
      * 取得測驗題目列表
      * GET /api/exams/{examId}/questions
      */

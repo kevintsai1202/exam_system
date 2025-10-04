@@ -147,6 +147,15 @@ export const examApi = {
   },
 
   /**
+   * 複製測驗
+   * POST /api/exams/{examId}/duplicate
+   */
+  duplicateExam: async (examId: number): Promise<Exam> => {
+    const response = await apiClient.post<Exam>(`/exams/${examId}/duplicate`);
+    return response.data;
+  },
+
+  /**
    * 取得題目列表
    * GET /api/exams/{examId}/questions
    */
