@@ -48,7 +48,7 @@ public class ExamDTO {
      * 每題倒數時間（秒）
      */
     @NotNull(message = "倒數時間不能為空")
-    @Min(value = 10, message = "倒數時間不能少於 10 秒")
+    @Min(value = 5, message = "倒數時間不能少於 5 秒")
     @Max(value = 300, message = "倒數時間不能超過 300 秒")
     private Integer questionTimeLimit;
 
