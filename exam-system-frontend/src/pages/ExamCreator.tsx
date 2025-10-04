@@ -4,8 +4,8 @@
  * 提供表單建立測驗與題目
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import { ChartType } from '../types';
 import type { CreateExamRequest } from '../types';
@@ -37,6 +37,10 @@ interface FormOption {
 export const ExamCreator: React.FC = () => {
   const navigate = useNavigate();
   const message = useMessage();
+  const { examId } = useParams<{ examId: string }>();
+
+  // 判斷是建立模式還是編輯模式
+  const isEditMode = !!examId;
 
   // 測驗基本資訊
   const [title, setTitle] = useState('');
@@ -60,7 +64,52 @@ export const ExamCreator: React.FC = () => {
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEditMode); // 編輯模式下初始為載入中
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * 編輯模式：載入測驗資料
+   */
+  useEffect(() => {
+    const loadExam = async () => {
+      if (!isEditMode || !examId) return;
+
+      setIsLoading(true);
+      try {
+        const exam = await examApi.getExam(parseInt(examId));
+        const questionsData = await examApi.getQuestions(parseInt(examId));
+
+        // 設定基本資訊
+        setTitle(exam.title);
+        setDescription(exam.description);
+        setQuestionTimeLimit(exam.questionTimeLimit);
+        setCumulativeChartType(exam.cumulativeChartType);
+        setLeaderboardTopN(exam.leaderboardTopN);
+
+        // 設定題目
+        const formQuestions: FormQuestion[] = questionsData.questions.map((q) => ({
+          questionOrder: q.questionOrder,
+          questionText: q.questionText,
+          chartType: q.chartType,
+          options: q.options.map((opt) => ({
+            optionOrder: opt.optionOrder,
+            optionText: opt.optionText,
+          })),
+          correctOptionOrder: q.options.find((opt) => opt.id === q.correctOptionId)?.optionOrder || 1,
+        }));
+
+        setQuestions(formQuestions);
+      } catch (err: any) {
+        message.error(err.message || '載入測驗失敗');
+        navigate('/instructor');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadExam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId, isEditMode]);
 
   /**
    * 新增題目
@@ -224,14 +273,20 @@ export const ExamCreator: React.FC = () => {
         })),
       };
 
-      // 呼叫 API
-      const exam = await examApi.createExam(requestData);
+      // 根據模式呼叫不同的 API
+      let exam;
+      if (isEditMode && examId) {
+        exam = await examApi.updateExam(parseInt(examId), requestData);
+        message.success('測驗更新成功！');
+      } else {
+        exam = await examApi.createExam(requestData);
+        message.success('測驗建立成功！');
+      }
 
       // 成功，導航至監控頁面
-      message.success('測驗建立成功！');
       navigate(`/instructor/exam/${exam.id}/monitor`);
     } catch (err: any) {
-      setError(err.message || '建立測驗失敗，請稍後再試');
+      setError(err.message || (isEditMode ? '更新測驗失敗' : '建立測驗失敗'));
     } finally {
       setIsSubmitting(false);
     }
@@ -273,14 +328,20 @@ export const ExamCreator: React.FC = () => {
               color: '#333',
             }}
           >
-            建立新測驗
+            {isEditMode ? '編輯測驗' : '建立新測驗'}
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-            填寫測驗資訊與題目內容
+            {isEditMode ? '修改測驗資訊與題目內容' : '填寫測驗資訊與題目內容'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        {/* 載入中狀態 */}
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontSize: '16px', color: '#666' }}>
+            載入中...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
           {/* 測驗基本資訊 */}
           <div
             style={{
@@ -800,22 +861,26 @@ export const ExamCreator: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading}
               style={{
                 padding: '12px 32px',
                 fontSize: '16px',
                 fontWeight: '500',
                 color: '#fff',
-                backgroundColor: isSubmitting ? '#999' : '#1976d2',
+                backgroundColor: (isSubmitting || isLoading) ? '#999' : '#1976d2',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                cursor: (isSubmitting || isLoading) ? 'not-allowed' : 'pointer',
               }}
             >
-              {isSubmitting ? '建立中...' : '建立測驗'}
+              {isSubmitting
+                ? (isEditMode ? '更新中...' : '建立中...')
+                : (isEditMode ? '更新測驗' : '建立測驗')
+              }
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
     </>

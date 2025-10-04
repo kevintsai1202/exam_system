@@ -175,35 +175,19 @@ export const StudentList: React.FC<StudentListProps> = ({
                 )}
               </div>
 
-              {/* 分數 */}
-              {showScore && (
-                <div
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#e8f5e9',
-                    color: '#2e7d32',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    flexShrink: 0,
-                  }}
-                >
-                  {student.totalScore} 分
-                </div>
-              )}
-
-              {/* 加入時間 */}
+              {/* 即時得分 */}
               <div
                 style={{
-                  fontSize: '12px',
-                  color: '#999',
+                  padding: '6px 12px',
+                  backgroundColor: '#e8f5e9',
+                  color: '#2e7d32',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
                   flexShrink: 0,
                 }}
               >
-                {new Date(student.joinedAt).toLocaleTimeString('zh-TW', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {student.totalScore} 分
               </div>
             </div>
           ))

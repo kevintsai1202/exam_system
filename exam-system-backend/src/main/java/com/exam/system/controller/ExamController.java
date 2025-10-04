@@ -63,6 +63,19 @@ public class ExamController {
     }
 
     /**
+     * 更新測驗
+     * PUT /api/exams/{examId}
+     */
+    @PutMapping("/{examId}")
+    public ResponseEntity<ExamDTO> updateExam(
+            @PathVariable Long examId,
+            @Valid @RequestBody ExamDTO examDTO) {
+        log.info("Updating exam: {}", examId);
+        ExamDTO updatedExam = examService.updateExam(examId, examDTO);
+        return ResponseEntity.ok(updatedExam);
+    }
+
+    /**
      * 啟動測驗
      * PUT /api/exams/{examId}/start
      */

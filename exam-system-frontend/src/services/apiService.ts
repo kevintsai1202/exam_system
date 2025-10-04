@@ -120,6 +120,15 @@ export const examApi = {
   },
 
   /**
+   * 更新測驗
+   * PUT /api/exams/{examId}
+   */
+  updateExam: async (examId: number, data: CreateExamRequest): Promise<Exam> => {
+    const response = await apiClient.put<Exam>(`/exams/${examId}`, data);
+    return response.data;
+  },
+
+  /**
    * 啟動測驗
    * PUT /api/exams/{examId}/start
    */

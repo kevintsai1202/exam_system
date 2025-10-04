@@ -58,4 +58,11 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
      */
     long countByExamId(Long examId);
 
+    /**
+     * 刪除測驗的所有題目
+     *
+     * @param examId 測驗 ID
+     */
+    void deleteByExamId(Long examId);
+
 }

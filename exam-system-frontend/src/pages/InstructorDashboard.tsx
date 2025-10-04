@@ -58,6 +58,14 @@ export const InstructorDashboard: React.FC = () => {
   };
 
   /**
+   * 編輯測驗
+   */
+  const handleEditExam = (examId: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // 防止觸發卡片的點擊事件
+    navigate(`/instructor/exam/${examId}/edit`);
+  };
+
+  /**
    * 複製測驗
    */
   const handleDuplicateExam = async (examId: number, e: React.MouseEvent) => {
@@ -381,32 +389,62 @@ export const InstructorDashboard: React.FC = () => {
                   建立時間：{new Date(exam.createdAt).toLocaleString('zh-TW')}
                 </div>
 
-                {/* 複製按鈕 */}
-                <button
-                  onClick={(e) => handleDuplicateExam(exam.id, e)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#1976d2',
-                    backgroundColor: '#e3f2fd',
-                    border: '1px solid #1976d2',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1976d2';
-                    e.currentTarget.style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#e3f2fd';
-                    e.currentTarget.style.color = '#1976d2';
-                  }}
-                >
-                  📋 複製測驗
-                </button>
+                {/* 操作按鈕群組 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* 編輯按鈕 - 只在 CREATED 狀態顯示 */}
+                  {exam.status === 'CREATED' && (
+                    <button
+                      onClick={(e) => handleEditExam(exam.id, e)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#fff',
+                        backgroundColor: '#4caf50',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#388e3c';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#4caf50';
+                      }}
+                    >
+                      ✏️ 編輯測驗
+                    </button>
+                  )}
+
+                  {/* 複製按鈕 */}
+                  <button
+                    onClick={(e) => handleDuplicateExam(exam.id, e)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#1976d2',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #1976d2',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1976d2';
+                      e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e3f2fd';
+                      e.currentTarget.style.color = '#1976d2';
+                    }}
+                  >
+                    📋 複製測驗
+                  </button>
+                </div>
               </div>
             ))}
           </div>

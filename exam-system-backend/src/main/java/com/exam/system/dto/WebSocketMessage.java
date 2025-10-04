@@ -43,6 +43,7 @@ public class WebSocketMessage<T> {
 
         // 學員相關
         STUDENT_JOINED,
+        STUDENTS_UPDATED,
 
         // 題目相關
         QUESTION_STARTED,
@@ -84,6 +85,16 @@ public class WebSocketMessage<T> {
     public static <T> WebSocketMessage<T> studentJoined(T data) {
         return WebSocketMessage.<T>builder()
                 .type(MessageType.STUDENT_JOINED)
+                .data(data)
+                .build();
+    }
+
+    /**
+     * 建立學員列表更新訊息
+     */
+    public static <T> WebSocketMessage<T> studentsUpdated(T data) {
+        return WebSocketMessage.<T>builder()
+                .type(MessageType.STUDENTS_UPDATED)
                 .data(data)
                 .build();
     }

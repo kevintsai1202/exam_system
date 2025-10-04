@@ -7,7 +7,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { statisticsApi } from '../services/apiService';
-import { useExamWebSocket, useResponsiveValue } from '../hooks';
+import { useExamWebSocket } from '../hooks';
 import { useStudentStore } from '../store';
 import { AvatarDisplay } from '../components/AvatarSelector';
 import type { Leaderboard as LeaderboardType, WebSocketMessage } from '../types';
@@ -112,20 +112,17 @@ export const Leaderboard: React.FC = () => {
     );
   }
 
-  const containerPadding = useResponsiveValue('20px 16px', '32px 20px', '40px 20px');
-  const maxWidth = useResponsiveValue('100%', '800px', '900px');
-
   return (
     <div
       style={{
         minHeight: '100vh',
         backgroundColor: '#f5f5f5',
-        padding: containerPadding,
+        padding: '40px 20px',
       }}
     >
       <div
         style={{
-          maxWidth,
+          maxWidth: '900px',
           margin: '0 auto',
         }}
       >

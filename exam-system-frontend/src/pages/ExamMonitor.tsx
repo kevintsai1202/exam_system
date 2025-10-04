@@ -53,14 +53,22 @@ export const ExamMonitor: React.FC = () => {
   }, [currentExam, setCurrentExam]);
 
   const handleStudentJoined = useCallback((message: WebSocketMessage) => {
-    console.log('[ExamMonitor] 學員加入:', message);
+    console.log('[ExamMonitor] 學員更新:', message);
     const msg = message as any;
     // 後端 WebSocketMessage 結構：{type, data, timestamp}
-    // 學員資訊在 data 欄位中
-    if (msg.data) {
-      addStudent(msg.data);
+
+    if (msg.type === 'STUDENTS_UPDATED') {
+      // 學員列表更新（含分數更新）
+      if (Array.isArray(msg.data)) {
+        setStudents(msg.data);
+      }
+    } else if (msg.type === 'STUDENT_JOINED') {
+      // 單個學員加入
+      if (msg.data) {
+        addStudent(msg.data);
+      }
     }
-  }, [addStudent]);
+  }, [addStudent, setStudents]);
 
   const handleQuestionStarted = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 題目開始:', message);
@@ -408,7 +416,7 @@ export const ExamMonitor: React.FC = () => {
             )}
 
             {/* 學員列表 */}
-            <StudentList students={students} showScore={isEnded} maxHeight="600px" />
+            <StudentList students={students} maxHeight="600px" />
           </div>
 
           {/* 右側 - 標籤頁內容 */}

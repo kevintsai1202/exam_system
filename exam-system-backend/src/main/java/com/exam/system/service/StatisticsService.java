@@ -2,6 +2,7 @@ package com.exam.system.service;
 
 import com.exam.system.dto.LeaderboardDTO;
 import com.exam.system.dto.StatisticsDTO;
+import com.exam.system.dto.StudentDTO;
 import com.exam.system.dto.WebSocketMessage;
 import com.exam.system.entity.Question;
 import com.exam.system.entity.QuestionOption;
@@ -123,9 +124,17 @@ public class StatisticsService {
 
         StatisticsDTO.CumulativeStatistics statistics = generateCumulativeStatistics(examId);
 
-        // 透過 WebSocket 推送
+        // 透過 WebSocket 推送累積統計
         webSocketService.broadcastCumulativeStatistics(examId,
                 WebSocketMessage.cumulativeUpdated(statistics));
+
+        // 同時推送學員列表更新（含最新分數）
+        List<Student> students = studentRepository.findByExamId(examId);
+        List<StudentDTO> studentDTOs = students.stream()
+                .map(this::convertStudentToDTO)
+                .collect(Collectors.toList());
+        webSocketService.broadcastStudentJoined(examId,
+                WebSocketMessage.studentsUpdated(studentDTOs));
     }
 
     /**
@@ -278,6 +287,26 @@ public class StatisticsService {
                 .totalQuestions((int) totalQuestions)
                 .leaderboard(entries)
                 .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * 將 Student 實體轉換為 DTO
+     *
+     * @param student 學員實體
+     * @return 學員 DTO
+     */
+    private StudentDTO convertStudentToDTO(Student student) {
+        return StudentDTO.builder()
+                .id(student.getId())
+                .sessionId(student.getSessionId())
+                .examId(student.getExam().getId())
+                .name(student.getName())
+                .email(student.getEmail())
+                .avatarIcon(student.getAvatarIcon())
+                .totalScore(student.getTotalScore())
+                .joinedAt(student.getJoinedAt())
+                .examStatus(student.getExam().getStatus().name())
                 .build();
     }
 

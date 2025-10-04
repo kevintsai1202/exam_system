@@ -272,6 +272,50 @@ public class ExamService {
     }
 
     /**
+     * 更新測驗
+     * 只允許更新狀態為 CREATED 的測驗
+     *
+     * @param examId 測驗 ID
+     * @param examDTO 更新的測驗資料
+     * @return 更新後的測驗 DTO
+     */
+    @Transactional
+    public ExamDTO updateExam(Long examId, ExamDTO examDTO) {
+        log.info("Updating exam: {}", examId);
+
+        // 查找測驗
+        Exam exam = findExamById(examId);
+
+        // 驗證測驗狀態 - 只允許更新 CREATED 狀態的測驗
+        if (exam.getStatus() != ExamStatus.CREATED) {
+            throw new BusinessException("EXAM_ALREADY_STARTED", "只能編輯尚未啟動的測驗");
+        }
+
+        // 更新測驗基本資訊
+        exam.setTitle(examDTO.getTitle());
+        exam.setDescription(examDTO.getDescription());
+        exam.setQuestionTimeLimit(examDTO.getQuestionTimeLimit());
+        exam.setCumulativeChartType(examDTO.getCumulativeChartType());
+        exam.setLeaderboardTopN(examDTO.getLeaderboardTopN());
+
+        // 刪除所有舊題目（cascade 會自動刪除選項）
+        questionRepository.deleteByExamId(examId);
+        examRepository.flush(); // 確保刪除操作完成
+
+        // 重新建立題目和選項
+        for (QuestionDTO questionDTO : examDTO.getQuestions()) {
+            Question question = createQuestionFromDTO(questionDTO, exam);
+            exam.addQuestion(question);
+        }
+
+        // 儲存更新
+        exam = examRepository.save(exam);
+
+        log.info("Exam updated successfully: {}", examId);
+        return convertToDTO(exam);
+    }
+
+    /**
      * 複製測驗
      *
      * @param examId 原測驗 ID
@@ -285,7 +329,10 @@ public class ExamService {
         Exam originalExam = findExamById(examId);
 
         // 生成唯一的 accessCode
-        String accessCode = generateUniqueAccessCode();
+        String accessCode;
+        do {
+            accessCode = qrCodeService.generateAccessCode();
+        } while (examRepository.existsByAccessCode(accessCode));
 
         // 建立新測驗（複製基本資訊）
         Exam newExam = Exam.builder()
