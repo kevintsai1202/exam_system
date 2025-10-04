@@ -85,18 +85,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 fontWeight: '500',
               }}
             >
-              單題: {question.singleStatChartType === 'BAR' ? '長條圖' : '圓餅圖'}
-            </span>
-            <span
-              style={{
-                padding: '4px 8px',
-                backgroundColor: '#f3e5f5',
-                color: '#7b1fa2',
-                borderRadius: '4px',
-                fontWeight: '500',
-              }}
-            >
-              累積: {question.cumulativeChartType === 'BAR' ? '長條圖' : '圓餅圖'}
+              統計圖表: {question.chartType === 'BAR' ? '長條圖' : '圓餅圖'}
             </span>
           </div>
         </div>

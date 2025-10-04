@@ -18,8 +18,7 @@ import { Message } from '../components/Message';
 interface FormQuestion {
   questionOrder: number;
   questionText: string;
-  singleStatChartType: ChartType;
-  cumulativeChartType: ChartType;
+  chartType: ChartType;
   options: FormOption[];
   correctOptionOrder: number;
 }
@@ -43,14 +42,14 @@ export const ExamCreator: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questionTimeLimit, setQuestionTimeLimit] = useState(30);
+  const [cumulativeChartType, setCumulativeChartType] = useState<ChartType>(ChartType.BAR);
 
   // 題目列表
   const [questions, setQuestions] = useState<FormQuestion[]>([
     {
       questionOrder: 1,
       questionText: '',
-      singleStatChartType: ChartType.BAR,
-      cumulativeChartType: ChartType.BAR,
+      chartType: ChartType.BAR,
       options: [
         { optionOrder: 1, optionText: '' },
         { optionOrder: 2, optionText: '' },
@@ -67,17 +66,22 @@ export const ExamCreator: React.FC = () => {
    */
   const handleAddQuestion = () => {
     const newQuestion: FormQuestion = {
-      questionOrder: questions.length + 1,
+      questionOrder: 1,
       questionText: '',
-      singleStatChartType: ChartType.BAR,
-      cumulativeChartType: ChartType.BAR,
+      chartType: ChartType.BAR,
       options: [
         { optionOrder: 1, optionText: '' },
         { optionOrder: 2, optionText: '' },
       ],
       correctOptionOrder: 1,
     };
-    setQuestions([...questions, newQuestion]);
+    // 插入到陣列最前面
+    const updated = [newQuestion, ...questions];
+    // 重新排序所有題目的 questionOrder
+    updated.forEach((q, i) => {
+      q.questionOrder = i + 1;
+    });
+    setQuestions(updated);
   };
 
   /**
@@ -210,11 +214,11 @@ export const ExamCreator: React.FC = () => {
         title,
         description,
         questionTimeLimit,
+        cumulativeChartType,
         questions: questions.map((q) => ({
           questionOrder: q.questionOrder,
           questionText: q.questionText,
-          singleStatChartType: q.singleStatChartType,
-          cumulativeChartType: q.cumulativeChartType,
+          chartType: q.chartType,
           options: q.options.map((opt) => ({
             optionOrder: opt.optionOrder,
             optionText: opt.optionText,
@@ -365,7 +369,7 @@ export const ExamCreator: React.FC = () => {
             </div>
 
             {/* 時限 */}
-            <div>
+            <div style={{ marginBottom: '16px' }}>
               <label
                 style={{
                   display: 'block',
@@ -396,6 +400,36 @@ export const ExamCreator: React.FC = () => {
               <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
                 (5-300 秒)
               </span>
+            </div>
+
+            {/* 累積統計圖表類型 */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                }}
+              >
+                累積統計圖表類型
+              </label>
+              <select
+                value={cumulativeChartType}
+                onChange={(e) => setCumulativeChartType(e.target.value as ChartType)}
+                style={{
+                  width: '200px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  outline: 'none',
+                }}
+              >
+                <option value="BAR">長條圖</option>
+                <option value="PIE">圓餅圖</option>
+              </select>
             </div>
           </div>
 
@@ -654,82 +688,39 @@ export const ExamCreator: React.FC = () => {
                 </div>
 
                 {/* 圖表類型 */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '16px',
-                  }}
-                >
-                  <div>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: '#333',
-                      }}
-                    >
-                      單題統計圖表
-                    </label>
-                    <select
-                      value={question.singleStatChartType}
-                      onChange={(e) =>
-                        handleUpdateQuestion(
-                          qIndex,
-                          'singleStatChartType',
-                          e.target.value as ChartType
-                        )
-                      }
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '6px',
-                        outline: 'none',
-                      }}
-                    >
-                      <option value="BAR">長條圖</option>
-                      <option value="PIE">圓餅圖</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: '#333',
-                      }}
-                    >
-                      累積統計圖表
-                    </label>
-                    <select
-                      value={question.cumulativeChartType}
-                      onChange={(e) =>
-                        handleUpdateQuestion(
-                          qIndex,
-                          'cumulativeChartType',
-                          e.target.value as ChartType
-                        )
-                      }
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '6px',
-                        outline: 'none',
-                      }}
-                    >
-                      <option value="BAR">長條圖</option>
-                      <option value="PIE">圓餅圖</option>
-                    </select>
-                  </div>
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#333',
+                    }}
+                  >
+                    題目統計圖表
+                  </label>
+                  <select
+                    value={question.chartType}
+                    onChange={(e) =>
+                      handleUpdateQuestion(
+                        qIndex,
+                        'chartType',
+                        e.target.value as ChartType
+                      )
+                    }
+                    style={{
+                      width: '200px',
+                      padding: '10px',
+                      fontSize: '14px',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '6px',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="BAR">長條圖</option>
+                    <option value="PIE">圓餅圖</option>
+                  </select>
                 </div>
               </div>
             ))}

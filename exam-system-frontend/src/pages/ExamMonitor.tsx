@@ -478,7 +478,7 @@ export const ExamMonitor: React.FC = () => {
                       {currentQuestionStats && (
                         <div style={{ marginTop: '24px' }}>
                           <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📊 答題統計</h3>
-                          {currentQuestion.singleStatChartType === 'BAR' ? (
+                          {currentQuestion.chartType === 'BAR' ? (
                             <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} />
                           ) : (
                             <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
