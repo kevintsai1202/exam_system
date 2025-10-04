@@ -1,0 +1,57 @@
+# 測試環境配置
+spring:
+  application:
+    name: exam-system-test
+
+  # H2 測試資料庫配置（記憶體模式）
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 控制台配置
+  h2:
+    console:
+      enabled: false
+
+  # JPA 配置
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+  # Jackson 配置
+  jackson:
+    time-zone: Asia/Taipei
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    default-property-inclusion: non_null
+
+# 伺服器配置
+server:
+  port: 0  # 隨機端口
+
+# 日誌配置
+logging:
+  level:
+    root: WARN
+    com.exam.system: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+
+# 應用自定義配置
+exam:
+  qrcode:
+    width: 300
+    height: 300
+  websocket:
+    allowed-origins:
+      - "*"
+  access-code:
+    length: 6
+    characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

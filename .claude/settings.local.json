@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Select-Object Id, ProcessName)",
+      "Bash(taskkill:*)",
+      "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn spring-boot:run)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "chrome-devtools"
+  ]
+}

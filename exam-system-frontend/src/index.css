@@ -1,0 +1,292 @@
+/**
+ * 全域樣式與響應式設計
+ */
+
+/* ========== 根樣式 ========== */
+:root {
+  /* 字型設定 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC',
+               'Noto Sans TC', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* 顏色配置 */
+  color: #333;
+  background-color: #ffffff;
+
+  /* 字型渲染優化 */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 響應式基礎單位 */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* 斷點變數 */
+  --breakpoint-mobile: 375px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+}
+
+/* ========== 全域重置 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ========== 連結樣式 ========== */
+a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ========== 按鈕樣式 ========== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========== 輸入框樣式 ========== */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 100%;
+}
+
+/* ========== 響應式文字大小 ========== */
+/* 手機版 (< 768px) */
+@media (max-width: 767px) {
+  :root {
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  /* 縮小間距 */
+  :root {
+    --spacing-xs: 6px;
+    --spacing-sm: 10px;
+    --spacing-md: 14px;
+    --spacing-lg: 20px;
+    --spacing-xl: 28px;
+    --spacing-2xl: 36px;
+  }
+}
+
+/* 平板版 (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  h3 {
+    font-size: 20px;
+  }
+}
+
+/* 桌面版 (>= 1024px) */
+@media (min-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 36px;
+  }
+
+  h2 {
+    font-size: 28px;
+  }
+
+  h3 {
+    font-size: 22px;
+  }
+}
+
+/* ========== 響應式工具類 ========== */
+/* 手機版顯示/隱藏 */
+.mobile-only {
+  display: block;
+}
+
+.tablet-up {
+  display: none;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+
+  .tablet-up {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* ========== 響應式容器 ========== */
+.container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 0 var(--spacing-lg);
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px;
+    padding: 0 var(--spacing-xl);
+  }
+}
+
+/* ========== 響應式網格 ========== */
+.grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+/* 手機版: 1 欄 */
+.grid-responsive {
+  grid-template-columns: 1fr;
+}
+
+/* 平板版: 2 欄 */
+@media (min-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 桌面版: 3 欄 */
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ========== 響應式 Flexbox ========== */
+.flex-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+  }
+}
+
+/* ========== 觸控優化 ========== */
+@media (hover: none) and (pointer: coarse) {
+  /* 手機版按鈕加大點擊區域 */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 輸入框加大 */
+  input,
+  textarea,
+  select {
+    min-height: 44px;
+    font-size: 16px; /* 避免 iOS 自動縮放 */
+  }
+}
+
+/* ========== 捲軸樣式 (僅桌面版) ========== */
+@media (min-width: 1024px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+
+/* ========== 列印樣式 ========== */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  button,
+  .no-print {
+    display: none !important;
+  }
+}
