@@ -27,7 +27,10 @@ export const Leaderboard: React.FC = () => {
    */
   const handleLeaderboardUpdated = useCallback((message: WebSocketMessage) => {
     console.log('[Leaderboard] 排行榜更新:', message);
-    setLeaderboard(message as any);
+    const msg = message as any;
+    if (msg.data) {
+      setLeaderboard(msg.data);
+    }
   }, []);
 
   // WebSocket 連線
