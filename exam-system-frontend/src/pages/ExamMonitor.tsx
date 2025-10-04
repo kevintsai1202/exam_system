@@ -528,7 +528,8 @@ export const ExamMonitor: React.FC = () => {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>{entry.name}</div>
-                            <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>正確率：{(entry.correctRate * 100).toFixed(1)}%</div>
+                            <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>正確率：{entry.correctRate.toFixed(1)}%</div>
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>⏱️ {Math.floor((entry.totalAnswerTimeSeconds || 0) / 60)}:{String((entry.totalAnswerTimeSeconds || 0) % 60).padStart(2, '0')}</div>
                           </div>
                           <div style={{ fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>{entry.totalScore} 分</div>
                         </div>

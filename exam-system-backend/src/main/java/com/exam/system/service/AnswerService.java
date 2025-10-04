@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,12 +68,24 @@ public class AnswerService {
         // 判斷答案是否正確
         boolean isCorrect = question.isCorrectAnswer(answerDTO.getSelectedOptionId());
 
+        // 計算答題耗時（從題目開始到現在的秒數）
+        int answerTimeSeconds = 0;
+        LocalDateTime questionStartedAt = question.getExam().getCurrentQuestionStartedAt();
+        if (questionStartedAt != null) {
+            answerTimeSeconds = (int) Duration.between(questionStartedAt, LocalDateTime.now()).getSeconds();
+            // 確保答題時間不為負數
+            if (answerTimeSeconds < 0) {
+                answerTimeSeconds = 0;
+            }
+        }
+
         // 建立答案實體
         Answer answer = Answer.builder()
                 .student(student)
                 .question(question)
                 .selectedOptionId(answerDTO.getSelectedOptionId())
                 .isCorrect(isCorrect)
+                .answerTimeSeconds(answerTimeSeconds)
                 .build();
 
         answer = answerRepository.save(answer);

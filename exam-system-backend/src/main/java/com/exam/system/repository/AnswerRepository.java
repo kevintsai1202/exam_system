@@ -87,6 +87,15 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     long countByQuestionIdAndIsCorrect(Long questionId, Boolean isCorrect);
 
     /**
+     * 計算學員在測驗中的總答題時間（秒）
+     *
+     * @param studentId 學員 ID
+     * @return 總答題時間（秒）
+     */
+    @Query("SELECT COALESCE(SUM(a.answerTimeSeconds), 0) FROM Answer a WHERE a.student.id = :studentId")
+    Integer sumAnswerTimeSecondsByStudentId(@Param("studentId") Long studentId);
+
+    /**
      * 刪除指定測驗的所有答案
      *
      * @param examId 測驗 ID

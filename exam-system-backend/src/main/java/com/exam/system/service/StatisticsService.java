@@ -210,30 +210,48 @@ public class StatisticsService {
      */
     @Transactional(readOnly = true)
     public LeaderboardDTO generateLeaderboard(Long examId, int limit) {
-        // 查詢前 N 名學員
-        List<Student> topStudents = studentRepository.findTopNByExamId(examId, limit);
+        // 查詢所有學員
+        List<Student> allStudents = studentRepository.findByExamIdOrderByTotalScoreDesc(examId);
 
         // 總題目數（用於計算正確率）
         long totalQuestions = questionRepository.countByExamId(examId);
 
-        // 建立排行榜條目
-        AtomicInteger rank = new AtomicInteger(1);
-        List<LeaderboardDTO.LeaderboardEntry> entries = topStudents.stream()
+        // 建立排行榜條目（包含總答題時間）
+        List<LeaderboardDTO.LeaderboardEntry> entries = allStudents.stream()
                 .map(student -> {
                     double correctRate = totalQuestions > 0
                             ? (student.getTotalScore() * 100.0 / totalQuestions)
                             : 0.0;
 
+                    // 計算總答題時間
+                    Integer totalAnswerTime = answerRepository.sumAnswerTimeSecondsByStudentId(student.getId());
+                    if (totalAnswerTime == null) {
+                        totalAnswerTime = 0;
+                    }
+
                     return LeaderboardDTO.LeaderboardEntry.builder()
-                            .rank(rank.getAndIncrement())
                             .studentId(student.getId())
                             .name(student.getName())
                             .avatarIcon(student.getAvatarIcon())
                             .totalScore(student.getTotalScore())
                             .correctRate(Math.round(correctRate * 100.0) / 100.0)
+                            .totalAnswerTimeSeconds(totalAnswerTime)
                             .build();
                 })
+                // 排序：先依分數降序，分數相同時依時間升序（時間短的在前）
+                .sorted((a, b) -> {
+                    int scoreCompare = b.getTotalScore().compareTo(a.getTotalScore());
+                    if (scoreCompare != 0) {
+                        return scoreCompare;
+                    }
+                    return a.getTotalAnswerTimeSeconds().compareTo(b.getTotalAnswerTimeSeconds());
+                })
+                .limit(limit)
                 .collect(Collectors.toList());
+
+        // 設定名次
+        AtomicInteger rank = new AtomicInteger(1);
+        entries.forEach(entry -> entry.setRank(rank.getAndIncrement()));
 
         return LeaderboardDTO.builder()
                 .examId(examId)

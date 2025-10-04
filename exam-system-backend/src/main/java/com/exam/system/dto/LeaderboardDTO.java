@@ -79,6 +79,11 @@ public class LeaderboardDTO {
          * 正確率（百分比）
          */
         private Double correctRate;
+
+        /**
+         * 總答題時間（秒）
+         */
+        private Integer totalAnswerTimeSeconds;
     }
 
 }

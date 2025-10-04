@@ -44,12 +44,13 @@ export interface CumulativeStatistics {
 
 // 排行榜項目介面
 export interface LeaderboardEntry {
-  rank: number;             // 排名
-  studentId: number;        // 學員 ID
-  name: string;             // 學員姓名
-  avatarIcon: string;       // 頭像圖示
-  totalScore: number;       // 總分
-  correctRate: number;      // 正確率
+  rank: number;                  // 排名
+  studentId: number;             // 學員 ID
+  name: string;                  // 學員姓名
+  avatarIcon: string;            // 頭像圖示
+  totalScore: number;            // 總分
+  correctRate: number;           // 正確率
+  totalAnswerTimeSeconds: number; // 總答題時間（秒）
 }
 
 // 排行榜介面

@@ -83,6 +83,12 @@ public class Exam {
     private LocalDateTime endedAt;
 
     /**
+     * 當前題目開始時間
+     * 用於計算學員答題耗時
+     */
+    private LocalDateTime currentQuestionStartedAt;
+
+    /**
      * 測驗包含的題目列表
      */
     @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

@@ -62,6 +62,13 @@ public class Answer {
     private LocalDateTime answeredAt;
 
     /**
+     * 答題耗時（秒）
+     * 從題目推送到作答的時間差
+     */
+    @Column(nullable = false)
+    private Integer answerTimeSeconds;
+
+    /**
      * 實體建立前的回調，設定作答時間
      */
     @PrePersist

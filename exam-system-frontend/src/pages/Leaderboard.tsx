@@ -252,8 +252,11 @@ export const Leaderboard: React.FC = () => {
                     >
                       {entry.name}
                     </div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                      正確率：{(entry.correctRate * 100).toFixed(1)}%
+                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '2px' }}>
+                      正確率：{entry.correctRate.toFixed(1)}%
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#999' }}>
+                      ⏱️ 答題時間：{Math.floor((entry.totalAnswerTimeSeconds || 0) / 60)}:{String((entry.totalAnswerTimeSeconds || 0) % 60).padStart(2, '0')}
                     </div>
                   </div>
 
