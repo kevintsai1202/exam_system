@@ -577,6 +577,8 @@ class ExamFlowIntegrationTest {
         examDTO.setTitle("Spring Boot 測驗");
         examDTO.setDescription("測試你對 Spring Boot 的了解程度");
         examDTO.setQuestionTimeLimit(30);
+        examDTO.setCumulativeChartType(ChartType.BAR);
+        examDTO.setLeaderboardTopN(20);
 
         List<QuestionDTO> questions = new ArrayList<>();
 
@@ -584,8 +586,7 @@ class ExamFlowIntegrationTest {
         QuestionDTO q1 = new QuestionDTO();
         q1.setQuestionOrder(1);
         q1.setQuestionText("什麼是 Spring Boot？");
-        q1.setSingleStatChartType(ChartType.BAR);
-        q1.setCumulativeChartType(ChartType.BAR);
+        q1.setChartType(ChartType.BAR);
         q1.setCorrectOptionOrder(1);
 
         List<QuestionOptionDTO> q1Options = new ArrayList<>();
@@ -600,8 +601,7 @@ class ExamFlowIntegrationTest {
         QuestionDTO q2 = new QuestionDTO();
         q2.setQuestionOrder(2);
         q2.setQuestionText("Spring Boot 的主要優勢是？");
-        q2.setSingleStatChartType(ChartType.PIE);
-        q2.setCumulativeChartType(ChartType.BAR);
+        q2.setChartType(ChartType.PIE);
         q2.setCorrectOptionOrder(2);
 
         List<QuestionOptionDTO> q2Options = new ArrayList<>();
@@ -616,8 +616,7 @@ class ExamFlowIntegrationTest {
         QuestionDTO q3 = new QuestionDTO();
         q3.setQuestionOrder(3);
         q3.setQuestionText("如何啟動 Spring Boot 應用？");
-        q3.setSingleStatChartType(ChartType.BAR);
-        q3.setCumulativeChartType(ChartType.PIE);
+        q3.setChartType(ChartType.BAR);
         q3.setCorrectOptionOrder(3);
 
         List<QuestionOptionDTO> q3Options = new ArrayList<>();

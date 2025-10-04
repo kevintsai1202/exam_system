@@ -22,6 +22,8 @@ public class TestDataBuilder {
         exam.setTitle("測試測驗");
         exam.setDescription("這是一個測試測驗");
         exam.setQuestionTimeLimit(30);
+        exam.setCumulativeChartType(ChartType.BAR);
+        exam.setLeaderboardTopN(20);
         exam.setStatus(ExamStatus.CREATED);
         exam.setAccessCode("TEST01");
         exam.setCurrentQuestionIndex(0);
@@ -38,8 +40,7 @@ public class TestDataBuilder {
         question.setQuestionOrder(order);
         question.setQuestionText("測試題目 " + order);
         question.setCorrectOptionId(1L); // 預設正確答案為選項 1
-        question.setSingleStatChartType(ChartType.BAR);
-        question.setCumulativeChartType(ChartType.BAR);
+        question.setChartType(ChartType.BAR);
         return question;
     }
 
@@ -90,6 +91,8 @@ public class TestDataBuilder {
         dto.setTitle("測試測驗");
         dto.setDescription("這是一個測試測驗");
         dto.setQuestionTimeLimit(30);
+        dto.setCumulativeChartType(ChartType.BAR);
+        dto.setLeaderboardTopN(20);
 
         List<QuestionDTO> questions = new ArrayList<>();
         QuestionDTO questionDTO = createQuestionDTO(1);
@@ -106,8 +109,7 @@ public class TestDataBuilder {
         QuestionDTO dto = new QuestionDTO();
         dto.setQuestionOrder(order);
         dto.setQuestionText("測試題目 " + order);
-        dto.setSingleStatChartType(ChartType.BAR);
-        dto.setCumulativeChartType(ChartType.BAR);
+        dto.setChartType(ChartType.BAR);
 
         List<QuestionOptionDTO> options = new ArrayList<>();
         options.add(createOptionDTO(1, "選項 A"));
