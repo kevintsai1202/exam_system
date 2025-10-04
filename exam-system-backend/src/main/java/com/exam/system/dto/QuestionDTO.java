@@ -49,16 +49,10 @@ public class QuestionDTO {
     private Long correctOptionId;
 
     /**
-     * 單題統計圖表類型
+     * 題目統計圖表類型
      */
-    @NotNull(message = "單題統計圖表類型不能為空")
-    private ChartType singleStatChartType;
-
-    /**
-     * 累積統計圖表類型
-     */
-    @NotNull(message = "累積統計圖表類型不能為空")
-    private ChartType cumulativeChartType;
+    @NotNull(message = "題目統計圖表類型不能為空")
+    private ChartType chartType;
 
     /**
      * 題目選項列表

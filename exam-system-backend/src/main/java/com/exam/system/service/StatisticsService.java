@@ -105,7 +105,7 @@ public class StatisticsService {
                 .questionId(questionId)
                 .questionText(question.getQuestionText())
                 .totalAnswers(totalAnswers)
-                .chartType(question.getSingleStatChartType())
+                .chartType(question.getChartType())
                 .optionStatistics(optionStatistics)
                 .correctRate(Math.round(correctRate * 100.0) / 100.0)
                 .timestamp(LocalDateTime.now())
@@ -169,9 +169,9 @@ public class StatisticsService {
                 })
                 .sum() / (totalStudents > 0 ? totalStudents : 1);
 
-        // 獲取累積圖表類型（使用第一題的設定）
-        List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
-        var chartType = questions.isEmpty() ? null : questions.get(0).getCumulativeChartType();
+        // 獲取累積圖表類型（從測驗設定取得）
+        var exam = examRepository.findById(examId).orElse(null);
+        var chartType = exam != null ? exam.getCumulativeChartType() : null;
 
         return StatisticsDTO.CumulativeStatistics.builder()
                 .examId(examId)

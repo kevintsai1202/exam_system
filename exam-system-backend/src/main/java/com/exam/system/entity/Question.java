@@ -58,14 +58,7 @@ public class Question {
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private ChartType singleStatChartType;
-
-    /**
-     * 累積統計圖表類型
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private ChartType cumulativeChartType;
+    private ChartType chartType;
 
     /**
      * 題目的選項列表

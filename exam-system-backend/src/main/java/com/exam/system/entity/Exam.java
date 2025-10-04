@@ -48,6 +48,13 @@ public class Exam {
     private Integer questionTimeLimit;
 
     /**
+     * 累積統計圖表類型
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private ChartType cumulativeChartType;
+
+    /**
      * 測驗狀態
      */
     @Enumerated(EnumType.STRING)

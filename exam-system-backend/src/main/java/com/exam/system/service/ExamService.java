@@ -64,6 +64,7 @@ public class ExamService {
                 .title(examDTO.getTitle())
                 .description(examDTO.getDescription())
                 .questionTimeLimit(examDTO.getQuestionTimeLimit())
+                .cumulativeChartType(examDTO.getCumulativeChartType())
                 .status(ExamStatus.CREATED)
                 .currentQuestionIndex(0)
                 .accessCode(accessCode)
@@ -299,8 +300,7 @@ public class ExamService {
                 .exam(exam)
                 .questionOrder(dto.getQuestionOrder())
                 .questionText(dto.getQuestionText())
-                .singleStatChartType(dto.getSingleStatChartType())
-                .cumulativeChartType(dto.getCumulativeChartType())
+                .chartType(dto.getChartType())
                 .correctOptionId(0L) // 暫時設定為 0，稍後更新
                 .build();
 
@@ -344,6 +344,7 @@ public class ExamService {
                 .title(exam.getTitle())
                 .description(exam.getDescription())
                 .questionTimeLimit(exam.getQuestionTimeLimit())
+                .cumulativeChartType(exam.getCumulativeChartType())
                 .status(exam.getStatus())
                 .currentQuestionIndex(exam.getCurrentQuestionIndex())
                 .accessCode(exam.getAccessCode())
@@ -374,8 +375,7 @@ public class ExamService {
                 .questionOrder(question.getQuestionOrder())
                 .questionText(question.getQuestionText())
                 .correctOptionId(question.getCorrectOptionId())
-                .singleStatChartType(question.getSingleStatChartType())
-                .cumulativeChartType(question.getCumulativeChartType())
+                .chartType(question.getChartType())
                 .options(optionDTOs)
                 .build();
     }

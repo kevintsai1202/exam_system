@@ -1,5 +1,6 @@
 package com.exam.system.dto;
 
+import com.exam.system.entity.ChartType;
 import com.exam.system.entity.ExamStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -50,6 +51,12 @@ public class ExamDTO {
     @Min(value = 10, message = "倒數時間不能少於 10 秒")
     @Max(value = 300, message = "倒數時間不能超過 300 秒")
     private Integer questionTimeLimit;
+
+    /**
+     * 累積統計圖表類型
+     */
+    @NotNull(message = "累積統計圖表類型不能為空")
+    private ChartType cumulativeChartType;
 
     /**
      * 測驗狀態（回應時使用）
