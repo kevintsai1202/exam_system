@@ -8,6 +8,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { statisticsApi } from '../services/apiService';
 import { useExamWebSocket, useResponsiveValue } from '../hooks';
+import { useStudentStore } from '../store';
 import { AvatarDisplay } from '../components/AvatarSelector';
 import type { Leaderboard as LeaderboardType, WebSocketMessage } from '../types';
 
@@ -16,6 +17,7 @@ import type { Leaderboard as LeaderboardType, WebSocketMessage } from '../types'
  */
 export const Leaderboard: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
+  const { currentStudent } = useStudentStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,12 @@ export const Leaderboard: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        const data = await statisticsApi.getLeaderboard(parseInt(examId));
+        // 如果有 currentStudent，傳入 studentId 確保顯示自己的排名
+        const data = await statisticsApi.getLeaderboard(
+          parseInt(examId),
+          20,
+          currentStudent?.id
+        );
         setLeaderboard(data);
 
         setIsLoading(false);
@@ -62,7 +69,7 @@ export const Leaderboard: React.FC = () => {
     };
 
     loadLeaderboard();
-  }, [examId]);
+  }, [examId, currentStudent?.id]);
 
   // 載入中
   if (isLoading) {
@@ -176,18 +183,27 @@ export const Leaderboard: React.FC = () => {
               const isGold = entry.rank === 1;
               const isSilver = entry.rank === 2;
               const isBronze = entry.rank === 3;
+              const isCurrentStudent = currentStudent && entry.studentId === currentStudent.id;
 
               return (
                 <div
                   key={entry.studentId}
                   style={{
-                    backgroundColor: isTop3 ? '#fffbf0' : '#fff',
+                    backgroundColor: isCurrentStudent
+                      ? '#e3f2fd'
+                      : isTop3
+                      ? '#fffbf0'
+                      : '#fff',
                     borderRadius: '12px',
                     padding: '24px',
-                    boxShadow: isTop3
+                    boxShadow: isCurrentStudent
+                      ? '0 6px 16px rgba(25, 118, 210, 0.3)'
+                      : isTop3
                       ? '0 4px 12px rgba(0,0,0,0.15)'
                       : '0 2px 8px rgba(0,0,0,0.1)',
-                    border: isGold
+                    border: isCurrentStudent
+                      ? '3px solid #1976d2'
+                      : isGold
                       ? '3px solid #ffd700'
                       : isSilver
                       ? '3px solid #c0c0c0'
@@ -248,9 +264,26 @@ export const Leaderboard: React.FC = () => {
                         fontWeight: '600',
                         color: '#333',
                         marginBottom: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
                       }}
                     >
                       {entry.name}
+                      {isCurrentStudent && (
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: '#1976d2',
+                            backgroundColor: '#bbdefb',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          你
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: '14px', color: '#666', marginBottom: '2px' }}>
                       正確率：{entry.correctRate.toFixed(1)}%

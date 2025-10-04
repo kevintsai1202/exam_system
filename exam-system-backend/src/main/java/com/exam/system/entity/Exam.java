@@ -55,6 +55,13 @@ public class Exam {
     private ChartType cumulativeChartType;
 
     /**
+     * 排行榜顯示名次數（預設 20）
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer leaderboardTopN = 20;
+
+    /**
      * 測驗狀態
      */
     @Enumerated(EnumType.STRING)

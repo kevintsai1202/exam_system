@@ -241,8 +241,19 @@ export const statisticsApi = {
    * 取得排行榜
    * GET /api/statistics/exams/{examId}/leaderboard
    */
-  getLeaderboard: async (examId: number): Promise<Leaderboard> => {
-    const response = await apiClient.get<Leaderboard>(`/statistics/exams/${examId}/leaderboard`);
+  getLeaderboard: async (
+    examId: number,
+    limit: number = 20,
+    studentId?: number
+  ): Promise<Leaderboard> => {
+    const params: any = { limit };
+    if (studentId) {
+      params.studentId = studentId;
+    }
+    const response = await apiClient.get<Leaderboard>(
+      `/statistics/exams/${examId}/leaderboard`,
+      { params }
+    );
     return response.data;
   },
 };

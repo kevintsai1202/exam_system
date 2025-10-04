@@ -59,6 +59,14 @@ public class ExamDTO {
     private ChartType cumulativeChartType;
 
     /**
+     * 排行榜顯示名次數（預設 20，範圍 5-100）
+     */
+    @NotNull(message = "排行榜顯示名次數不能為空")
+    @Min(value = 5, message = "排行榜顯示名次數不能少於 5")
+    @Max(value = 100, message = "排行榜顯示名次數不能超過 100")
+    private Integer leaderboardTopN;
+
+    /**
      * 測驗狀態（回應時使用）
      */
     private ExamStatus status;

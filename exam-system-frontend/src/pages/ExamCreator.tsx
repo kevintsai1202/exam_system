@@ -43,6 +43,7 @@ export const ExamCreator: React.FC = () => {
   const [description, setDescription] = useState('');
   const [questionTimeLimit, setQuestionTimeLimit] = useState(30);
   const [cumulativeChartType, setCumulativeChartType] = useState<ChartType>(ChartType.BAR);
+  const [leaderboardTopN, setLeaderboardTopN] = useState(20);
 
   // 題目列表
   const [questions, setQuestions] = useState<FormQuestion[]>([
@@ -210,6 +211,7 @@ export const ExamCreator: React.FC = () => {
         description,
         questionTimeLimit,
         cumulativeChartType,
+        leaderboardTopN,
         questions: sortedQuestions.map((q) => ({
           questionOrder: q.questionOrder,
           questionText: q.questionText,
@@ -425,6 +427,40 @@ export const ExamCreator: React.FC = () => {
                 <option value="BAR">長條圖</option>
                 <option value="PIE">圓餅圖</option>
               </select>
+            </div>
+
+            {/* 排行榜顯示名次數 */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                }}
+              >
+                排行榜顯示名次數 *
+              </label>
+              <input
+                type="number"
+                min={5}
+                max={100}
+                value={leaderboardTopN}
+                onChange={(e) => setLeaderboardTopN(parseInt(e.target.value))}
+                required
+                style={{
+                  width: '200px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  outline: 'none',
+                }}
+              />
+              <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
+                (5-100 名)
+              </span>
             </div>
           </div>
 

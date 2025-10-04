@@ -65,6 +65,7 @@ public class ExamService {
                 .description(examDTO.getDescription())
                 .questionTimeLimit(examDTO.getQuestionTimeLimit())
                 .cumulativeChartType(examDTO.getCumulativeChartType())
+                .leaderboardTopN(examDTO.getLeaderboardTopN())
                 .status(ExamStatus.CREATED)
                 .currentQuestionIndex(0)
                 .accessCode(accessCode)
@@ -264,6 +265,9 @@ public class ExamService {
 
         webSocketService.broadcastExamStatus(examId, WebSocketMessage.examEnded(statusData));
 
+        // 推送排行榜（使用測驗設定的顯示名次數）
+        statisticsService.broadcastLeaderboard(examId, exam.getLeaderboardTopN());
+
         log.info("Exam ended successfully: {}", examId);
     }
 
@@ -345,6 +349,7 @@ public class ExamService {
                 .description(exam.getDescription())
                 .questionTimeLimit(exam.getQuestionTimeLimit())
                 .cumulativeChartType(exam.getCumulativeChartType())
+                .leaderboardTopN(exam.getLeaderboardTopN())
                 .status(exam.getStatus())
                 .currentQuestionIndex(exam.getCurrentQuestionIndex())
                 .accessCode(exam.getAccessCode())

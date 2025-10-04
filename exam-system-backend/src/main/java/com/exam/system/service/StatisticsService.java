@@ -194,7 +194,7 @@ public class StatisticsService {
     public void broadcastLeaderboard(Long examId, int limit) {
         log.info("Generating leaderboard for exam: {}", examId);
 
-        LeaderboardDTO leaderboard = generateLeaderboard(examId, limit);
+        LeaderboardDTO leaderboard = generateLeaderboard(examId, limit, null);
 
         // 透過 WebSocket 推送
         webSocketService.broadcastLeaderboard(examId,
@@ -206,18 +206,19 @@ public class StatisticsService {
      *
      * @param examId 測驗 ID
      * @param limit 返回名次數量
+     * @param studentId 特定學員 ID（如果提供，確保該學員在排行榜中）
      * @return 排行榜 DTO
      */
     @Transactional(readOnly = true)
-    public LeaderboardDTO generateLeaderboard(Long examId, int limit) {
+    public LeaderboardDTO generateLeaderboard(Long examId, int limit, Long studentId) {
         // 查詢所有學員
         List<Student> allStudents = studentRepository.findByExamIdOrderByTotalScoreDesc(examId);
 
         // 總題目數（用於計算正確率）
         long totalQuestions = questionRepository.countByExamId(examId);
 
-        // 建立排行榜條目（包含總答題時間）
-        List<LeaderboardDTO.LeaderboardEntry> entries = allStudents.stream()
+        // 建立所有學員的排行榜條目（包含總答題時間）
+        List<LeaderboardDTO.LeaderboardEntry> allEntries = allStudents.stream()
                 .map(student -> {
                     double correctRate = totalQuestions > 0
                             ? (student.getTotalScore() * 100.0 / totalQuestions)
@@ -246,12 +247,30 @@ public class StatisticsService {
                     }
                     return a.getTotalAnswerTimeSeconds().compareTo(b.getTotalAnswerTimeSeconds());
                 })
+                .collect(Collectors.toList());
+
+        // 設定所有學員的名次
+        AtomicInteger rankCounter = new AtomicInteger(1);
+        allEntries.forEach(entry -> entry.setRank(rankCounter.getAndIncrement()));
+
+        // 取前 N 名
+        List<LeaderboardDTO.LeaderboardEntry> entries = allEntries.stream()
                 .limit(limit)
                 .collect(Collectors.toList());
 
-        // 設定名次
-        AtomicInteger rank = new AtomicInteger(1);
-        entries.forEach(entry -> entry.setRank(rank.getAndIncrement()));
+        // 如果指定了 studentId，且該學員不在前 N 名中，則加入該學員
+        if (studentId != null) {
+            boolean isInTopN = entries.stream()
+                    .anyMatch(entry -> entry.getStudentId().equals(studentId));
+
+            if (!isInTopN) {
+                // 找到該學員的條目
+                allEntries.stream()
+                        .filter(entry -> entry.getStudentId().equals(studentId))
+                        .findFirst()
+                        .ifPresent(entries::add);
+            }
+        }
 
         return LeaderboardDTO.builder()
                 .examId(examId)

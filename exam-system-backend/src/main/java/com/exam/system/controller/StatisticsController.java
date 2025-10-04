@@ -52,9 +52,10 @@ public class StatisticsController {
     @GetMapping("/exams/{examId}/leaderboard")
     public ResponseEntity<LeaderboardDTO> getLeaderboard(
             @PathVariable Long examId,
-            @RequestParam(required = false, defaultValue = "20") int limit) {
-        log.info("Getting leaderboard for exam: {} (limit: {})", examId, limit);
-        LeaderboardDTO leaderboard = statisticsService.generateLeaderboard(examId, limit);
+            @RequestParam(required = false, defaultValue = "20") int limit,
+            @RequestParam(required = false) Long studentId) {
+        log.info("Getting leaderboard for exam: {} (limit: {}, studentId: {})", examId, limit, studentId);
+        LeaderboardDTO leaderboard = statisticsService.generateLeaderboard(examId, limit, studentId);
         return ResponseEntity.ok(leaderboard);
     }
 

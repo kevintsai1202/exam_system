@@ -39,6 +39,7 @@ export interface Exam {
   description: string;            // 測驗描述
   questionTimeLimit: number;      // 每題倒數時間（秒）
   cumulativeChartType: ChartType; // 累積統計圖表類型
+  leaderboardTopN: number;        // 排行榜顯示名次數
   status: ExamStatus;             // 測驗狀態
   accessCode: string;             // 加入碼（QR Code 內容）
   currentQuestionIndex: number;   // 當前題目索引
@@ -56,6 +57,7 @@ export interface CreateExamRequest {
   description: string;                 // 測驗描述
   questionTimeLimit: number;           // 每題倒數時間（秒）
   cumulativeChartType: ChartType;      // 累積統計圖表類型
+  leaderboardTopN: number;             // 排行榜顯示名次數
   questions: CreateQuestionRequest[];  // 題目列表
 }
 
