@@ -66,7 +66,7 @@ export const ExamCreator: React.FC = () => {
    */
   const handleAddQuestion = () => {
     const newQuestion: FormQuestion = {
-      questionOrder: 1,
+      questionOrder: questions.length + 1,  // 保持題號遞增
       questionText: '',
       chartType: ChartType.BAR,
       options: [
@@ -75,13 +75,8 @@ export const ExamCreator: React.FC = () => {
       ],
       correctOptionOrder: 1,
     };
-    // 插入到陣列最前面
-    const updated = [newQuestion, ...questions];
-    // 重新排序所有題目的 questionOrder
-    updated.forEach((q, i) => {
-      q.questionOrder = i + 1;
-    });
-    setQuestions(updated);
+    // 插入到陣列最前面（顯示順序），但保持 questionOrder 不變
+    setQuestions([newQuestion, ...questions]);
   };
 
   /**
@@ -92,11 +87,8 @@ export const ExamCreator: React.FC = () => {
       message.warning('至少需要一個題目');
       return;
     }
+    // 刪除題目，保持其他題目的 questionOrder 不變
     const updated = questions.filter((_, i) => i !== index);
-    // 重新排序
-    updated.forEach((q, i) => {
-      q.questionOrder = i + 1;
-    });
     setQuestions(updated);
   };
 
@@ -175,17 +167,17 @@ export const ExamCreator: React.FC = () => {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.questionText.trim()) {
-        return `第 ${i + 1} 題題目不可為空`;
+        return `第 ${q.questionOrder} 題題目不可為空`;
       }
 
       for (let j = 0; j < q.options.length; j++) {
         if (!q.options[j].optionText.trim()) {
-          return `第 ${i + 1} 題選項 ${j + 1} 不可為空`;
+          return `第 ${q.questionOrder} 題選項 ${j + 1} 不可為空`;
         }
       }
 
       if (q.correctOptionOrder < 1 || q.correctOptionOrder > q.options.length) {
-        return `第 ${i + 1} 題正確答案無效`;
+        return `第 ${q.questionOrder} 題正確答案無效`;
       }
     }
 
@@ -210,12 +202,15 @@ export const ExamCreator: React.FC = () => {
 
     try {
       // 準備 API 請求資料
+      // 提交前按照 questionOrder 排序題目
+      const sortedQuestions = [...questions].sort((a, b) => a.questionOrder - b.questionOrder);
+
       const requestData: CreateExamRequest = {
         title,
         description,
         questionTimeLimit,
         cumulativeChartType,
-        questions: questions.map((q) => ({
+        questions: sortedQuestions.map((q) => ({
           questionOrder: q.questionOrder,
           questionText: q.questionText,
           chartType: q.chartType,
@@ -499,7 +494,7 @@ export const ExamCreator: React.FC = () => {
                       color: '#1976d2',
                     }}
                   >
-                    第 {qIndex + 1} 題
+                    第 {question.questionOrder} 題
                   </h3>
                   {questions.length > 1 && (
                     <button
