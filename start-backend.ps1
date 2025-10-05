@@ -2,7 +2,7 @@
 # 啟動後端服務腳本
 
 param(
-    [string]$JavaHome = "D:\java\jdk-21"
+    [string]$JavaHome = "C:\java\jdk-23"
 )
 
 Write-Host "`n=== 即時互動測驗系統 - 後端服務啟動 ===" -ForegroundColor Cyan
