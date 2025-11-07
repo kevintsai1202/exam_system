@@ -1,0 +1,83 @@
+# Spring Boot 應用配置
+spring:
+  application:
+    name: exam-system
+
+  # H2 資料庫配置
+  datasource:
+    url: jdbc:h2:file:./data/examdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # H2 控制台配置（開發用）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false
+
+  # JPA 配置
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        # 批次處理配置（優化 N+1 查詢問題）
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+
+  # Jackson 配置（JSON 序列化）
+  jackson:
+    time-zone: Asia/Taipei
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# 伺服器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# 日誌配置
+logging:
+  level:
+    root: INFO
+    com.exam.system: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 應用自定義配置
+exam:
+  qrcode:
+    width: 300
+    height: 300
+  websocket:
+    allowed-origins:
+      - "http://localhost:5173"
+      - "http://localhost:3000"
+  access-code:
+    length: 6
+    characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
