@@ -38,7 +38,7 @@ export const useCountdown = (
   const [secondsRemaining, setSecondsRemaining] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(autoStart);
   const [isExpired, setIsExpired] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onExpireRef = useRef(onExpire);
 
   // 更新 onExpire ref（避免過時的閉包）
@@ -168,7 +168,7 @@ export const useExamTimer = (
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onExpireRef = useRef(onExpire);
 
   // 更新 onExpire ref
