@@ -108,7 +108,7 @@ class StatisticsServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getQuestionId()).isEqualTo(1L);
         assertThat(result.getTotalAnswers()).isEqualTo(10L);
-        assertThat(result.getCorrectRate()).isEqualTo(60.0); // 6/10 = 60%
+        assertThat(result.getCorrectRate()).isEqualTo(0.6); // 6/10 = 0.6 (60%)
         assertThat(result.getOptionStatistics()).hasSize(3);
 
         // 檢查選項統計
@@ -243,10 +243,10 @@ class StatisticsServiceTest {
         StatisticsDTO.QuestionStatistics result = statisticsService.generateQuestionStatistics(1L);
 
         // Then
-        // 檢查百分比精度（應該四捨五入到小數點後2位）
+        // 檢查百分比精度（應該四捨五入到小數點後4位）
         result.getOptionStatistics().forEach(opt -> {
             assertThat(opt.getPercentage()).isEqualTo(33.33);
         });
-        assertThat(result.getCorrectRate()).isEqualTo(33.33); // 1/3 = 33.33%
+        assertThat(result.getCorrectRate()).isEqualTo(0.3333); // 1/3 = 0.3333 (33.33%)
     }
 }

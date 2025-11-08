@@ -37,9 +37,16 @@ export const ExamMonitor: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'students' | 'question' | 'cumulative' | 'leaderboard'>('students');
   const [showAnswer, setShowAnswer] = useState(false); // 控制答案顯示
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentExamRef = useRef(currentExam);
+
+  // 保持 currentExamRef 同步
+  useEffect(() => {
+    currentExamRef.current = currentExam;
+  }, [currentExam]);
 
   /**
    * WebSocket 訊息處理
@@ -47,10 +54,10 @@ export const ExamMonitor: React.FC = () => {
   const handleExamStatus = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 測驗狀態更新:', message);
     const msg = message as any;
-    if (currentExam && msg.data?.status) {
-      setCurrentExam({ ...currentExam, status: msg.data.status });
+    if (msg.data?.status && currentExamRef.current) {
+      setCurrentExam({ ...currentExamRef.current, status: msg.data.status });
     }
-  }, [currentExam, setCurrentExam]);
+  }, [setCurrentExam]);
 
   const handleStudentJoined = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 學員加入:', message);
@@ -142,6 +149,19 @@ export const ExamMonitor: React.FC = () => {
         const studentsData = await studentApi.getStudents(parseInt(examId));
         setStudents(studentsData.students);
 
+        // 如果測驗已結束，載入排行榜
+        if (exam.status === 'ENDED') {
+          try {
+            setIsLoadingLeaderboard(true);
+            const leaderboardData = await statisticsApi.getLeaderboard(parseInt(examId));
+            setLeaderboard(leaderboardData);
+            setIsLoadingLeaderboard(false);
+          } catch (err) {
+            console.error('[ExamMonitor] 載入排行榜失敗:', err);
+            setIsLoadingLeaderboard(false);
+          }
+        }
+
         setIsLoading(false);
       } catch (err: any) {
         console.error('[ExamMonitor] 載入失敗:', err);
@@ -151,7 +171,7 @@ export const ExamMonitor: React.FC = () => {
     };
 
     loadExamData();
-  }, [examId, setCurrentExam, setQuestions, setStudents]);
+  }, [examId, setCurrentExam, setQuestions, setStudents, setLeaderboard]);
 
   /**
    * 清理定時器
@@ -294,6 +314,18 @@ export const ExamMonitor: React.FC = () => {
     try {
       const exam = await examApi.endExam(parseInt(examId));
       setCurrentExam(exam);
+
+      // 獲取排行榜資料
+      try {
+        setIsLoadingLeaderboard(true);
+        const leaderboardData = await statisticsApi.getLeaderboard(parseInt(examId));
+        setLeaderboard(leaderboardData);
+        setIsLoadingLeaderboard(false);
+      } catch (err) {
+        console.error('[handleEndExam] 獲取排行榜失敗:', err);
+        setIsLoadingLeaderboard(false);
+      }
+
       message.success('測驗已結束！');
     } catch (err: any) {
       message.error(err.message || '結束測驗失敗');
@@ -334,6 +366,47 @@ export const ExamMonitor: React.FC = () => {
 
   return (
     <>
+      {/* CSS 動畫定義 */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+
       {/* Message 訊息提示 */}
       {message.messages.map((msg) => (
         <Message
@@ -417,7 +490,35 @@ export const ExamMonitor: React.FC = () => {
             {/* 標籤列 */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               {(['students', 'question', 'cumulative', 'leaderboard'] as const).map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: '600', color: activeTab === tab ? '#1976d2' : '#666', backgroundColor: activeTab === tab ? '#e3f2fd' : '#fff', border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer', boxShadow: activeTab === tab ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none' }}>
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: activeTab === tab ? '#1976d2' : '#666',
+                    backgroundColor: activeTab === tab ? '#e3f2fd' : '#fff',
+                    border: 'none',
+                    borderRadius: '8px 8px 0 0',
+                    cursor: 'pointer',
+                    boxShadow: activeTab === tab ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== tab) {
+                      e.currentTarget.style.backgroundColor = '#f5f5f5';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== tab) {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
+                  }}
+                >
                   {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : tab === 'cumulative' ? '累積統計' : '排行榜'}
                 </button>
               ))}
@@ -426,7 +527,7 @@ export const ExamMonitor: React.FC = () => {
             {/* 標籤內容 */}
             <div style={{ backgroundColor: '#fff', borderRadius: '0 0 12px 12px', padding: '24px', minHeight: '600px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
               {activeTab === 'students' && (
-                <div>
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>學員資訊</h3>
                   <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
                     <p>總學員數：{students.length} 人</p>
@@ -437,7 +538,7 @@ export const ExamMonitor: React.FC = () => {
               )}
 
               {activeTab === 'question' && (
-                <div>
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
                   {currentQuestion ? (
                     <>
                       {/* 答案顯示控制按鈕 */}
@@ -497,7 +598,7 @@ export const ExamMonitor: React.FC = () => {
               )}
 
               {activeTab === 'cumulative' && (
-                <div>
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>累積統計</h3>
                   {cumulativeStats ? (
                     <>
@@ -517,25 +618,86 @@ export const ExamMonitor: React.FC = () => {
               )}
 
               {activeTab === 'leaderboard' && (
-                <div>
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>排行榜</h3>
-                  {leaderboard && leaderboard.leaderboard.length > 0 ? (
+
+                  {/* 載入中動畫 */}
+                  {isLoadingLeaderboard && (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                      <div style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid #e0e0e0',
+                        borderTop: '4px solid #1976d2',
+                        borderRadius: '50%',
+                        margin: '0 auto 16px',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      <div style={{ fontSize: '14px', color: '#999' }}>載入排行榜中...</div>
+                    </div>
+                  )}
+
+                  {/* 排行榜內容 */}
+                  {!isLoadingLeaderboard && leaderboard && leaderboard.leaderboard.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {leaderboard.leaderboard.map((entry) => (
-                        <div key={entry.studentId} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: entry.rank <= 3 ? '#fff9e6' : '#f9f9f9', borderRadius: '8px', border: entry.rank === 1 ? '2px solid #ffd700' : entry.rank === 2 ? '2px solid #c0c0c0' : entry.rank === 3 ? '2px solid #cd7f32' : '1px solid #e0e0e0' }}>
-                          <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: entry.rank === 1 ? '#ffd700' : entry.rank === 2 ? '#c0c0c0' : entry.rank === 3 ? '#cd7f32' : '#e0e0e0', color: entry.rank <= 3 ? '#fff' : '#666', borderRadius: '50%', fontSize: '18px', fontWeight: '700' }}>
+                      {leaderboard.leaderboard.map((entry, index) => (
+                        <div
+                          key={entry.studentId}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            padding: '16px',
+                            backgroundColor: entry.rank <= 3 ? '#fff9e6' : '#f9f9f9',
+                            borderRadius: '8px',
+                            border: entry.rank === 1 ? '2px solid #ffd700' : entry.rank === 2 ? '2px solid #c0c0c0' : entry.rank === 3 ? '2px solid #cd7f32' : '1px solid #e0e0e0',
+                            transition: 'all 0.3s ease',
+                            animation: `slideInUp 0.4s ease ${index * 0.1}s both`,
+                            cursor: 'default'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-4px)';
+                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        >
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: entry.rank === 1 ? '#ffd700' : entry.rank === 2 ? '#c0c0c0' : entry.rank === 3 ? '#cd7f32' : '#e0e0e0',
+                            color: entry.rank <= 3 ? '#fff' : '#666',
+                            borderRadius: '50%',
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            boxShadow: entry.rank <= 3 ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                            transition: 'transform 0.2s ease'
+                          }}>
                             {entry.rank}
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>{entry.name}</div>
                             <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>正確率：{(entry.correctRate * 100).toFixed(1)}%</div>
                           </div>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>{entry.totalScore} 分</div>
+                          <div style={{
+                            fontSize: '20px',
+                            fontWeight: '700',
+                            color: entry.rank === 1 ? '#ffa000' : entry.rank === 2 ? '#757575' : entry.rank === 3 ? '#d84315' : '#1976d2'
+                          }}>
+                            {entry.totalScore} 分
+                          </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>暫無排行榜資料</div>
+                  ) : !isLoadingLeaderboard && (
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', animation: 'fadeIn 0.3s ease-in' }}>
+                      暫無排行榜資料
+                    </div>
                   )}
                 </div>
               )}

@@ -36,6 +36,10 @@ export const Leaderboard: React.FC = () => {
     }
   );
 
+  // 響應式數值（必須在所有條件判斷之前呼叫）
+  const containerPadding = useResponsiveValue('20px 16px', '32px 20px', '40px 20px');
+  const maxWidth = useResponsiveValue('100%', '800px', '900px');
+
   /**
    * 載入排行榜資料
    */
@@ -101,9 +105,6 @@ export const Leaderboard: React.FC = () => {
       </div>
     );
   }
-
-  const containerPadding = useResponsiveValue('20px 16px', '32px 20px', '40px 20px');
-  const maxWidth = useResponsiveValue('100%', '800px', '900px');
 
   return (
     <div
@@ -330,3 +331,4 @@ export const Leaderboard: React.FC = () => {
 };
 
 export default Leaderboard;
+

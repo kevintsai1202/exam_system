@@ -126,6 +126,30 @@ public class ExamController {
     }
 
     /**
+     * 複製測驗
+     * POST /api/exams/{examId}/duplicate
+     */
+    @PostMapping("/{examId}/duplicate")
+    public ResponseEntity<ExamDTO> duplicateExam(@PathVariable Long examId) {
+        log.info("Duplicating exam: {}", examId);
+        ExamDTO newExam = examService.duplicateExam(examId);
+        return ResponseEntity.ok(newExam);
+    }
+
+    /**
+     * 更新測驗
+     * PUT /api/exams/{examId}
+     */
+    @PutMapping("/{examId}")
+    public ResponseEntity<ExamDTO> updateExam(
+            @PathVariable Long examId,
+            @Valid @RequestBody ExamDTO examDTO) {
+        log.info("Updating exam: {}", examId);
+        ExamDTO updatedExam = examService.updateExam(examId, examDTO);
+        return ResponseEntity.ok(updatedExam);
+    }
+
+    /**
      * 取得測驗的所有學員
      * GET /api/exams/{examId}/students
      */

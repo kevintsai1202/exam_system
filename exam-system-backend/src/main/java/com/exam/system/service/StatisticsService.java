@@ -97,9 +97,9 @@ public class StatisticsService {
                 })
                 .collect(Collectors.toList());
 
-        // 計算正確率
+        // 計算正確率（回傳比例，例如 0.5 代表 50%）
         long correctCount = answerRepository.countByQuestionIdAndIsCorrect(questionId, true);
-        double correctRate = totalAnswers > 0 ? (correctCount * 100.0 / totalAnswers) : 0.0;
+        double correctRate = totalAnswers > 0 ? ((double) correctCount / totalAnswers) : 0.0;
 
         return StatisticsDTO.QuestionStatistics.builder()
                 .questionId(questionId)
@@ -107,7 +107,7 @@ public class StatisticsService {
                 .totalAnswers(totalAnswers)
                 .chartType(question.getSingleStatChartType())
                 .optionStatistics(optionStatistics)
-                .correctRate(Math.round(correctRate * 100.0) / 100.0)
+                .correctRate(Math.round(correctRate * 10000.0) / 10000.0)
                 .timestamp(LocalDateTime.now())
                 .build();
     }
@@ -220,8 +220,9 @@ public class StatisticsService {
         AtomicInteger rank = new AtomicInteger(1);
         List<LeaderboardDTO.LeaderboardEntry> entries = topStudents.stream()
                 .map(student -> {
+                    // 計算正確率（回傳比例，例如 0.5 代表 50%）
                     double correctRate = totalQuestions > 0
-                            ? (student.getTotalScore() * 100.0 / totalQuestions)
+                            ? ((double) student.getTotalScore() / totalQuestions)
                             : 0.0;
 
                     return LeaderboardDTO.LeaderboardEntry.builder()
@@ -230,7 +231,7 @@ public class StatisticsService {
                             .name(student.getName())
                             .avatarIcon(student.getAvatarIcon())
                             .totalScore(student.getTotalScore())
-                            .correctRate(Math.round(correctRate * 100.0) / 100.0)
+                            .correctRate(Math.round(correctRate * 10000.0) / 10000.0)
                             .build();
                 })
                 .collect(Collectors.toList());

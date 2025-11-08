@@ -200,10 +200,10 @@ export const StudentList: React.FC<StudentListProps> = ({
                   flexShrink: 0,
                 }}
               >
-                {new Date(student.joinedAt).toLocaleTimeString('zh-TW', {
+                {student.joinedAt ? new Date(student.joinedAt).toLocaleTimeString('zh-TW', {
                   hour: '2-digit',
                   minute: '2-digit',
-                })}
+                }) : '--:--'}
               </div>
             </div>
           ))

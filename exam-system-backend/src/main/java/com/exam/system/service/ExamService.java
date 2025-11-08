@@ -8,6 +8,7 @@ import com.exam.system.repository.*;
 import com.exam.system.websocket.WebSocketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ExamService {
 
     private final ExamRepository examRepository;
@@ -34,6 +34,28 @@ public class ExamService {
     private final StudentRepository studentRepository;
     private final QRCodeService qrCodeService;
     private final WebSocketService webSocketService;
+    private final StatisticsService statisticsService;
+
+    /**
+     * 建構子注入（使用 @Lazy 解決循環依賴）
+     */
+    public ExamService(
+            ExamRepository examRepository,
+            QuestionRepository questionRepository,
+            QuestionOptionRepository questionOptionRepository,
+            StudentRepository studentRepository,
+            QRCodeService qrCodeService,
+            WebSocketService webSocketService,
+            @Lazy StatisticsService statisticsService
+    ) {
+        this.examRepository = examRepository;
+        this.questionRepository = questionRepository;
+        this.questionOptionRepository = questionOptionRepository;
+        this.studentRepository = studentRepository;
+        this.qrCodeService = qrCodeService;
+        this.webSocketService = webSocketService;
+        this.statisticsService = statisticsService;
+    }
 
     /**
      * 建立新測驗
@@ -268,6 +290,9 @@ public class ExamService {
 
         webSocketService.broadcastExamStatus(examId, WebSocketMessage.examEnded(statusData));
 
+        // 自動廣播排行榜
+        statisticsService.broadcastLeaderboard(examId, 20);
+
         log.info("Exam ended successfully: {}", examId);
     }
 
@@ -283,6 +308,142 @@ public class ExamService {
         return questions.stream()
                 .map(this::convertQuestionToDTO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 複製測驗（包含所有題目和選項）
+     *
+     * @param examId 原測驗 ID
+     * @return 新測驗 DTO
+     */
+    @Transactional
+    public ExamDTO duplicateExam(Long examId) {
+        log.info("Duplicating exam: {}", examId);
+
+        // 查找原測驗
+        Exam originalExam = findExamById(examId);
+
+        // 最多重試 5 次以處理並發 accessCode 衝突
+        int maxRetries = 5;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // 建立新測驗（複製基本資訊）
+                String accessCode = qrCodeService.generateAccessCode();
+
+                Exam newExam = Exam.builder()
+                        .title(originalExam.getTitle() + " (副本)")
+                        .description(originalExam.getDescription())
+                        .questionTimeLimit(originalExam.getQuestionTimeLimit())
+                        .status(ExamStatus.CREATED)
+                        .accessCode(accessCode)
+                        .build();
+
+                newExam = examRepository.save(newExam);
+
+                // 複製所有題目
+                List<Question> originalQuestions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+                for (Question originalQuestion : originalQuestions) {
+                    // 複製題目（使用臨時的 correctOptionId）
+                    Question newQuestion = Question.builder()
+                            .exam(newExam)
+                            .questionText(originalQuestion.getQuestionText())
+                            .questionOrder(originalQuestion.getQuestionOrder())
+                            .correctOptionId(0L)  // 使用臨時值，稍後設定
+                            .singleStatChartType(originalQuestion.getSingleStatChartType())
+                            .cumulativeChartType(originalQuestion.getCumulativeChartType())
+                            .build();
+
+                    newQuestion = questionRepository.save(newQuestion);
+
+                    // 複製所有選項
+                    List<QuestionOption> originalOptions = questionOptionRepository
+                            .findByQuestionIdOrderByOptionOrderAsc(originalQuestion.getId());
+
+                    Map<Long, Long> optionIdMap = new HashMap<>();  // 原選項ID -> 新選項ID
+
+                    for (QuestionOption originalOption : originalOptions) {
+                        QuestionOption newOption = QuestionOption.builder()
+                                .question(newQuestion)
+                                .optionText(originalOption.getOptionText())
+                                .optionOrder(originalOption.getOptionOrder())
+                                .build();
+
+                        newOption = questionOptionRepository.save(newOption);
+                        optionIdMap.put(originalOption.getId(), newOption.getId());
+                    }
+
+                    // 設定正確答案（對應到新選項ID）
+                    Long newCorrectOptionId = optionIdMap.get(originalQuestion.getCorrectOptionId());
+                    if (newCorrectOptionId != null) {
+                        newQuestion.setCorrectOptionId(newCorrectOptionId);
+                        questionRepository.save(newQuestion);
+                    }
+                }
+
+                log.info("Exam duplicated successfully. Original ID: {}, New ID: {}", examId, newExam.getId());
+
+                // 轉換為 DTO 回傳
+                return ExamDTO.builder()
+                        .id(newExam.getId())
+                        .title(newExam.getTitle())
+                        .description(newExam.getDescription())
+                        .questionTimeLimit(newExam.getQuestionTimeLimit())
+                        .status(newExam.getStatus())
+                        .accessCode(newExam.getAccessCode())
+                        .createdAt(newExam.getCreatedAt())
+                        .build();
+
+            } catch (DataIntegrityViolationException e) {
+                if (attempt < maxRetries - 1) {
+                    log.warn("AccessCode collision detected, retrying... (attempt {}/{})", attempt + 1, maxRetries);
+                    continue;
+                }
+                throw new BusinessException("DUPLICATE_FAILED", "複製測驗失敗：無法生成唯一的 accessCode");
+            }
+        }
+
+        throw new BusinessException("DUPLICATE_FAILED", "複製測驗失敗");
+    }
+
+    /**
+     * 更新測驗（僅限 CREATED 狀態）
+     *
+     * @param examId 測驗 ID
+     * @param examDTO 測驗 DTO
+     * @return 更新後的測驗 DTO
+     */
+    @Transactional
+    public ExamDTO updateExam(Long examId, ExamDTO examDTO) {
+        log.info("Updating exam: {}", examId);
+
+        // 查找測驗
+        Exam exam = findExamById(examId);
+
+        // 驗證測驗狀態（只有 CREATED 狀態可以編輯）
+        if (exam.getStatus() != ExamStatus.CREATED) {
+            throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已啟動或結束，無法編輯");
+        }
+
+        // 更新測驗基本資訊
+        exam.setTitle(examDTO.getTitle());
+        exam.setDescription(examDTO.getDescription());
+        exam.setQuestionTimeLimit(examDTO.getQuestionTimeLimit());
+
+        // 清空並刪除所有舊題目（cascade 會自動刪除選項）
+        exam.getQuestions().clear();  // 先清空集合
+        questionRepository.flush();    // 立即同步到資料庫
+
+        // 建立新題目和選項
+        for (QuestionDTO questionDTO : examDTO.getQuestions()) {
+            Question question = createQuestionFromDTO(questionDTO, exam);
+            exam.addQuestion(question);
+        }
+
+        // 儲存測驗
+        exam = examRepository.save(exam);
+
+        log.info("Exam updated successfully: {}", examId);
+        return convertToDTO(exam);
     }
 
     // ==================== 私有輔助方法 ====================

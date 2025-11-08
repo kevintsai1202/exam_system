@@ -18,6 +18,8 @@ export const InstructorDashboard: React.FC = () => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duplicatingExamId, setDuplicatingExamId] = useState<number | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /**
    * 載入測驗列表
@@ -52,6 +54,40 @@ export const InstructorDashboard: React.FC = () => {
    */
   const handleMonitorExam = (examId: number) => {
     navigate(`/instructor/exam/${examId}/monitor`);
+  };
+
+  /**
+   * 複製測驗
+   */
+  const handleDuplicateExam = async (examId: number, event: React.MouseEvent) => {
+    // 阻止事件冒泡，避免觸發卡片的點擊事件
+    event.stopPropagation();
+
+    try {
+      setDuplicatingExamId(examId);
+      setError(null);
+      setSuccessMessage(null);
+
+      // 呼叫複製 API
+      const newExam = await examApi.duplicateExam(examId);
+
+      // 重新載入測驗列表
+      const data = await examApi.getAllExams();
+      setExams(data);
+
+      // 顯示成功訊息
+      setSuccessMessage(`成功複製測驗：${newExam.title}`);
+
+      // 3 秒後清除成功訊息
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('[InstructorDashboard] 複製測驗失敗:', err);
+      setError(err.message || '複製測驗失敗');
+    } finally {
+      setDuplicatingExamId(null);
+    }
   };
 
   /**
@@ -158,6 +194,26 @@ export const InstructorDashboard: React.FC = () => {
             管理您的測驗與監控學員答題狀況
           </p>
         </div>
+
+        {/* 成功訊息 */}
+        {successMessage && (
+          <div
+            style={{
+              marginBottom: '20px',
+              padding: '16px 24px',
+              backgroundColor: '#e8f5e9',
+              color: '#2e7d32',
+              borderRadius: '8px',
+              border: '1px solid #81c784',
+              textAlign: 'center',
+              fontSize: '16px',
+              fontWeight: '500',
+              animation: 'fadeIn 0.3s ease-in',
+            }}
+          >
+            {successMessage}
+          </div>
+        )}
 
         {/* 建立測驗按鈕 */}
         <div
@@ -342,9 +398,77 @@ export const InstructorDashboard: React.FC = () => {
                     color: '#999',
                     borderTop: '1px solid #f0f0f0',
                     paddingTop: '12px',
+                    marginBottom: '12px',
                   }}
                 >
                   建立時間：{new Date(exam.createdAt).toLocaleString('zh-TW')}
+                </div>
+
+                {/* 操作按鈕 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  {/* 編輯按鈕（僅 CREATED 狀態顯示） */}
+                  {exam.status === 'CREATED' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/instructor/exam/${exam.id}/edit`);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#2e7d32',
+                        backgroundColor: '#fff',
+                        border: '1px solid #2e7d32',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        outline: 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e8f5e9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fff';
+                      }}
+                    >
+                      編輯測驗
+                    </button>
+                  )}
+
+                  {/* 複製按鈕 */}
+                  <button
+                    onClick={(e) => handleDuplicateExam(exam.id, e)}
+                    disabled={duplicatingExamId === exam.id}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: duplicatingExamId === exam.id ? '#999' : '#1976d2',
+                      backgroundColor: '#fff',
+                      border: `1px solid ${duplicatingExamId === exam.id ? '#ccc' : '#1976d2'}`,
+                      borderRadius: '6px',
+                      cursor: duplicatingExamId === exam.id ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (duplicatingExamId !== exam.id) {
+                        e.currentTarget.style.backgroundColor = '#e3f2fd';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                    }}
+                  >
+                    {duplicatingExamId === exam.id ? '複製中...' : '複製測驗'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -382,12 +506,25 @@ export const InstructorDashboard: React.FC = () => {
           >
             <li>點擊「建立新測驗」開始建立測驗題目</li>
             <li>建立完成後，可在測驗卡片中查看測驗資訊</li>
+            <li>點擊「複製測驗」按鈕可快速複製現有測驗</li>
             <li>點擊測驗卡片進入監控頁面</li>
             <li>在監控頁面可以啟動測驗、推送題目、查看即時統計</li>
             <li>測驗結束後可查看完整統計報表與排行榜</li>
           </ul>
         </div>
       </div>
+
+      {/* CSS 動畫 */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 };

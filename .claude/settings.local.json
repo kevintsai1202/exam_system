@@ -1,17 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object Id, ProcessName)",
-      "Bash(taskkill:*)",
-      "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn spring-boot:run)",
-      "Bash($env:JAVA_HOME = \"D:\\java\\jdk-21\")",
-      "Bash($env:PATH = \"D:\\java\\jdk-21\\bin;$env:PATH\")",
-      "Bash(mvn clean:*)",
-      "Bash(java:*)",
-      "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn clean compile:*)",
+      "Bash(Select-Object Id, ProcessName, Path)",
+      "Bash(Get-Process -Name java -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Id, ProcessName, StartTime)",
+      "Bash(Stop-Process -Id 18760, 39364, 38508 -Force -ErrorAction SilentlyContinue)",
+      "Bash(cmd.exe /c \"taskkill /F /PID 18760 /PID 39364 /PID 38508\")",
+      "mcp__chrome-devtools__press_key",
       "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn test:*)",
-      "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(cmd.exe /c \"taskkill /F /PID 18760\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn spring-boot:run:*)",
+      "Bash(npm run dev:*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__select_page"
     ],
     "deny": [],
     "ask": []

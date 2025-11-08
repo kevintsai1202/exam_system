@@ -252,6 +252,7 @@ const App: React.FC = () => {
       {/* 講師路由 */}
       <Route path="/instructor" element={<InstructorDashboard />} />
       <Route path="/instructor/exam/create" element={<ExamCreator />} />
+      <Route path="/instructor/exam/:examId/edit" element={<ExamCreator />} />
       <Route path="/instructor/exam/:examId/monitor" element={<ExamMonitor />} />
 
       {/* 學員路由 */}
