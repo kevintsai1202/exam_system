@@ -71,4 +71,16 @@ public class StatisticsController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 取得職業分布統計
+     * GET /api/statistics/exams/{examId}/occupation-distribution
+     */
+    @GetMapping("/exams/{examId}/occupation-distribution")
+    public ResponseEntity<StatisticsDTO.OccupationDistribution> getOccupationDistribution(
+            @PathVariable Long examId) {
+        log.info("Getting occupation distribution for exam: {}", examId);
+        StatisticsDTO.OccupationDistribution distribution = statisticsService.generateOccupationDistribution(examId);
+        return ResponseEntity.ok(distribution);
+    }
+
 }

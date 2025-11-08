@@ -11,6 +11,7 @@ export interface Student {
   examId: number;           // 測驗 ID
   name: string;             // 學員姓名
   email: string;            // 學員 Email
+  occupation?: string;      // 學員職業
   avatarIcon: string;       // 頭像圖示名稱
   totalScore: number;       // 累積總分
   joinedAt: string;         // 加入時間
@@ -22,6 +23,7 @@ export interface JoinExamRequest {
   accessCode: string;       // 測驗加入碼
   name: string;             // 學員姓名
   email: string;            // 學員 Email
+  occupation?: string;      // 學員職業
   avatarIcon: string;       // 頭像圖示名稱
 }
 
@@ -32,6 +34,7 @@ export interface JoinExamResponse {
   examId: number;           // 測驗 ID
   name: string;             // 學員姓名
   email: string;            // 學員 Email
+  occupation?: string;      // 學員職業
   avatarIcon: string;       // 頭像圖示名稱
   totalScore: number;       // 累積總分
   joinedAt: string;         // 加入時間

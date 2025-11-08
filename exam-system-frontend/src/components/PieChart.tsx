@@ -13,19 +13,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { OptionStatistic, ScoreDistribution } from '../types';
+import type { OptionStatistic, ScoreDistribution, OccupationStatistic } from '../types';
 
 /**
  * 圓餅圖 Props 介面
  */
 interface PieChartProps {
-  data: OptionStatistic[] | ScoreDistribution[];
-  dataType: 'option' | 'score';           // 資料類型
-  width?: string | number;                 // 寬度
-  height?: number;                         // 高度
-  showLegend?: boolean;                    // 是否顯示圖例
-  showLabel?: boolean;                     // 是否顯示標籤
-  colors?: string[];                       // 自訂顏色
+  data: OptionStatistic[] | ScoreDistribution[] | OccupationStatistic[];
+  dataType: 'option' | 'score' | 'occupation';  // 資料類型
+  width?: string | number;                       // 寬度
+  height?: number;                               // 高度
+  showLegend?: boolean;                          // 是否顯示圖例
+  showLabel?: boolean;                           // 是否顯示標籤
+  colors?: string[];                             // 自訂顏色
 }
 
 /**
@@ -88,12 +88,25 @@ export const PieChart: React.FC<PieChartProps> = ({
   };
 
   /**
+   * 格式化職業統計資料
+   */
+  const formatOccupationData = (occupationStats: OccupationStatistic[]) => {
+    return occupationStats.map((stat) => ({
+      name: stat.occupation,
+      value: stat.count,
+      percentage: stat.percentage,
+    }));
+  };
+
+  /**
    * 取得圖表資料
    */
   const chartData =
     dataType === 'option'
       ? formatOptionData(data as OptionStatistic[])
-      : formatScoreData(data as ScoreDistribution[]);
+      : dataType === 'score'
+      ? formatScoreData(data as ScoreDistribution[])
+      : formatOccupationData(data as OccupationStatistic[]);
 
   /**
    * 自訂標籤

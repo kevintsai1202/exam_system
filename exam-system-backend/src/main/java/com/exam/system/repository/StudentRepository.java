@@ -76,4 +76,14 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query(value = "SELECT * FROM student WHERE exam_id = :examId ORDER BY total_score DESC LIMIT :limit", nativeQuery = true)
     List<Student> findTopNByExamId(@Param("examId") Long examId, @Param("limit") int limit);
 
+    /**
+     * 根據測驗 ID 統計各職業的學員數量
+     * 用於生成職業分布圖
+     *
+     * @param examId 測驗 ID
+     * @return 職業與數量的映射
+     */
+    @Query("SELECT s.occupation as occupation, COUNT(s) as count FROM Student s WHERE s.exam.id = :examId AND s.occupation IS NOT NULL GROUP BY s.occupation ORDER BY COUNT(s) DESC")
+    List<Map<String, Object>> countByExamIdGroupByOccupation(@Param("examId") Long examId);
+
 }

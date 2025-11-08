@@ -15,7 +15,7 @@ import QuestionCard from '../components/QuestionCard';
 import BarChart from '../components/BarChart';
 import PieChart from '../components/PieChart';
 import { Message } from '../components/Message';
-import type { WebSocketMessage } from '../types';
+import type { WebSocketMessage, OccupationDistribution } from '../types';
 
 /**
  * 測驗監控頁面
@@ -38,6 +38,8 @@ export const ExamMonitor: React.FC = () => {
   const [showAnswer, setShowAnswer] = useState(false); // 控制答案顯示
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
+  const [occupationDistribution, setOccupationDistribution] = useState<OccupationDistribution | null>(null); // 職業分布
+  const [isLoadingOccupation, setIsLoadingOccupation] = useState(false); // 職業分布載入狀態
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,6 +150,17 @@ export const ExamMonitor: React.FC = () => {
         // 載入學員列表
         const studentsData = await studentApi.getStudents(parseInt(examId));
         setStudents(studentsData.students);
+
+        // 載入職業分布統計
+        try {
+          setIsLoadingOccupation(true);
+          const occupationData = await statisticsApi.getOccupationDistribution(parseInt(examId));
+          setOccupationDistribution(occupationData);
+          setIsLoadingOccupation(false);
+        } catch (err) {
+          console.error('[ExamMonitor] 載入職業分布失敗:', err);
+          setIsLoadingOccupation(false);
+        }
 
         // 如果測驗已結束，載入排行榜
         if (exam.status === 'ENDED') {
@@ -534,6 +547,34 @@ export const ExamMonitor: React.FC = () => {
                     <p>總題目數：{questions.length} 題</p>
                     <p>每題時限：{currentExam.questionTimeLimit} 秒</p>
                   </div>
+
+                  {/* 職業分布圖 */}
+                  {isLoadingOccupation && !occupationDistribution && (
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '16px', color: '#1976d2', marginBottom: '12px' }}>⏳ 正在載入職業分布...</div>
+                    </div>
+                  )}
+
+                  {occupationDistribution && occupationDistribution.occupationStatistics.length > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>👔 職業分布統計</h3>
+                      <PieChart
+                        data={occupationDistribution.occupationStatistics}
+                        dataType="occupation"
+                        height={400}
+                      />
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
+                        <p style={{ margin: 0, fontWeight: '500' }}>📊 共 {occupationDistribution.totalStudents} 位學員，{occupationDistribution.occupationStatistics.length} 種職業</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {occupationDistribution && occupationDistribution.occupationStatistics.length === 0 && (
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '16px', color: '#999' }}>尚無職業統計資料</div>
+                      <div style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>學員加入時可選填職業資訊</div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -61,6 +61,12 @@ public class Student {
     private String email;
 
     /**
+     * 學員職業
+     */
+    @Column(length = 50)
+    private String occupation;
+
+    /**
      * 頭像圖示名稱
      */
     @Column(nullable = false, length = 20)

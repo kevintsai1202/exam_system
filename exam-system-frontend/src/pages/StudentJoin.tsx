@@ -27,9 +27,25 @@ export const StudentJoin: React.FC = () => {
   const [accessCode, setAccessCode] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [customOccupation, setCustomOccupation] = useState('');
   const [avatarIcon, setAvatarIcon] = useState<AvatarIcon>('cat');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 常用職業列表
+  const commonOccupations = [
+    '學生',
+    '教師',
+    '工程師',
+    '設計師',
+    '行銷人員',
+    '業務人員',
+    '醫護人員',
+    '公務員',
+    '自由工作者',
+    '其他',
+  ];
 
   // 自動填入 URL 參數中的 Access Code
   useEffect(() => {
@@ -68,10 +84,16 @@ export const StudentJoin: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // 處理職業資料：如果選擇「其他」，則使用自訂職業
+      const finalOccupation = occupation === '其他'
+        ? customOccupation.trim()
+        : occupation;
+
       const requestData: JoinExamRequest = {
         accessCode: accessCode.trim(),
         name: name.trim(),
         email: email.trim(),
+        occupation: finalOccupation || undefined,
         avatarIcon,
       };
 
@@ -239,6 +261,88 @@ export const StudentJoin: React.FC = () => {
               onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
             />
           </div>
+
+          {/* 職業選擇 */}
+          <div style={{ marginBottom: '24px' }}>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333',
+              }}
+            >
+              職業
+            </label>
+            <select
+              value={occupation}
+              onChange={(e) => {
+                setOccupation(e.target.value);
+                if (e.target.value !== '其他') {
+                  setCustomOccupation('');
+                }
+              }}
+              disabled={isSubmitting}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+            >
+              <option value="">請選擇職業（選填）</option>
+              {commonOccupations.map((occ) => (
+                <option key={occ} value={occ}>
+                  {occ}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 自訂職業輸入框（當選擇「其他」時顯示） */}
+          {occupation === '其他' && (
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                }}
+              >
+                請輸入您的職業
+              </label>
+              <input
+                type="text"
+                value={customOccupation}
+                onChange={(e) => setCustomOccupation(e.target.value)}
+                placeholder="請輸入您的職業"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+              />
+            </div>
+          )}
 
           {/* 頭像選擇 */}
           <div style={{ marginBottom: '32px' }}>
