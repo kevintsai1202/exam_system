@@ -61,6 +61,21 @@ export interface Leaderboard {
   timestamp: string;                 // 時間戳記
 }
 
+// 職業統計介面
+export interface OccupationStatistic {
+  occupation: string;       // 職業名稱
+  count: number;            // 人數
+  percentage: number;       // 百分比
+}
+
+// 職業分布介面
+export interface OccupationDistribution {
+  examId: number;                              // 測驗 ID
+  totalStudents: number;                       // 總學員數
+  occupationStatistics: OccupationStatistic[]; // 職業統計列表
+  timestamp: string;                           // 時間戳記
+}
+
 // WebSocket 訊息類型枚舉
 export enum WebSocketMessageType {
   // 測驗狀態

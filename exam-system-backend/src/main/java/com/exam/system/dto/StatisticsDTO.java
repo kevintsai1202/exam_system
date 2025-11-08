@@ -162,4 +162,57 @@ public class StatisticsDTO {
         private Double percentage;
     }
 
+    /**
+     * 職業分布統計 DTO
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OccupationDistribution {
+        /**
+         * 測驗 ID
+         */
+        private Long examId;
+
+        /**
+         * 總學員數
+         */
+        private Integer totalStudents;
+
+        /**
+         * 職業分布列表
+         */
+        private List<OccupationStatistic> occupationStatistics;
+
+        /**
+         * 統計時間
+         */
+        private LocalDateTime timestamp;
+    }
+
+    /**
+     * 職業統計
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OccupationStatistic {
+        /**
+         * 職業名稱
+         */
+        private String occupation;
+
+        /**
+         * 該職業的人數
+         */
+        private Long count;
+
+        /**
+         * 百分比
+         */
+        private Double percentage;
+    }
+
 }

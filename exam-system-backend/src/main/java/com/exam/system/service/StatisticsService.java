@@ -245,4 +245,43 @@ public class StatisticsService {
                 .build();
     }
 
+    /**
+     * 生成職業分布統計
+     *
+     * @param examId 測驗 ID
+     * @return 職業分布統計 DTO
+     */
+    @Transactional(readOnly = true)
+    public StatisticsDTO.OccupationDistribution generateOccupationDistribution(Long examId) {
+        log.debug("Generating occupation distribution for exam: {}", examId);
+
+        // 統計各職業的學員數量
+        List<Map<String, Object>> occupationData = studentRepository.countByExamIdGroupByOccupation(examId);
+
+        // 總學員數
+        long totalStudents = studentRepository.countByExamId(examId);
+
+        // 建立職業分布列表
+        List<StatisticsDTO.OccupationStatistic> occupationStatistics = occupationData.stream()
+                .map(data -> {
+                    String occupation = (String) data.get("occupation");
+                    long count = ((Number) data.get("count")).longValue();
+                    double percentage = totalStudents > 0 ? (count * 100.0 / totalStudents) : 0.0;
+
+                    return StatisticsDTO.OccupationStatistic.builder()
+                            .occupation(occupation)
+                            .count(count)
+                            .percentage(Math.round(percentage * 100.0) / 100.0)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return StatisticsDTO.OccupationDistribution.builder()
+                .examId(examId)
+                .totalStudents((int) totalStudents)
+                .occupationStatistics(occupationStatistics)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
 }

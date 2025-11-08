@@ -28,7 +28,8 @@ import type {
   // 統計相關型別
   QuestionStatistics,
   CumulativeStatistics,
-  Leaderboard
+  Leaderboard,
+  OccupationDistribution
 } from '../types';
 
 // API Base URL
@@ -261,6 +262,17 @@ export const statisticsApi = {
    */
   getLeaderboard: async (examId: number): Promise<Leaderboard> => {
     const response = await apiClient.get<Leaderboard>(`/statistics/exams/${examId}/leaderboard`);
+    return response.data;
+  },
+
+  /**
+   * 取得職業分布統計
+   * GET /api/statistics/exams/{examId}/occupation-distribution
+   */
+  getOccupationDistribution: async (examId: number): Promise<OccupationDistribution> => {
+    const response = await apiClient.get<OccupationDistribution>(
+      `/statistics/exams/${examId}/occupation-distribution`
+    );
     return response.data;
   },
 };
