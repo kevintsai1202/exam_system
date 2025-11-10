@@ -197,6 +197,7 @@ Exam (測驗)
 - `spec.md` - 完整系統規格文件（含架構圖、流程圖、ER 圖）
 - `api.md` - RESTful API 完整規格
 - `requirement.md` - 需求說明
+- `DEPLOYMENT.md` - 前後端整合部署指南（★ 部署必讀）
 - `exam-system-backend/README.md` - 後端專案說明
 - `exam-system-backend/COMPILE_GUIDE.md` - 編譯指引
 - `exam-system-backend/RUN_GUIDE.md` - 執行指引
@@ -215,6 +216,39 @@ Exam (測驗)
 ### WebSocket 連線失敗
 **原因**: CORS 設定或後端未啟動
 **解決**: 檢查 `WebSocketConfig.java` CORS 設定，確認後端運行狀態
+
+## 部署模式
+
+此專案支援兩種運行模式：
+
+### 開發模式（前後端分離）
+```bash
+# 終端 1: 啟動後端（port 8080）
+cd exam-system-backend
+mvn spring-boot:run
+
+# 終端 2: 啟動前端（port 5173）
+cd exam-system-frontend
+npm run dev
+```
+
+### 生產模式（整合部署）
+```bash
+# 1. Build 前端到後端 resources/static/
+cd exam-system-frontend
+npm run build
+
+# 2. 打包 JAR（包含前端）
+cd ../exam-system-backend
+mvn clean package -DskipTests
+
+# 3. 執行（單一應用）
+java -jar target/exam-system-backend-*.jar
+
+# 訪問: http://localhost:8080
+```
+
+詳細說明請參考 `DEPLOYMENT.md`。
 
 ## API 快速參考
 
