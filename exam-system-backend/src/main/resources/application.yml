@@ -76,8 +76,9 @@ exam:
     height: 300
   websocket:
     allowed-origins:
-      - "http://localhost:5173"
-      - "http://localhost:3000"
+      - "http://localhost:5173"  # 開發環境（前端開發伺服器）
+      - "http://localhost:3000"  # 開發環境（備用）
+      - "http://localhost:8080"  # 生產環境（整合部署）
   access-code:
     length: 6
     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

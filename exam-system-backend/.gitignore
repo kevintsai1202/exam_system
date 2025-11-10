@@ -37,3 +37,6 @@ logs/
 
 # Spring Boot
 *.pid
+
+# Frontend Build Output
+src/main/resources/static/
