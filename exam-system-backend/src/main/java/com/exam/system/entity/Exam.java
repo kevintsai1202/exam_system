@@ -67,6 +67,12 @@ public class Exam {
     private String accessCode;
 
     /**
+     * 講師 Session ID（用於講師身份驗證）
+     */
+    @Column(unique = true, length = 36)
+    private String instructorSessionId;
+
+    /**
      * 建立時間
      */
     @Column(nullable = false, updatable = false)

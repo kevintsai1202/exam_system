@@ -63,15 +63,27 @@ public class ExamController {
     }
 
     /**
+     * 根據講師 sessionId 取得測驗列表
+     * GET /api/exams/instructor/{instructorSessionId}
+     */
+    @GetMapping("/instructor/{instructorSessionId}")
+    public ResponseEntity<List<ExamDTO>> getInstructorExams(@PathVariable String instructorSessionId) {
+        log.info("Getting exams for instructor session: {}", instructorSessionId);
+        List<ExamDTO> exams = examService.getExamsByInstructorSessionId(instructorSessionId);
+        return ResponseEntity.ok(exams);
+    }
+
+    /**
      * 啟動測驗
      * PUT /api/exams/{examId}/start
      */
     @PutMapping("/{examId}/start")
     public ResponseEntity<ExamDTO> startExam(
             @PathVariable Long examId,
+            @RequestHeader("Instructor-Session-Id") String instructorSessionId,
             @RequestParam(required = false, defaultValue = "http://localhost:5173") String baseUrl) {
-        log.info("Starting exam: {}", examId);
-        ExamDTO exam = examService.startExam(examId, baseUrl);
+        log.info("Starting exam: {} by instructor session: {}", examId, instructorSessionId);
+        ExamDTO exam = examService.startExam(examId, instructorSessionId, baseUrl);
         return ResponseEntity.ok(exam);
     }
 
@@ -82,9 +94,10 @@ public class ExamController {
     @PutMapping("/{examId}/questions/{questionIndex}/start")
     public ResponseEntity<Map<String, Object>> startQuestion(
             @PathVariable Long examId,
-            @PathVariable Integer questionIndex) {
-        log.info("Starting question {} for exam: {}", questionIndex, examId);
-        examService.startQuestion(examId, questionIndex);
+            @PathVariable Integer questionIndex,
+            @RequestHeader("Instructor-Session-Id") String instructorSessionId) {
+        log.info("Starting question {} for exam: {} by instructor session: {}", questionIndex, examId, instructorSessionId);
+        examService.startQuestion(examId, questionIndex, instructorSessionId);
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "題目已開始");
@@ -98,9 +111,11 @@ public class ExamController {
      * PUT /api/exams/{examId}/end
      */
     @PutMapping("/{examId}/end")
-    public ResponseEntity<Map<String, String>> endExam(@PathVariable Long examId) {
-        log.info("Ending exam: {}", examId);
-        examService.endExam(examId);
+    public ResponseEntity<Map<String, String>> endExam(
+            @PathVariable Long examId,
+            @RequestHeader("Instructor-Session-Id") String instructorSessionId) {
+        log.info("Ending exam: {} by instructor session: {}", examId, instructorSessionId);
+        examService.endExam(examId, instructorSessionId);
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "測驗已結束");
