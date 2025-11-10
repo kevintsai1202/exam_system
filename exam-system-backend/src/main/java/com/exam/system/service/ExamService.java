@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -71,8 +72,9 @@ public class ExamService {
         int maxRetries = 5;
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // 生成唯一的 accessCode
+                // 生成唯一的 accessCode 和 instructorSessionId
                 String accessCode = qrCodeService.generateAccessCode();
+                String instructorSessionId = UUID.randomUUID().toString();
 
                 // 建立測驗實體
                 Exam exam = Exam.builder()
@@ -82,6 +84,7 @@ public class ExamService {
                         .status(ExamStatus.CREATED)
                         .currentQuestionIndex(0)
                         .accessCode(accessCode)
+                        .instructorSessionId(instructorSessionId)
                         .build();
 
                 // 儲存測驗以獲得 ID（如果 accessCode 重複會拋出 DataIntegrityViolationException）
@@ -167,12 +170,16 @@ public class ExamService {
      * 啟動測驗
      *
      * @param examId 測驗 ID
+     * @param instructorSessionId 講師 Session ID
      * @param baseUrl 前端基礎 URL（用於生成 QR Code）
      * @return 包含 QR Code 的測驗 DTO
      */
     @Transactional
-    public ExamDTO startExam(Long examId, String baseUrl) {
-        log.info("Starting exam: {}", examId);
+    public ExamDTO startExam(Long examId, String instructorSessionId, String baseUrl) {
+        log.info("Starting exam: {} by instructor session: {}", examId, instructorSessionId);
+
+        // 驗證講師權限
+        validateInstructorAccess(examId, instructorSessionId);
 
         Exam exam = findExamById(examId);
 
@@ -210,10 +217,14 @@ public class ExamService {
      *
      * @param examId 測驗 ID
      * @param questionIndex 題目索引（從 0 開始）
+     * @param instructorSessionId 講師 Session ID
      */
     @Transactional
-    public void startQuestion(Long examId, Integer questionIndex) {
-        log.info("Starting question {} for exam: {}", questionIndex, examId);
+    public void startQuestion(Long examId, Integer questionIndex, String instructorSessionId) {
+        log.info("Starting question {} for exam: {} by instructor session: {}", questionIndex, examId, instructorSessionId);
+
+        // 驗證講師權限
+        validateInstructorAccess(examId, instructorSessionId);
 
         Exam exam = findExamById(examId);
 
@@ -266,10 +277,14 @@ public class ExamService {
      * 結束測驗
      *
      * @param examId 測驗 ID
+     * @param instructorSessionId 講師 Session ID
      */
     @Transactional
-    public void endExam(Long examId) {
-        log.info("Ending exam: {}", examId);
+    public void endExam(Long examId, String instructorSessionId) {
+        log.info("Ending exam: {} by instructor session: {}", examId, instructorSessionId);
+
+        // 驗證講師權限
+        validateInstructorAccess(examId, instructorSessionId);
 
         Exam exam = findExamById(examId);
 
@@ -513,6 +528,7 @@ public class ExamService {
                 .status(exam.getStatus())
                 .currentQuestionIndex(exam.getCurrentQuestionIndex())
                 .accessCode(exam.getAccessCode())
+                .instructorSessionId(exam.getInstructorSessionId())
                 .createdAt(exam.getCreatedAt())
                 .startedAt(exam.getStartedAt())
                 .endedAt(exam.getEndedAt())
@@ -544,6 +560,38 @@ public class ExamService {
                 .cumulativeChartType(question.getCumulativeChartType())
                 .options(optionDTOs)
                 .build();
+    }
+
+    /**
+     * 驗證講師是否有權限操作測驗
+     *
+     * @param examId 測驗 ID
+     * @param instructorSessionId 講師 Session ID
+     * @throws BusinessException 如果驗證失敗
+     */
+    private void validateInstructorAccess(Long examId, String instructorSessionId) {
+        if (instructorSessionId == null || instructorSessionId.isEmpty()) {
+            throw new BusinessException("MISSING_SESSION_ID", "缺少講師 Session ID");
+        }
+
+        if (!examRepository.existsByIdAndInstructorSessionId(examId, instructorSessionId)) {
+            throw new BusinessException("UNAUTHORIZED", "無權限操作此測驗");
+        }
+    }
+
+    /**
+     * 根據講師 sessionId 取得測驗列表
+     *
+     * @param instructorSessionId 講師 Session ID
+     * @return 測驗 DTO 列表
+     */
+    @Transactional(readOnly = true)
+    public List<ExamDTO> getExamsByInstructorSessionId(String instructorSessionId) {
+        log.info("Getting exams for instructor session: {}", instructorSessionId);
+        List<Exam> exams = examRepository.findByInstructorSessionId(instructorSessionId);
+        return exams.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
 }

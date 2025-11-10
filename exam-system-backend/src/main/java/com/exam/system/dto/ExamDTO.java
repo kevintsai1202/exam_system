@@ -67,6 +67,11 @@ public class ExamDTO {
     private String accessCode;
 
     /**
+     * 講師 Session ID（回應時使用）
+     */
+    private String instructorSessionId;
+
+    /**
      * QR Code URL（回應時使用）
      */
     private String qrCodeUrl;
