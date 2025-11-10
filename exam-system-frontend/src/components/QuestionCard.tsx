@@ -6,6 +6,7 @@
 
 import React from 'react';
 import type { Question } from '../types';
+import { QuestionType } from '../types';
 
 /**
  * 題目卡片 Props 介面
@@ -31,6 +32,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   highlightCorrect = false,
 }) => {
   const displayIndex = questionIndex !== undefined ? questionIndex + 1 : question.questionOrder;
+
+  /**
+   * 取得題目類型的顯示文字
+   */
+  const getQuestionTypeLabel = (type: QuestionType): string => {
+    switch (type) {
+      case QuestionType.SINGLE_CHOICE:
+        return '單選題';
+      case QuestionType.TRUE_FALSE:
+        return '是非題';
+      case QuestionType.MULTIPLE_CHOICE:
+        return '複選題';
+      default:
+        return '單選題';
+    }
+  };
 
   return (
     <div
@@ -68,7 +85,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             )}
           </div>
 
-          {/* 圖表類型標籤 */}
+          {/* 題目類型與圖表類型標籤 */}
           <div
             style={{
               display: 'flex',
@@ -76,6 +93,17 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               fontSize: '12px',
             }}
           >
+            <span
+              style={{
+                padding: '4px 8px',
+                backgroundColor: '#fff3e0',
+                color: '#e65100',
+                borderRadius: '4px',
+                fontWeight: '600',
+              }}
+            >
+              {getQuestionTypeLabel(question.questionType)}
+            </span>
             <span
               style={{
                 padding: '4px 8px',

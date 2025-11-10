@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -480,6 +481,7 @@ public class ExamService {
                 .exam(exam)
                 .questionOrder(dto.getQuestionOrder())
                 .questionText(dto.getQuestionText())
+                .questionType(dto.getQuestionType() != null ? dto.getQuestionType() : QuestionType.SINGLE_CHOICE)
                 .singleStatChartType(dto.getSingleStatChartType())
                 .cumulativeChartType(dto.getCumulativeChartType())
                 .correctOptionId(0L) // 暫時設定為 0，稍後更新
@@ -498,19 +500,42 @@ public class ExamService {
         // 儲存題目（cascade 會自動儲存所有選項）
         question = questionRepository.save(question);
 
-        // 找到正確答案選項的 ID 並設定
+        // 根據題目類型設定正確答案
         final List<QuestionOption> savedOptions = question.getOptions();
-        Long correctOptionId = savedOptions.stream()
-                .filter(opt -> opt.getOptionOrder().equals(dto.getCorrectOptionOrder()))
-                .findFirst()
-                .map(QuestionOption::getId)
-                .orElseGet(() -> {
-                    // 如果沒有匹配的，使用第一個選項的 ID
-                    log.warn("找不到符合 correctOptionOrder {} 的選項，使用第一個選項", dto.getCorrectOptionOrder());
-                    return savedOptions.get(0).getId();
-                });
 
-        question.setCorrectOptionId(correctOptionId);
+        if (question.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+            // 複選題：找到所有正確答案選項的 ID
+            if (dto.getCorrectOptionOrders() == null || dto.getCorrectOptionOrders().isEmpty()) {
+                throw new BusinessException("INVALID_CORRECT_OPTIONS", "複選題至少需要一個正確答案");
+            }
+
+            Set<Long> correctOptionIds = savedOptions.stream()
+                    .filter(opt -> dto.getCorrectOptionOrders().contains(opt.getOptionOrder()))
+                    .map(QuestionOption::getId)
+                    .collect(Collectors.toSet());
+
+            if (correctOptionIds.isEmpty()) {
+                throw new BusinessException("INVALID_CORRECT_OPTIONS", "找不到符合的正確答案選項");
+            }
+
+            question.setCorrectOptionIdsSet(correctOptionIds);
+            question.setCorrectOptionId(0L); // 複選題不使用單一正確答案 ID
+
+        } else {
+            // 單選題 / 是非題：找到單一正確答案選項的 ID
+            Long correctOptionId = savedOptions.stream()
+                    .filter(opt -> opt.getOptionOrder().equals(dto.getCorrectOptionOrder()))
+                    .findFirst()
+                    .map(QuestionOption::getId)
+                    .orElseGet(() -> {
+                        // 如果沒有匹配的，使用第一個選項的 ID
+                        log.warn("找不到符合 correctOptionOrder {} 的選項，使用第一個選項", dto.getCorrectOptionOrder());
+                        return savedOptions.get(0).getId();
+                    });
+
+            question.setCorrectOptionId(correctOptionId);
+        }
+
         return questionRepository.save(question);
     }
 
@@ -551,15 +576,23 @@ public class ExamService {
                         .build())
                 .collect(Collectors.toList());
 
-        return QuestionDTO.builder()
+        QuestionDTO.QuestionDTOBuilder builder = QuestionDTO.builder()
                 .id(question.getId())
                 .questionOrder(question.getQuestionOrder())
                 .questionText(question.getQuestionText())
-                .correctOptionId(question.getCorrectOptionId())
+                .questionType(question.getQuestionType())
                 .singleStatChartType(question.getSingleStatChartType())
                 .cumulativeChartType(question.getCumulativeChartType())
-                .options(optionDTOs)
-                .build();
+                .options(optionDTOs);
+
+        // 根據題目類型設定正確答案欄位
+        if (question.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+            builder.correctOptionIds(question.getCorrectOptionIdsSet());
+        } else {
+            builder.correctOptionId(question.getCorrectOptionId());
+        }
+
+        return builder.build();
     }
 
     /**

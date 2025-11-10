@@ -15,6 +15,13 @@ export enum ChartType {
   PIE = 'PIE'    // 圓餅圖
 }
 
+// 題目類型枚舉
+export enum QuestionType {
+  SINGLE_CHOICE = 'SINGLE_CHOICE',       // 單選題
+  TRUE_FALSE = 'TRUE_FALSE',             // 是非題
+  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE'    // 複選題
+}
+
 // 選項介面
 export interface QuestionOption {
   id: number;              // 選項 ID
@@ -27,10 +34,12 @@ export interface Question {
   id: number;                          // 題目 ID
   questionOrder: number;               // 題目順序
   questionText: string;                // 題目內容
+  questionType: QuestionType;          // 題目類型
   singleStatChartType: ChartType;      // 單題統計圖表類型
   cumulativeChartType: ChartType;      // 累積統計圖表類型
   options: QuestionOption[];           // 選項列表
-  correctOptionId: number;             // 正確答案選項 ID
+  correctOptionId?: number;            // 正確答案選項 ID（單選題、是非題）
+  correctOptionIds?: number[];         // 正確答案選項 IDs（複選題）
 }
 
 // 測驗介面
@@ -62,10 +71,12 @@ export interface CreateExamRequest {
 export interface CreateQuestionRequest {
   questionOrder: number;               // 題目順序
   questionText: string;                // 題目內容
+  questionType?: QuestionType;         // 題目類型（預設為單選題）
   singleStatChartType: ChartType;      // 單題統計圖表類型
   cumulativeChartType: ChartType;      // 累積統計圖表類型
   options: CreateOptionRequest[];      // 選項列表
-  correctOptionOrder: number;          // 正確答案選項順序
+  correctOptionOrder?: number;         // 正確答案選項順序（單選題、是非題）
+  correctOptionOrders?: number[];      // 正確答案選項順序列表（複選題）
 }
 
 // 建立選項請求介面

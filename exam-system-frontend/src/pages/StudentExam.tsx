@@ -13,6 +13,7 @@ import OptionButton from '../components/OptionButton';
 import { Message } from '../components/Message';
 import CountdownTimer from '../components/CountdownTimer';
 import { AvatarDisplay } from '../components/AvatarSelector';
+import { QuestionType } from '../types';
 import type { WebSocketMessage, QuestionOption } from '../types';
 
 /**
@@ -38,11 +39,12 @@ export const StudentExam: React.FC = () => {
     questionId: number;
     questionIndex: number;
     questionText: string;
+    questionType: QuestionType;
     options: QuestionOption[];
     expiresAt: string;
   } | null>(null);
 
-  const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<Set<number>>(new Set());
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTimerExpired, setIsTimerExpired] = useState(false);
@@ -137,10 +139,11 @@ export const StudentExam: React.FC = () => {
         questionId: data.questionId,
         questionIndex: data.questionIndex,
         questionText: data.questionText,
+        questionType: data.questionType || QuestionType.SINGLE_CHOICE,
         options: data.options,
         expiresAt: data.expiresAt,
       });
-      setSelectedOptionId(null);
+      setSelectedOptionIds(new Set());
       setHasSubmitted(false);
       setIsTimerExpired(false); // 重置計時器到期狀態
       setExamStatus('STARTED'); // 更新測驗狀態為進行中
@@ -151,10 +154,10 @@ export const StudentExam: React.FC = () => {
     setIsTimerExpired(true); // 標記計時器已到期
 
     // 時間到，自動提交（如果還沒提交的話）
-    if (!hasSubmitted && selectedOptionId) {
+    if (!hasSubmitted && selectedOptionIds.size > 0) {
       handleSubmitAnswer();
     }
-  }, [hasSubmitted, selectedOptionId]);
+  }, [hasSubmitted, selectedOptionIds]);
 
   // WebSocket 連線
   const { isConnected } = useExamWebSocket(
@@ -170,16 +173,26 @@ export const StudentExam: React.FC = () => {
    * 送出答案
    */
   const handleSubmitAnswer = async () => {
-    if (!sessionId || !currentQuestion || !selectedOptionId || hasSubmitted) return;
+    if (!sessionId || !currentQuestion || selectedOptionIds.size === 0 || hasSubmitted) return;
 
     setIsSubmitting(true);
 
     try {
-      await answerApi.submitAnswer({
+      // 根據題目類型準備答案資料
+      const answerData: any = {
         sessionId,
         questionId: currentQuestion.questionId,
-        selectedOptionId,
-      });
+      };
+
+      if (currentQuestion.questionType === QuestionType.MULTIPLE_CHOICE) {
+        // 複選題：提交選項 IDs 集合
+        answerData.selectedOptionIds = Array.from(selectedOptionIds);
+      } else {
+        // 單選題 / 是非題：提交單一選項 ID
+        answerData.selectedOptionId = Array.from(selectedOptionIds)[0];
+      }
+
+      await answerApi.submitAnswer(answerData);
 
       setHasSubmitted(true);
       success('答題已送出');
@@ -461,10 +474,28 @@ export const StudentExam: React.FC = () => {
                   <OptionButton
                     key={option.id}
                     option={option}
-                    isSelected={selectedOptionId === option.id}
+                    isSelected={selectedOptionIds.has(option.id)}
                     disabled={hasSubmitted || isSubmitting || isTimerExpired}
-                    onClick={() => !hasSubmitted && !isTimerExpired && setSelectedOptionId(option.id)}
+                    onClick={() => {
+                      if (hasSubmitted || isTimerExpired) return;
+
+                      const newSelection = new Set(selectedOptionIds);
+                      if (currentQuestion.questionType === QuestionType.MULTIPLE_CHOICE) {
+                        // 複選題：切換選項
+                        if (newSelection.has(option.id)) {
+                          newSelection.delete(option.id);
+                        } else {
+                          newSelection.add(option.id);
+                        }
+                      } else {
+                        // 單選題 / 是非題：單選模式
+                        newSelection.clear();
+                        newSelection.add(option.id);
+                      }
+                      setSelectedOptionIds(newSelection);
+                    }}
                     size="large"
+                    mode={currentQuestion.questionType === QuestionType.MULTIPLE_CHOICE ? 'checkbox' : 'radio'}
                   />
                 ))}
             </div>
@@ -473,7 +504,7 @@ export const StudentExam: React.FC = () => {
             {!hasSubmitted && !isTimerExpired && (
               <button
                 onClick={handleSubmitAnswer}
-                disabled={!selectedOptionId || isSubmitting || isTimerExpired}
+                disabled={selectedOptionIds.size === 0 || isSubmitting || isTimerExpired}
                 style={{
                   width: '100%',
                   padding: '18px',
@@ -481,20 +512,20 @@ export const StudentExam: React.FC = () => {
                   fontWeight: '600',
                   color: '#fff',
                   backgroundColor:
-                    !selectedOptionId || isSubmitting ? '#999' : '#4caf50',
+                    selectedOptionIds.size === 0 || isSubmitting ? '#999' : '#4caf50',
                   border: 'none',
                   borderRadius: '8px',
                   cursor:
-                    !selectedOptionId || isSubmitting ? 'not-allowed' : 'pointer',
+                    selectedOptionIds.size === 0 || isSubmitting ? 'not-allowed' : 'pointer',
                   transition: 'background-color 0.2s',
                 }}
                 onMouseEnter={(e) => {
-                  if (selectedOptionId && !isSubmitting) {
+                  if (selectedOptionIds.size > 0 && !isSubmitting) {
                     e.currentTarget.style.backgroundColor = '#45a049';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (selectedOptionId && !isSubmitting) {
+                  if (selectedOptionIds.size > 0 && !isSubmitting) {
                     e.currentTarget.style.backgroundColor = '#4caf50';
                   }
                 }}

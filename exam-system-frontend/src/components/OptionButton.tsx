@@ -19,6 +19,7 @@ interface OptionButtonProps {
   showResult?: boolean;                   // 是否顯示結果
   onClick?: () => void;                   // 點擊回調
   size?: 'small' | 'medium' | 'large';    // 按鈕大小（預設 'medium'）
+  mode?: 'radio' | 'checkbox';            // 選擇模式（預設 'radio'）
 }
 
 /**
@@ -33,6 +34,7 @@ export const OptionButton: React.FC<OptionButtonProps> = ({
   showResult = false,
   onClick,
   size = 'medium',
+  mode = 'radio',
 }) => {
   /**
    * 取得按鈕樣式
@@ -220,7 +222,7 @@ export const OptionButton: React.FC<OptionButtonProps> = ({
             : isSelected
             ? '#fff'
             : '#666',
-          borderRadius: '50%',
+          borderRadius: mode === 'checkbox' ? '6px' : '50%',  // 複選題用方形，單選題用圓形
           fontWeight: '700',
           fontSize: labelFontSize,
           marginRight: '12px',

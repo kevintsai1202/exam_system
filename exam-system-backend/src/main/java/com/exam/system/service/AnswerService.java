@@ -6,6 +6,7 @@ import com.exam.system.entity.Exam;
 import com.exam.system.entity.ExamStatus;
 import com.exam.system.entity.Question;
 import com.exam.system.entity.QuestionOption;
+import com.exam.system.entity.QuestionType;
 import com.exam.system.entity.Student;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
@@ -20,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -103,20 +106,57 @@ public class AnswerService {
             throw new BusinessException("WRONG_QUESTION", "只能回答當前題目");
         }
 
-        // 查找選項
-        QuestionOption selectedOption = questionOptionRepository.findById(answerDTO.getSelectedOptionId())
-                .orElseThrow(() -> new ResourceNotFoundException("QuestionOption", answerDTO.getSelectedOptionId()));
+        // 根據題目類型處理答案
+        boolean isCorrect;
+        Answer answer;
 
-        // 判斷答案是否正確
-        boolean isCorrect = question.isCorrectAnswer(answerDTO.getSelectedOptionId());
+        if (question.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+            // 複選題邏輯
+            Set<Long> selectedOptionIds = answerDTO.getSelectedOptionIds();
+            if (selectedOptionIds == null || selectedOptionIds.isEmpty()) {
+                throw new BusinessException("INVALID_ANSWER", "複選題至少需要選擇一個選項");
+            }
 
-        // 建立答案實體
-        Answer answer = Answer.builder()
-                .student(student)
-                .question(question)
-                .selectedOptionId(answerDTO.getSelectedOptionId())
-                .isCorrect(isCorrect)
-                .build();
+            // 驗證所有選項都存在
+            for (Long optionId : selectedOptionIds) {
+                questionOptionRepository.findById(optionId)
+                        .orElseThrow(() -> new ResourceNotFoundException("QuestionOption", optionId));
+            }
+
+            // 判斷答案是否正確
+            isCorrect = question.isCorrectAnswer(selectedOptionIds);
+
+            // 建立答案實體（複選題）
+            answer = Answer.builder()
+                    .student(student)
+                    .question(question)
+                    .selectedOptionId(0L) // 複選題使用 JSON 欄位，這裡設為 0
+                    .isCorrect(isCorrect)
+                    .build();
+            answer.setSelectedOptionIdsSet(selectedOptionIds);
+
+        } else {
+            // 單選題 / 是非題邏輯
+            Long selectedOptionId = answerDTO.getSelectedOptionId();
+            if (selectedOptionId == null) {
+                throw new BusinessException("INVALID_ANSWER", "單選題或是非題需要選擇一個選項");
+            }
+
+            // 查找選項
+            QuestionOption selectedOption = questionOptionRepository.findById(selectedOptionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("QuestionOption", selectedOptionId));
+
+            // 判斷答案是否正確
+            isCorrect = question.isCorrectAnswer(selectedOptionId);
+
+            // 建立答案實體（單選題 / 是非題）
+            answer = Answer.builder()
+                    .student(student)
+                    .question(question)
+                    .selectedOptionId(selectedOptionId)
+                    .isCorrect(isCorrect)
+                    .build();
+        }
 
         answer = answerRepository.save(answer);
 
@@ -132,7 +172,7 @@ public class AnswerService {
         statisticsService.updateQuestionStatistics(question.getExam().getId(), question.getId());
         statisticsService.updateCumulativeStatistics(question.getExam().getId());
 
-        return convertToDTO(answer, student, question, selectedOption);
+        return convertToDTO(answer, student, question);
     }
 
     /**
@@ -149,11 +189,7 @@ public class AnswerService {
         List<Answer> answers = answerRepository.findByStudentId(student.getId());
 
         return answers.stream()
-                .map(answer -> {
-                    QuestionOption selectedOption = questionOptionRepository.findById(answer.getSelectedOptionId())
-                            .orElse(null);
-                    return convertToDTO(answer, student, answer.getQuestion(), selectedOption);
-                })
+                .map(answer -> convertToDTO(answer, student, answer.getQuestion()))
                 .collect(Collectors.toList());
     }
 
@@ -162,20 +198,37 @@ public class AnswerService {
     /**
      * 將 Answer 實體轉換為 DTO
      */
-    private AnswerDTO convertToDTO(Answer answer, Student student, Question question, QuestionOption selectedOption) {
-        return AnswerDTO.builder()
+    private AnswerDTO convertToDTO(Answer answer, Student student, Question question) {
+        AnswerDTO.AnswerDTOBuilder builder = AnswerDTO.builder()
                 .id(answer.getId())
                 .studentId(student.getId())
                 .sessionId(student.getSessionId())
                 .questionId(question.getId())
                 .questionText(question.getQuestionText())
-                .selectedOptionId(answer.getSelectedOptionId())
-                .selectedOptionText(selectedOption != null ? selectedOption.getOptionText() : null)
-                .correctOptionId(question.getCorrectOptionId())
                 .isCorrect(answer.getIsCorrect())
                 .answeredAt(answer.getAnsweredAt())
-                .currentTotalScore(student.getTotalScore())
-                .build();
+                .currentTotalScore(student.getTotalScore());
+
+        // 根據題目類型設定答案資訊
+        if (question.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+            // 複選題
+            Set<Long> selectedOptionIds = answer.getSelectedOptionIdsSet();
+            builder.selectedOptionIds(selectedOptionIds);
+            builder.correctOptionIds(question.getCorrectOptionIdsSet());
+        } else {
+            // 單選題 / 是非題
+            builder.selectedOptionId(answer.getSelectedOptionId());
+            builder.correctOptionId(question.getCorrectOptionId());
+
+            // 查找選項文字（可選）
+            QuestionOption selectedOption = questionOptionRepository.findById(answer.getSelectedOptionId())
+                    .orElse(null);
+            if (selectedOption != null) {
+                builder.selectedOptionText(selectedOption.getOptionText());
+            }
+        }
+
+        return builder.build();
     }
 
 }

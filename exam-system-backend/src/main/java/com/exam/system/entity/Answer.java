@@ -7,6 +7,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 答案實體
@@ -50,10 +54,17 @@ public class Answer {
     private Question question;
 
     /**
-     * 選擇的選項 ID
+     * 選擇的選項 ID（單選題、是非題使用）
      */
     @Column(nullable = false)
     private Long selectedOptionId;
+
+    /**
+     * 選擇的選項 IDs JSON（複選題使用）
+     * 格式範例: "[1,3,5]"
+     */
+    @Column(columnDefinition = "TEXT")
+    private String selectedOptionIdsJson;
 
     /**
      * 是否答對
@@ -73,6 +84,54 @@ public class Answer {
     @PrePersist
     protected void onCreate() {
         this.answeredAt = LocalDateTime.now();
+    }
+
+    /**
+     * 獲取選擇的選項 ID 集合（複選題使用）
+     *
+     * @return 選擇的選項 ID 集合
+     */
+    public Set<Long> getSelectedOptionIdsSet() {
+        if (selectedOptionIdsJson == null || selectedOptionIdsJson.trim().isEmpty()) {
+            return new HashSet<>();
+        }
+
+        // 解析 JSON 陣列格式: "[1,3,5]"
+        String trimmed = selectedOptionIdsJson.trim();
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            String content = trimmed.substring(1, trimmed.length() - 1);
+            if (content.isEmpty()) {
+                return new HashSet<>();
+            }
+
+            return Arrays.stream(content.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::parseLong)
+                    .collect(Collectors.toSet());
+        }
+
+        return new HashSet<>();
+    }
+
+    /**
+     * 設定選擇的選項 ID 集合（複選題使用）
+     *
+     * @param selectedOptionIds 選擇的選項 ID 集合
+     */
+    public void setSelectedOptionIdsSet(Set<Long> selectedOptionIds) {
+        if (selectedOptionIds == null || selectedOptionIds.isEmpty()) {
+            this.selectedOptionIdsJson = "[]";
+            return;
+        }
+
+        // 轉換為 JSON 陣列格式: "[1,3,5]"
+        String json = selectedOptionIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(",", "[", "]"));
+
+        this.selectedOptionIdsJson = json;
     }
 
 }

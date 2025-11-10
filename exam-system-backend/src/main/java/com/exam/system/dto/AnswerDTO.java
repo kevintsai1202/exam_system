@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * 答案 DTO
@@ -45,20 +46,29 @@ public class AnswerDTO {
     private String questionText;
 
     /**
-     * 選擇的選項 ID
+     * 選擇的選項 ID（單選題、是非題使用）
      */
-    @NotNull(message = "選項 ID 不能為空")
     private Long selectedOptionId;
 
     /**
-     * 選擇的選項內容（回應時使用）
+     * 選擇的選項 IDs（複選題使用）
+     */
+    private Set<Long> selectedOptionIds;
+
+    /**
+     * 選擇的選項內容（回應時使用，單選題）
      */
     private String selectedOptionText;
 
     /**
-     * 正確答案選項 ID（回應時使用）
+     * 正確答案選項 ID（單選題、是非題回應時使用）
      */
     private Long correctOptionId;
+
+    /**
+     * 正確答案選項 IDs（複選題回應時使用）
+     */
+    private Set<Long> correctOptionIds;
 
     /**
      * 是否答對（回應時使用）
