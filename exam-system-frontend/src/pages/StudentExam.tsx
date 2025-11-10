@@ -4,9 +4,9 @@
  * 學員即時答題介面
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { answerApi } from '../services/apiService';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { answerApi, studentApi } from '../services/apiService';
 import { useStudentStore } from '../store';
 import { useExamWebSocket, useMediaQuery, useResponsiveValue, useMessage } from '../hooks';
 import OptionButton from '../components/OptionButton';
@@ -21,8 +21,17 @@ import type { WebSocketMessage, QuestionOption } from '../types';
 export const StudentExam: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
-  const { currentStudent, sessionId } = useStudentStore();
-  const message = useMessage();
+  const { currentStudent, sessionId, setCurrentStudent, setSessionId, joinContext } = useStudentStore();
+  const { messages, success, error, close } = useMessage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionIdFromQuery = (() => {
+    const value = searchParams.get('sessionId');
+    return value ? value.trim() : null;
+  })();
+  // Zustand hydration 狀態（避免重整理立即導向）
+  const [isStoreHydrated, setIsStoreHydrated] = useState(
+    () => useStudentStore.persist?.hasHydrated?.() ?? false
+  );
 
   // 當前題目狀態
   const [currentQuestion, setCurrentQuestion] = useState<{
@@ -38,6 +47,70 @@ export const StudentExam: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTimerExpired, setIsTimerExpired] = useState(false);
   const [examStatus, setExamStatus] = useState<'CREATED' | 'STARTED' | 'ENDED'>('CREATED');
+  const isFetchingStudentRef = useRef(false);
+  const autoRejoinRef = useRef(false);
+
+  /**
+   * 自動重新加入（若 sessionId 遺失或無效）
+   */
+  const autoRejoin = useCallback(async () => {
+    if (!joinContext || autoRejoinRef.current) {
+      return false;
+    }
+    autoRejoinRef.current = true;
+    try {
+      const student = await studentApi.joinExam(joinContext);
+      setCurrentStudent(student);
+      setSessionId(student.sessionId);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('sessionId', student.sessionId);
+      setSearchParams(nextParams, { replace: true });
+      success('已重新連線，請繼續作答');
+      return true;
+    } catch (rejoinError) {
+      console.error('[StudentExam] 自動重新加入失敗:', rejoinError);
+      return false;
+    }
+  }, [joinContext, searchParams, setSearchParams, setCurrentStudent, setSessionId, success]);
+
+  /**
+   * 監控 Zustand hydration，等待 localStorage �}�o��� sessionId ���s��
+   */
+  useEffect(() => {
+    if (useStudentStore.persist?.hasHydrated?.()) {
+      setIsStoreHydrated(true);
+    }
+
+    const unsubscribeHydration = useStudentStore.persist?.onFinishHydration?.(() => {
+      setIsStoreHydrated(true);
+    });
+
+    return () => {
+      unsubscribeHydration?.();
+    };
+  }, []);
+
+  /**
+   * ���q URL ���� sessionId �M store �P��
+   */
+  useEffect(() => {
+    if (sessionIdFromQuery && sessionIdFromQuery !== sessionId) {
+      setSessionId(sessionIdFromQuery);
+    }
+  }, [sessionIdFromQuery, sessionId, setSessionId]);
+
+  /**
+   * �O�_���n�N store �� sessionId �I���� URL
+   */
+  useEffect(() => {
+    if (!sessionId || sessionIdFromQuery === sessionId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('sessionId', sessionId);
+    setSearchParams(nextParams, { replace: true });
+  }, [sessionId, sessionIdFromQuery, searchParams, setSearchParams]);
 
   /**
    * WebSocket 訊息處理
@@ -94,7 +167,7 @@ export const StudentExam: React.FC = () => {
   );
 
   /**
-   * 提交答案
+   * 送出答案
    */
   const handleSubmitAnswer = async () => {
     if (!sessionId || !currentQuestion || !selectedOptionId || hasSubmitted) return;
@@ -109,42 +182,139 @@ export const StudentExam: React.FC = () => {
       });
 
       setHasSubmitted(true);
-      message.success('答案已提交！');
+      success('答題已送出');
     } catch (err: any) {
-      message.error(err.message || '提交答案失敗');
+      error(err.message || '提交答案失敗');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   /**
-   * 檢查是否已登入
+   * 確認學員是否已登入，必要時自動重新加入
    */
   useEffect(() => {
-    if (!sessionId || !currentStudent) {
-      navigate('/student/join');
+    if (!isStoreHydrated) {
+      return;
     }
-  }, [sessionId, currentStudent, navigate]);
+
+    let isActive = true;
+
+    const ensureStudentSession = async () => {
+      if (!sessionId) {
+        if (sessionIdFromQuery) {
+          return;
+        }
+
+        const rejoined = await autoRejoin();
+        if (rejoined || !isActive) {
+          return;
+        }
+
+        setCurrentStudent(null);
+        navigate('/student/join');
+        return;
+      }
+
+      if (!currentStudent && !isFetchingStudentRef.current) {
+        isFetchingStudentRef.current = true;
+        try {
+          console.debug('[StudentExam] Fetching student info with sessionId:', sessionId);
+          const student = await studentApi.getStudent(sessionId);
+          if (isActive) {
+            setCurrentStudent(student);
+          }
+        } catch (err: any) {
+          if (!isActive) {
+            return;
+          }
+
+          const rejoined = await autoRejoin();
+          if (rejoined || !isActive) {
+            return;
+          }
+
+          error(err?.message || '無法載入學員資訊，請重新加入。');
+          setCurrentStudent(null);
+          setSessionId(null);
+          navigate('/student/join');
+        } finally {
+          if (isActive) {
+            isFetchingStudentRef.current = false;
+          }
+        }
+      }
+    };
+
+    ensureStudentSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    isStoreHydrated,
+    sessionId,
+    currentStudent,
+    sessionIdFromQuery,
+    autoRejoin,
+    navigate,
+    setCurrentStudent,
+    setSessionId,
+    error,
+  ]);
 
   // 響應式設計
   const { isMobile } = useMediaQuery();
   const containerPadding = useResponsiveValue('12px', '16px', '20px');
   const maxWidth = useResponsiveValue('100%', '700px', '800px');
 
+  if (!isStoreHydrated) {
+
+
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f5f5f5',
+        }}
+      >
+        <div style={{ fontSize: '16px', color: '#666' }}>正在恢復學員連線...</div>
+      </div>
+    );
+  }
+
+
+
+
   if (!currentStudent) {
-    return null;
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f5f5f5',
+        }}
+      >
+        <div style={{ fontSize: '16px', color: '#666' }}>載入學員資料...</div>
+      </div>
+    );
   }
 
   return (
     <>
       {/* Message 訊息提示 */}
-      {message.messages.map((msg) => (
+      {messages.map((msg) => (
         <Message
           key={msg.key}
           content={msg.content}
           type={msg.type}
           duration={msg.duration}
-          onClose={() => message.close(msg.key)}
+          onClose={() => close(msg.key)}
         />
       ))}
 
@@ -402,3 +572,4 @@ export const StudentExam: React.FC = () => {
 };
 
 export default StudentExam;
+

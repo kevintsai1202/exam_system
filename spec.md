@@ -59,6 +59,29 @@
 └───────────────────────────────────────────────────────────────┘
 ```
 
+### 1.3 �D���ѭ״_�w����
+- �[�K `exam.security.admin-token` �ƥ�A�i�ھڱK�n�b `application.yml` �� `application-test.yml` �����w�ŶǤ��v�ƥѡA backend �x�s�� `ExamProperties.Security` ���ڪ��s���C
+- `GET /api/exams/{examId}/questions` ���w���^�� `correctOptionId`�A�H�T�O�{���k���W REST API ���|�G�d���ȻP�ѭסC
+- �ݮɥ��v���ݭn���o�ѭצ~��A�ݭn�b HTTP Header ���� `X-Exam-Admin-Token` �� �ƥ�A�ΨӦn�[ Query Parameter `includeAnswers=true`�A backend �N�̷��ƥ��T�{�O�_�^��ѭסC
+- �������ͭn���ת�p��P�D�ؿ��ܡAbackend �|�{���ƥ��O�_���T�A�ä����O�O `correctOptionId` ���w�A���١u�����ѭסC
+
+```mermaid
+sequenceDiagram
+    participant I as �и� / ���v
+    participant FE as Frontend (Instructor)
+    participant BE as Backend API
+
+    I->>FE: �ݭn��s�D�ѭ�
+    FE->>BE: GET /api/exams/{id}/questions?includeAnswers=true\nX-Exam-Admin-Token: ******
+    BE-->>BE: �ƥ��ˬd
+    alt �ƥ����T
+        BE-->>FE: 200 OK + �]�t correctOptionId
+    else �ƥ�Ū��
+        BE-->>FE: 403 Forbidden / 200 OK �L���ѭ�
+    end
+    FE-->>I: ��ܦs�椤�ѭ�
+```
+
 ### 1.3 設計原則
 - **前後端分離**：前端使用 REST API 與 WebSocket 與後端通訊
 - **RESTful API**：遵循 REST 規範設計 API
@@ -151,6 +174,7 @@ Exam (測驗)
 1. 講師點擊「啟動測驗」
 2. 系統更新測驗狀態為 STARTED
 3. 系統生成包含 accessCode 的 QR Code
+   - URL �榡：`{baseUrl}/student/join?accessCode={accessCode}`
 4. 顯示 QR Code 及已加入學員數量
 
 ### 3.3 學員加入測驗流程
@@ -1052,10 +1076,14 @@ public StatisticsDTO generateStatistics(Long examId, Long questionId) {
 
 ### 14.3 Session 管理
 **挑戰**：每個學員獨立 Session
-**解決方案**：
+**實作重點**：
 - 使用 UUID 作為 sessionId
-- 後端維護 Session 映射表
-- 前端 LocalStorage 儲存 sessionId
+- 維持單一 Session 與生命週期管理
+- 透過 localStorage 同步儲存 `sessionId` 與 `currentStudent`，重新整理（F5）即可立即還原畫面，再視情況呼叫 API 取得最新資料
+- StudentExam 重新整理時需等待 Zustand `persist` hydration（`hasHydrated = true`）完成後，再以 sessionId 打 API 以確保資料正確
+- StudentJoin 導向 StudentExam 時需帶上 `/student/exam/{examId}?sessionId={UUID}`，讓 StudentExam 可以從 URL 或 localStorage 取得 sessionId，即使瀏覽器限制 localStorage 也能恢復狀態
+
+
 
 ### 14.4 資料一致性
 **挑戰**：統計資料即時更新

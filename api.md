@@ -463,6 +463,13 @@
 }
 ```
 
+**補充說明**:
+- 前端會把 `sessionId` 與 `currentStudent` 一併持久化在 localStorage，重新整理可先還原畫面，再視需要呼叫此 API 驗證最新狀態。
+- StudentJoin 轉導至 StudentExam 時會透過 querystring 附帶 sessionId，即使瀏覽器無法使用 localStorage 也能恢復連線。
+- 若 sessionId 已失效，前端會使用持久化的 Join Context（accessCode、姓名、Email 等）重新呼叫 `POST /api/students/join` 以恢復連線，成功後再呼叫本 API 取得最新資料。
+- StudentExam 若偵測到 sessionId（URL 或 localStorage），會在 hydration 完成後自動呼叫 `GET /api/students/{sessionId}` 取回資料。
+
+
 ---
 
 ### 2.3 取得測驗的所有學員

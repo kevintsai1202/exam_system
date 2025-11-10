@@ -18,10 +18,10 @@ import type { AvatarIcon, JoinExamRequest } from '../types';
 export const StudentJoin: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setCurrentStudent } = useStudentStore();
+  const { setCurrentStudent, setJoinContext } = useStudentStore();
 
   // 從 URL 參數取得 Access Code
-  const urlAccessCode = searchParams.get('accessCode') || '';
+  const urlAccessCode = searchParams.get('accessCode') || searchParams.get('code') || '';
 
   // 表單狀態
   const [accessCode, setAccessCode] = useState('');
@@ -102,9 +102,10 @@ export const StudentJoin: React.FC = () => {
 
       // 儲存學員資訊
       setCurrentStudent(student);
+      setJoinContext(requestData);
 
       // 導航至答題頁面
-      navigate(`/student/exam/${student.examId}`);
+      navigate(`/student/exam/${student.examId}?sessionId=${encodeURIComponent(student.sessionId)}`);
     } catch (err: any) {
       setError(err.message || '加入測驗失敗，請檢查加入碼是否正確');
     } finally {
@@ -427,3 +428,5 @@ export const StudentJoin: React.FC = () => {
 };
 
 export default StudentJoin;
+
+

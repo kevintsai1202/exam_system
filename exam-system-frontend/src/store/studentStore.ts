@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Student, Answer } from '../types';
+import type { Student, Answer, JoinExamRequest } from '../types';
 
 /**
  * 學員 Store 狀態介面
@@ -18,6 +18,7 @@ interface StudentState {
   totalStudents: number;                   // 總學員數
   answers: Answer[];                       // 學員答案記錄
   sessionId: string | null;                // Session ID（存入 localStorage）
+  joinContext: JoinExamRequest | null;     // 學員加入請求資料（用於自動重連）
   isLoading: boolean;                      // 載入狀態
   error: string | null;                    // 錯誤訊息
 
@@ -30,6 +31,7 @@ interface StudentState {
   setAnswers: (answers: Answer[]) => void;
   addAnswer: (answer: Answer) => void;
   setSessionId: (sessionId: string | null) => void;
+  setJoinContext: (data: JoinExamRequest | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   reset: () => void;
@@ -45,6 +47,7 @@ const initialState = {
   totalStudents: 0,
   answers: [],
   sessionId: null,
+  joinContext: null,
   isLoading: false,
   error: null,
 };
@@ -162,6 +165,12 @@ export const useStudentStore = create<StudentState>()(
       },
 
       /**
+       * 設定學員加入時的上下文資料
+       */
+      setJoinContext: (data) => {
+        set({ joinContext: data });
+      },
+      /**
        * 設定載入狀態
        */
       setLoading: (isLoading) => {
@@ -196,7 +205,9 @@ export const useStudentStore = create<StudentState>()(
     {
       name: 'exam-student-storage', // localStorage key
       partialize: (state) => ({
-        sessionId: state.sessionId, // 只持久化 sessionId
+        sessionId: state.sessionId,       // 持久化 sessionId 供重新連線
+        currentStudent: state.currentStudent, // 同步儲存學員資訊以便 F5 即時還原
+        joinContext: state.joinContext,   // 保留加入資料供自動重連
       }),
     }
   )
