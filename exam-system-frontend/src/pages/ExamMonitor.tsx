@@ -5,9 +5,9 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { examApi, studentApi, statisticsApi } from '../services/apiService';
-import { useExamStore, useStudentStore, useStatisticsStore } from '../store';
+import { useExamStore, useStudentStore, useStatisticsStore, useInstructorStore } from '../store';
 import { useExamWebSocket, useQuestionWebSocket, useMessage } from '../hooks';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import StudentList from '../components/StudentList';
@@ -23,14 +23,17 @@ import type { WebSocketMessage, OccupationDistribution } from '../types';
 export const ExamMonitor: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const message = useMessage();
 
   // Store
   const { currentExam, questions, currentQuestion, setCurrentExam, setQuestions, setCurrentQuestion } = useExamStore();
   const { students, setStudents, addStudent } = useStudentStore();
   const { currentQuestionStats, cumulativeStats, leaderboard, setCurrentQuestionStats, setCumulativeStats, setLeaderboard } = useStatisticsStore();
+  const { instructorSessionId, setInstructorSessionId } = useInstructorStore();
 
   // 本地狀態
+  const [isStoreHydrated, setIsStoreHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -126,11 +129,64 @@ export const ExamMonitor: React.FC = () => {
   );
 
   /**
+   * 等待 Store hydration
+   */
+  useEffect(() => {
+    if (useInstructorStore.persist?.hasHydrated?.()) {
+      setIsStoreHydrated(true);
+    }
+  }, []);
+
+  /**
+   * 驗證講師 Session
+   */
+  useEffect(() => {
+    if (!isStoreHydrated || !examId) return;
+
+    const ensureInstructorSession = async () => {
+      // 從 URL 或 store 取得 instructorSessionId
+      const urlSessionId = searchParams.get('instructorSessionId');
+      const storedSessionId = instructorSessionId;
+      const finalSessionId = urlSessionId || storedSessionId;
+
+      if (!finalSessionId) {
+        message.error('缺少講師 Session ID');
+        navigate('/instructor');
+        return;
+      }
+
+      try {
+        // 載入測驗資訊並驗證 instructorSessionId
+        const exam = await examApi.getExam(parseInt(examId));
+
+        if (exam.instructorSessionId !== finalSessionId) {
+          message.error('無權限操作此測驗');
+          navigate('/instructor');
+          return;
+        }
+
+        // 如果是從 URL 恢復，更新 store
+        if (urlSessionId && !storedSessionId) {
+          setInstructorSessionId(urlSessionId);
+        }
+
+        // 驗證成功，繼續載入資料
+        setCurrentExam(exam);
+      } catch (err: any) {
+        console.error('[ExamMonitor] Session 驗證失敗:', err);
+        message.error('Session 驗證失敗');
+        navigate('/instructor');
+      }
+    };
+
+    ensureInstructorSession();
+  }, [isStoreHydrated, examId, searchParams, instructorSessionId]);
+
+  /**
    * 載入測驗資料
    */
   useEffect(() => {
-    if (!examId) {
-      setError('無效的測驗 ID');
+    if (!examId || !currentExam) {
       return;
     }
 
@@ -138,10 +194,6 @@ export const ExamMonitor: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-
-        // 載入測驗資訊
-        const exam = await examApi.getExam(parseInt(examId));
-        setCurrentExam(exam);
 
         // 載入題目列表
         const questionsData = await examApi.getQuestions(parseInt(examId));
@@ -201,10 +253,10 @@ export const ExamMonitor: React.FC = () => {
    * 啟動測驗
    */
   const handleStartExam = async () => {
-    if (!examId) return;
+    if (!examId || !instructorSessionId) return;
 
     try {
-      const response = await examApi.startExam(parseInt(examId));
+      const response = await examApi.startExam(parseInt(examId), instructorSessionId);
       setCurrentExam({
         ...currentExam!,
         status: response.status,
@@ -237,8 +289,8 @@ export const ExamMonitor: React.FC = () => {
     console.log('[handleStartQuestion] examId:', examId);
     console.log('[handleStartQuestion] currentExam:', currentExam);
 
-    if (!examId || !currentExam) {
-      console.error('[handleStartQuestion] examId 或 currentExam 為空');
+    if (!examId || !currentExam || !instructorSessionId) {
+      console.error('[handleStartQuestion] examId、currentExam 或 instructorSessionId 為空');
       return;
     }
 
@@ -254,7 +306,7 @@ export const ExamMonitor: React.FC = () => {
 
     try {
       console.log('[handleStartQuestion] 呼叫 API: startQuestion');
-      await examApi.startQuestion(parseInt(examId), questionIndex);
+      await examApi.startQuestion(parseInt(examId), questionIndex, instructorSessionId);
       console.log('[handleStartQuestion] API 呼叫成功');
 
       // 取得剛推送的題目
@@ -321,11 +373,11 @@ export const ExamMonitor: React.FC = () => {
    * 結束測驗
    */
   const handleEndExam = async () => {
-    if (!examId) return;
+    if (!examId || !instructorSessionId) return;
     if (!confirm('確定要結束測驗嗎？')) return;
 
     try {
-      const exam = await examApi.endExam(parseInt(examId));
+      const exam = await examApi.endExam(parseInt(examId), instructorSessionId);
       setCurrentExam(exam);
 
       // 獲取排行榜資料

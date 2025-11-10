@@ -8,12 +8,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import type { Exam, ExamStatus } from '../types';
+import { useInstructorStore } from '../store';
 
 /**
  * 講師主控台頁面
  */
 export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { instructorSessionId } = useInstructorStore();
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,8 +31,15 @@ export const InstructorDashboard: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await examApi.getAllExams();
-        setExams(data);
+
+        // 根據 instructorSessionId 載入測驗列表
+        if (instructorSessionId) {
+          const data = await examApi.getInstructorExams(instructorSessionId);
+          setExams(data);
+        } else {
+          // 沒有 sessionId，顯示空列表
+          setExams([]);
+        }
       } catch (err: any) {
         console.error('[InstructorDashboard] 載入失敗:', err);
         setError(err.message || '載入測驗列表失敗');
@@ -40,7 +49,7 @@ export const InstructorDashboard: React.FC = () => {
     };
 
     loadExams();
-  }, []);
+  }, [instructorSessionId]);
 
   /**
    * 建立新測驗
@@ -53,7 +62,8 @@ export const InstructorDashboard: React.FC = () => {
    * 前往監控頁面
    */
   const handleMonitorExam = (examId: number) => {
-    navigate(`/instructor/exam/${examId}/monitor`);
+    const queryParam = instructorSessionId ? `?instructorSessionId=${instructorSessionId}` : '';
+    navigate(`/instructor/exam/${examId}/monitor${queryParam}`);
   };
 
   /**

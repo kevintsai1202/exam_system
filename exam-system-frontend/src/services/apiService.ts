@@ -124,29 +124,50 @@ export const examApi = {
   },
 
   /**
-   * 啟動測驗
+   * 根據講師 sessionId 取得測驗列表
+   * GET /api/exams/instructor/{instructorSessionId}
+   */
+  getInstructorExams: async (instructorSessionId: string): Promise<Exam[]> => {
+    const response = await apiClient.get<Exam[]>(`/exams/instructor/${instructorSessionId}`);
+    return response.data;
+  },
+
+  /**
+   * 啟動測驗（需要講師 Session ID）
    * PUT /api/exams/{examId}/start
    */
-  startExam: async (examId: number): Promise<StartExamResponse> => {
-    const response = await apiClient.put<StartExamResponse>(`/exams/${examId}/start`);
+  startExam: async (examId: number, instructorSessionId: string): Promise<StartExamResponse> => {
+    const response = await apiClient.put<StartExamResponse>(`/exams/${examId}/start`, {}, {
+      headers: {
+        'Instructor-Session-Id': instructorSessionId,
+      },
+    });
     return response.data;
   },
 
   /**
-   * 開始題目
+   * 開始題目（需要講師 Session ID）
    * PUT /api/exams/{examId}/questions/{questionIndex}/start
    */
-  startQuestion: async (examId: number, questionIndex: number): Promise<StartQuestionResponse> => {
-    const response = await apiClient.put<StartQuestionResponse>(`/exams/${examId}/questions/${questionIndex}/start`);
+  startQuestion: async (examId: number, questionIndex: number, instructorSessionId: string): Promise<StartQuestionResponse> => {
+    const response = await apiClient.put<StartQuestionResponse>(`/exams/${examId}/questions/${questionIndex}/start`, {}, {
+      headers: {
+        'Instructor-Session-Id': instructorSessionId,
+      },
+    });
     return response.data;
   },
 
   /**
-   * 結束測驗
+   * 結束測驗（需要講師 Session ID）
    * PUT /api/exams/{examId}/end
    */
-  endExam: async (examId: number): Promise<Exam> => {
-    const response = await apiClient.put<Exam>(`/exams/${examId}/end`);
+  endExam: async (examId: number, instructorSessionId: string): Promise<Exam> => {
+    const response = await apiClient.put<Exam>(`/exams/${examId}/end`, {}, {
+      headers: {
+        'Instructor-Session-Id': instructorSessionId,
+      },
+    });
     return response.data;
   },
 
