@@ -64,6 +64,8 @@ class WebSocketService {
     return new Promise((resolve, reject) => {
       if (this.client && this.client.connected) {
         console.log('[WebSocket] 已連線，無需重複連線');
+        // 確保觸發狀態更新，讓訂閱 Hook 可以重新執行
+        this.updateStatus(ConnectionStatus.CONNECTED);
         resolve();
         return;
       }

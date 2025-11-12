@@ -1,7 +1,6 @@
 package com.exam.system.service;
 
 import com.exam.system.TestDataBuilder;
-import com.exam.system.dto.LeaderboardDTO;
 import com.exam.system.dto.StatisticsDTO;
 import com.exam.system.entity.*;
 import com.exam.system.exception.ResourceNotFoundException;

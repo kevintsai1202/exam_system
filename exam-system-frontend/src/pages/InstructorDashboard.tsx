@@ -7,20 +7,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
-import type { Exam, ExamStatus } from '../types';
 import { useInstructorStore } from '../store';
+import type { Exam, ExamStatus } from '../types';
 
 /**
  * 講師主控台頁面
  */
 export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { instructorSessionId } = useInstructorStore();
+  const { setInstructorSessionId } = useInstructorStore();
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [duplicatingExamId, setDuplicatingExamId] = useState<number | null>(null);
+  const [clearingSessionExamId, setClearingSessionExamId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /**
@@ -32,14 +33,9 @@ export const InstructorDashboard: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // 根據 instructorSessionId 載入測驗列表
-        if (instructorSessionId) {
-          const data = await examApi.getInstructorExams(instructorSessionId);
-          setExams(data);
-        } else {
-          // 沒有 sessionId，顯示空列表
-          setExams([]);
-        }
+        // 載入所有測驗列表
+        const data = await examApi.getAllExams();
+        setExams(data);
       } catch (err: any) {
         console.error('[InstructorDashboard] 載入失敗:', err);
         setError(err.message || '載入測驗列表失敗');
@@ -49,7 +45,7 @@ export const InstructorDashboard: React.FC = () => {
     };
 
     loadExams();
-  }, [instructorSessionId]);
+  }, []);
 
   /**
    * 建立新測驗
@@ -62,8 +58,7 @@ export const InstructorDashboard: React.FC = () => {
    * 前往監控頁面
    */
   const handleMonitorExam = (examId: number) => {
-    const queryParam = instructorSessionId ? `?instructorSessionId=${instructorSessionId}` : '';
-    navigate(`/instructor/exam/${examId}/monitor${queryParam}`);
+    navigate(`/instructor/exam/${examId}/monitor`);
   };
 
   /**
@@ -97,6 +92,46 @@ export const InstructorDashboard: React.FC = () => {
       setError(err.message || '複製測驗失敗');
     } finally {
       setDuplicatingExamId(null);
+    }
+  };
+
+  /**
+   * 清除測驗 Session
+   */
+  const handleClearSession = async (examId: number, event: React.MouseEvent) => {
+    // 阻止事件冒泡，避免觸發卡片的點擊事件
+    event.stopPropagation();
+
+    if (!confirm('確定要清除此測驗的 Session 嗎？清除後需要重新啟動測驗。')) return;
+
+    try {
+      setClearingSessionExamId(examId);
+      setError(null);
+      setSuccessMessage(null);
+
+      // 呼叫後端 API 清除 Session
+      await examApi.clearExamSession(examId);
+
+      // 清除 localStorage 中的 Session ID
+      const localStorageKey = `exam_${examId}_sessionId`;
+      localStorage.removeItem(localStorageKey);
+      console.log('[InstructorDashboard] Session ID 已從 localStorage 清除');
+
+      // 清除 store 中的 Session ID
+      setInstructorSessionId(null);
+
+      // 顯示成功訊息
+      setSuccessMessage('Session 已清除！');
+
+      // 3 秒後清除成功訊息
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('[InstructorDashboard] 清除 Session 失敗:', err);
+      setError(err.message || '清除 Session 失敗');
+    } finally {
+      setClearingSessionExamId(null);
     }
   };
 
@@ -479,6 +514,36 @@ export const InstructorDashboard: React.FC = () => {
                   >
                     {duplicatingExamId === exam.id ? '複製中...' : '複製測驗'}
                   </button>
+
+                  {/* 清除 Session 按鈕（進行中或已結束時顯示） */}
+                  {(exam.status === 'STARTED' || exam.status === 'ENDED') && (
+                    <button
+                      onClick={(e) => handleClearSession(exam.id, e)}
+                      disabled={clearingSessionExamId === exam.id}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: clearingSessionExamId === exam.id ? '#999' : '#ff9800',
+                        backgroundColor: '#fff',
+                        border: `1px solid ${clearingSessionExamId === exam.id ? '#ccc' : '#ff9800'}`,
+                        borderRadius: '6px',
+                        cursor: clearingSessionExamId === exam.id ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        outline: 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (clearingSessionExamId !== exam.id) {
+                          e.currentTarget.style.backgroundColor = '#fff3e0';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fff';
+                      }}
+                    >
+                      {clearingSessionExamId === exam.id ? '清除中...' : '清除 Session'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

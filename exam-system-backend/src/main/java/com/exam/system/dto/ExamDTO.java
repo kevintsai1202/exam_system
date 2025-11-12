@@ -97,6 +97,12 @@ public class ExamDTO {
     private LocalDateTime endedAt;
 
     /**
+     * 當前題目開始時間（回應時使用）
+     * null 表示還沒推送過任何題目
+     */
+    private LocalDateTime currentQuestionStartedAt;
+
+    /**
      * 題目總數（回應時使用）
      */
     private Integer totalQuestions;

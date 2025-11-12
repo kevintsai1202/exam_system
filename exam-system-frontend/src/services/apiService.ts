@@ -124,24 +124,12 @@ export const examApi = {
   },
 
   /**
-   * 根據講師 sessionId 取得測驗列表
-   * GET /api/exams/instructor/{instructorSessionId}
-   */
-  getInstructorExams: async (instructorSessionId: string): Promise<Exam[]> => {
-    const response = await apiClient.get<Exam[]>(`/exams/instructor/${instructorSessionId}`);
-    return response.data;
-  },
-
-  /**
-   * 啟動測驗（需要講師 Session ID）
+   * 啟動測驗
    * PUT /api/exams/{examId}/start
+   * 回傳包含 instructorSessionId 的測驗資訊
    */
-  startExam: async (examId: number, instructorSessionId: string): Promise<StartExamResponse> => {
-    const response = await apiClient.put<StartExamResponse>(`/exams/${examId}/start`, {}, {
-      headers: {
-        'Instructor-Session-Id': instructorSessionId,
-      },
-    });
+  startExam: async (examId: number): Promise<StartExamResponse> => {
+    const response = await apiClient.put<StartExamResponse>(`/exams/${examId}/start`);
     return response.data;
   },
 
@@ -196,6 +184,14 @@ export const examApi = {
   getQuestions: async (examId: number): Promise<QuestionsResponse> => {
     const response = await apiClient.get<QuestionsResponse>(`/exams/${examId}/questions`);
     return response.data;
+  },
+
+  /**
+   * 清除測驗 Session
+   * DELETE /api/exams/{examId}/session
+   */
+  clearExamSession: async (examId: number): Promise<void> => {
+    await apiClient.delete(`/exams/${examId}/session`);
   },
 };
 

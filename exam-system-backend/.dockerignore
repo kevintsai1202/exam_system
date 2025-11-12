@@ -1,0 +1,44 @@
+# Maven 構建目錄（除了最終的 JAR）
+target/*
+!target/*.jar
+
+# IDE 相關
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# 編譯文件
+*.class
+
+# 日誌文件
+*.log
+logs/
+
+# 臨時文件
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS 相關
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# 測試相關
+test-output/
+
+# H2 資料庫文件（本地開發用）
+*.mv.db
+*.trace.db
+data/
+
+# 文檔
+README.md
+CLAUDE.md
+*.md

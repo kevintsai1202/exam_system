@@ -6,19 +6,17 @@ import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.*;
 import com.exam.system.websocket.WebSocketService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +34,7 @@ public class ExamService {
     private final QRCodeService qrCodeService;
     private final WebSocketService webSocketService;
     private final StatisticsService statisticsService;
+    private final ExamSecurityService examSecurityService;
 
     /**
      * 建構子注入（使用 @Lazy 解決循環依賴）
@@ -47,7 +46,8 @@ public class ExamService {
             StudentRepository studentRepository,
             QRCodeService qrCodeService,
             WebSocketService webSocketService,
-            @Lazy StatisticsService statisticsService
+            @Lazy StatisticsService statisticsService,
+            ExamSecurityService examSecurityService
     ) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
@@ -56,6 +56,7 @@ public class ExamService {
         this.qrCodeService = qrCodeService;
         this.webSocketService = webSocketService;
         this.statisticsService = statisticsService;
+        this.examSecurityService = examSecurityService;
     }
 
     /**
@@ -72,9 +73,8 @@ public class ExamService {
         int maxRetries = 5;
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // 生成唯一的 accessCode 和 instructorSessionId
+                // 生成唯一的 accessCode
                 String accessCode = qrCodeService.generateAccessCode();
-                String instructorSessionId = UUID.randomUUID().toString();
 
                 // 建立測驗實體
                 Exam exam = Exam.builder()
@@ -84,7 +84,6 @@ public class ExamService {
                         .status(ExamStatus.CREATED)
                         .currentQuestionIndex(0)
                         .accessCode(accessCode)
-                        .instructorSessionId(instructorSessionId)
                         .build();
 
                 // 儲存測驗以獲得 ID（如果 accessCode 重複會拋出 DataIntegrityViolationException）
@@ -168,25 +167,25 @@ public class ExamService {
 
     /**
      * 啟動測驗
+     * 第一個啟動的人會獲得 Session ID 並綁定（3小時有效）
      *
      * @param examId 測驗 ID
-     * @param instructorSessionId 講師 Session ID
      * @param baseUrl 前端基礎 URL（用於生成 QR Code）
-     * @return 包含 QR Code 的測驗 DTO
+     * @return 包含 QR Code 和 instructorSessionId 的測驗 DTO
      */
     @Transactional
-    public ExamDTO startExam(Long examId, String instructorSessionId, String baseUrl) {
-        log.info("Starting exam: {} by instructor session: {}", examId, instructorSessionId);
-
-        // 驗證講師權限
-        validateInstructorAccess(examId, instructorSessionId);
+    public ExamDTO startExam(Long examId, String baseUrl) {
+        log.info("Starting exam: {}", examId);
 
         Exam exam = findExamById(examId);
 
-        // 驗證測驗狀態
+        // 驗證測驗狀態：只允許 CREATED 狀態的測驗啟動
         if (exam.getStatus() != ExamStatus.CREATED) {
             throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已經啟動或結束");
         }
+
+        // 使用 ExamSecurityService 建立講師 Session
+        String instructorSessionId = examSecurityService.createInstructorSession(examId);
 
         // 啟動測驗
         exam.start();
@@ -209,6 +208,7 @@ public class ExamService {
         ExamDTO dto = convertToDTO(exam);
         dto.setQrCodeUrl(joinUrl);
         dto.setQrCodeBase64(qrCodeBase64);
+        dto.setInstructorSessionId(instructorSessionId);  // 回傳給前端
         return dto;
     }
 
@@ -223,10 +223,12 @@ public class ExamService {
     public void startQuestion(Long examId, Integer questionIndex, String instructorSessionId) {
         log.info("Starting question {} for exam: {} by instructor session: {}", questionIndex, examId, instructorSessionId);
 
-        // 驗證講師權限
-        validateInstructorAccess(examId, instructorSessionId);
-
         Exam exam = findExamById(examId);
+
+        // 驗證講師權限（使用 ExamSecurityService）
+        if (!examSecurityService.validateInstructorSession(exam, instructorSessionId)) {
+            throw new BusinessException("SESSION_NOT_FOUND", "測驗未啟動或 Session 已過期");
+        }
 
         // 驗證測驗狀態
         if (exam.getStatus() != ExamStatus.STARTED) {
@@ -255,8 +257,8 @@ public class ExamService {
         questionData.put("questionText", question.getQuestionText());
         questionData.put("timeLimit", exam.getQuestionTimeLimit());
 
-        // 計算到期時間（當前時間 + 時限）
-        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(exam.getQuestionTimeLimit());
+        // 計算到期時間（使用 UTC 時間戳，避免時區問題）
+        Instant expiresAt = Instant.now().plusSeconds(exam.getQuestionTimeLimit());
         questionData.put("expiresAt", expiresAt);
 
         questionData.put("options", options.stream()
@@ -283,10 +285,12 @@ public class ExamService {
     public void endExam(Long examId, String instructorSessionId) {
         log.info("Ending exam: {} by instructor session: {}", examId, instructorSessionId);
 
-        // 驗證講師權限
-        validateInstructorAccess(examId, instructorSessionId);
-
         Exam exam = findExamById(examId);
+
+        // 驗證講師權限（使用 ExamSecurityService）
+        if (!examSecurityService.validateInstructorSession(exam, instructorSessionId)) {
+            throw new BusinessException("SESSION_NOT_FOUND", "測驗未啟動或 Session 已過期");
+        }
 
         // 驗證測驗狀態
         if (exam.getStatus() != ExamStatus.STARTED) {
@@ -296,6 +300,9 @@ public class ExamService {
         // 結束測驗
         exam.end();
         examRepository.save(exam);
+
+        // 使用 ExamSecurityService 清除講師 Session
+        examSecurityService.clearInstructorSession(examId);
 
         // 透過 WebSocket 廣播測驗結束事件
         Map<String, Object> statusData = new HashMap<>();
@@ -527,8 +534,8 @@ public class ExamService {
                 .questionTimeLimit(exam.getQuestionTimeLimit())
                 .status(exam.getStatus())
                 .currentQuestionIndex(exam.getCurrentQuestionIndex())
+                .currentQuestionStartedAt(exam.getCurrentQuestionStartedAt())
                 .accessCode(exam.getAccessCode())
-                .instructorSessionId(exam.getInstructorSessionId())
                 .createdAt(exam.getCreatedAt())
                 .startedAt(exam.getStartedAt())
                 .endedAt(exam.getEndedAt())
@@ -563,35 +570,28 @@ public class ExamService {
     }
 
     /**
-     * 驗證講師是否有權限操作測驗
+     * 清除測驗的講師 Session
+     * 同時重置測驗的題目推送狀態，讓測驗回到「已啟動但尚未推送題目」的狀態
      *
      * @param examId 測驗 ID
-     * @param instructorSessionId 講師 Session ID
-     * @throws BusinessException 如果驗證失敗
      */
-    private void validateInstructorAccess(Long examId, String instructorSessionId) {
-        if (instructorSessionId == null || instructorSessionId.isEmpty()) {
-            throw new BusinessException("MISSING_SESSION_ID", "缺少講師 Session ID");
-        }
+    @Transactional
+    public void clearExamSession(Long examId) {
+        log.info("Clearing session for exam: {}", examId);
 
-        if (!examRepository.existsByIdAndInstructorSessionId(examId, instructorSessionId)) {
-            throw new BusinessException("UNAUTHORIZED", "無權限操作此測驗");
-        }
-    }
+        // 清除記憶體中的 instructorSession
+        examSecurityService.clearInstructorSession(examId);
 
-    /**
-     * 根據講師 sessionId 取得測驗列表
-     *
-     * @param instructorSessionId 講師 Session ID
-     * @return 測驗 DTO 列表
-     */
-    @Transactional(readOnly = true)
-    public List<ExamDTO> getExamsByInstructorSessionId(String instructorSessionId) {
-        log.info("Getting exams for instructor session: {}", instructorSessionId);
-        List<Exam> exams = examRepository.findByInstructorSessionId(instructorSessionId);
-        return exams.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        // 重置測驗的題目推送狀態
+        Exam exam = findExamById(examId);
+
+        // 只有已啟動的測驗才需要重置
+        if (exam.getStatus() == ExamStatus.STARTED) {
+            exam.setCurrentQuestionStartedAt(null);
+            exam.setCurrentQuestionIndex(0);  // 重置到第一題
+            examRepository.save(exam);
+            log.info("Reset exam {} to initial STARTED state (no questions pushed)", examId);
+        }
     }
 
 }

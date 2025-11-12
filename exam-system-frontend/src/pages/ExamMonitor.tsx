@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { examApi, studentApi, statisticsApi } from '../services/apiService';
 import { useExamStore, useStudentStore, useStatisticsStore, useInstructorStore } from '../store';
 import { useExamWebSocket, useQuestionWebSocket, useMessage } from '../hooks';
@@ -23,7 +23,6 @@ import type { WebSocketMessage, OccupationDistribution } from '../types';
 export const ExamMonitor: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const message = useMessage();
 
   // Store
@@ -138,49 +137,64 @@ export const ExamMonitor: React.FC = () => {
   }, []);
 
   /**
-   * 驗證講師 Session
+   * 載入測驗資訊和 Session
    */
   useEffect(() => {
     if (!isStoreHydrated || !examId) return;
 
-    const ensureInstructorSession = async () => {
-      // 從 URL 或 store 取得 instructorSessionId
-      const urlSessionId = searchParams.get('instructorSessionId');
-      const storedSessionId = instructorSessionId;
-      const finalSessionId = urlSessionId || storedSessionId;
-
-      if (!finalSessionId) {
-        message.error('缺少講師 Session ID');
-        navigate('/instructor');
-        return;
-      }
-
+    const loadExamAndSession = async () => {
       try {
-        // 載入測驗資訊並驗證 instructorSessionId
+        // 載入測驗資訊（不需要驗證 Session）
         const exam = await examApi.getExam(parseInt(examId));
-
-        if (exam.instructorSessionId !== finalSessionId) {
-          message.error('無權限操作此測驗');
-          navigate('/instructor');
-          return;
-        }
-
-        // 如果是從 URL 恢復，更新 store
-        if (urlSessionId && !storedSessionId) {
-          setInstructorSessionId(urlSessionId);
-        }
-
-        // 驗證成功，繼續載入資料
         setCurrentExam(exam);
+
+        // 從 localStorage 載入 Session ID
+        const localStorageKey = `exam_${examId}_sessionId`;
+        const savedSessionId = localStorage.getItem(localStorageKey);
+
+        // 根據測驗狀態決定是否使用 Session ID
+        if (exam.status === 'CREATED' || exam.status === 'ENDED') {
+          // CREATED 或 ENDED 狀態不需要 Session，清除舊的 Session
+          if (savedSessionId) {
+            console.log('[ExamMonitor] 測驗狀態為', exam.status, '，清除舊的 Session ID');
+            localStorage.removeItem(localStorageKey);
+            setInstructorSessionId('');
+          }
+        } else if (exam.status === 'STARTED') {
+          // STARTED 狀態需要 Session
+
+          // 產生 QR Code URL（測驗進行中時始終顯示，讓學生可隨時加入）
+          const joinUrl = `${window.location.origin}/student/join?accessCode=${exam.accessCode}`;
+          setQrCodeUrl(joinUrl);
+
+          // 特殊情況：測驗已啟動但尚未推送題目（後端重啟後 session 清空）
+          if (!exam.currentQuestionStartedAt && !savedSessionId) {
+            console.log('[ExamMonitor] 測驗已啟動但尚未推送題目，且沒有 Session ID，生成新的 Session ID 以進入');
+            // 生成新的 UUID 作為 sessionId
+            const newSessionId = crypto.randomUUID();
+            localStorage.setItem(localStorageKey, newSessionId);
+            setInstructorSessionId(newSessionId);
+
+            console.log('[ExamMonitor] 新的 Session ID 已生成:', newSessionId);
+          } else if (savedSessionId) {
+            console.log('[ExamMonitor] 從 localStorage 載入 Session ID:', savedSessionId);
+            setInstructorSessionId(savedSessionId);
+          } else {
+            // 沒有 Session 且已經推送過題目，不允許進入
+            console.error('[ExamMonitor] 測驗已啟動且已推送題目，但沒有 Session ID，非講師無法進入');
+            message.error('此測驗正在進行中，僅限講師進入');
+            navigate('/instructor');
+          }
+        }
       } catch (err: any) {
-        console.error('[ExamMonitor] Session 驗證失敗:', err);
-        message.error('Session 驗證失敗');
+        console.error('[ExamMonitor] 載入測驗失敗:', err);
+        message.error('載入測驗失敗');
         navigate('/instructor');
       }
     };
 
-    ensureInstructorSession();
-  }, [isStoreHydrated, examId, searchParams, instructorSessionId]);
+    loadExamAndSession();
+  }, [isStoreHydrated, examId]);
 
   /**
    * 載入測驗資料
@@ -215,7 +229,7 @@ export const ExamMonitor: React.FC = () => {
         }
 
         // 如果測驗已結束，載入排行榜
-        if (exam.status === 'ENDED') {
+        if (currentExam?.status === 'ENDED') {
           try {
             setIsLoadingLeaderboard(true);
             const leaderboardData = await statisticsApi.getLeaderboard(parseInt(examId));
@@ -236,7 +250,7 @@ export const ExamMonitor: React.FC = () => {
     };
 
     loadExamData();
-  }, [examId, setCurrentExam, setQuestions, setStudents, setLeaderboard]);
+  }, [examId, currentExam, setQuestions, setStudents, setLeaderboard]);
 
   /**
    * 清理定時器
@@ -253,10 +267,20 @@ export const ExamMonitor: React.FC = () => {
    * 啟動測驗
    */
   const handleStartExam = async () => {
-    if (!examId || !instructorSessionId) return;
+    if (!examId) return;
 
     try {
-      const response = await examApi.startExam(parseInt(examId), instructorSessionId);
+      // 呼叫啟動測驗 API（不需要傳入 Session ID）
+      const response = await examApi.startExam(parseInt(examId));
+
+      // 儲存 Session ID 到 localStorage
+      const localStorageKey = `exam_${examId}_sessionId`;
+      localStorage.setItem(localStorageKey, response.instructorSessionId);
+      console.log('[ExamMonitor] Session ID 已儲存至 localStorage:', response.instructorSessionId);
+
+      // 更新 store 中的 Session ID
+      setInstructorSessionId(response.instructorSessionId);
+
       setCurrentExam({
         ...currentExam!,
         status: response.status,
@@ -264,18 +288,17 @@ export const ExamMonitor: React.FC = () => {
       });
 
       // 產生完整的學員加入 URL（含 Access Code）
+      // QR Code 會在測驗進行中持續顯示，讓學生可隨時加入
       const joinUrl = `${window.location.origin}/student/join?accessCode=${response.accessCode}`;
       setQrCodeUrl(joinUrl);
 
-      // 初始化顯示第一題（但不推送給學員）
-      if (questions.length > 0) {
-        setCurrentQuestion(questions[0]);
-      }
+      // 清空 currentQuestion（還沒推送題目）
+      setCurrentQuestion(null);
 
       // 隱藏答案
       setShowAnswer(false);
 
-      message.success('測驗已啟動！');
+      message.success('測驗已啟動！學生可隨時掃描 QR Code 加入');
     } catch (err: any) {
       message.error(err.message || '啟動測驗失敗');
     }
@@ -289,8 +312,24 @@ export const ExamMonitor: React.FC = () => {
     console.log('[handleStartQuestion] examId:', examId);
     console.log('[handleStartQuestion] currentExam:', currentExam);
 
-    if (!examId || !currentExam || !instructorSessionId) {
-      console.error('[handleStartQuestion] examId、currentExam 或 instructorSessionId 為空');
+    if (!examId || !currentExam) {
+      console.error('[handleStartQuestion] examId 或 currentExam 為空');
+      return;
+    }
+
+    // 如果測驗狀態為 CREATED，需要先啟動測驗
+    if (currentExam.status === 'CREATED') {
+      console.log('[handleStartQuestion] 測驗尚未啟動，先呼叫 handleStartExam');
+      await handleStartExam();
+      // handleStartExam 會設定 instructorSessionId，等待狀態更新
+      // 注意：這裡不繼續執行，因為測驗啟動後會顯示 QR Code，讓講師再次點擊推送題目
+      return;
+    }
+
+    // 檢查 instructorSessionId（STARTED 狀態必須有）
+    if (!instructorSessionId) {
+      console.error('[handleStartQuestion] instructorSessionId 為空');
+      message.error('缺少講師 Session，請重新載入頁面');
       return;
     }
 
@@ -380,6 +419,14 @@ export const ExamMonitor: React.FC = () => {
       const exam = await examApi.endExam(parseInt(examId), instructorSessionId);
       setCurrentExam(exam);
 
+      // 清除 localStorage 中的講師 Session
+      const localStorageKey = `exam_${examId}_sessionId`;
+      localStorage.removeItem(localStorageKey);
+      console.log('[handleEndExam] 已清除 localStorage 中的 Session ID');
+
+      // 清除 store 中的 Session ID
+      setInstructorSessionId('');
+
       // 獲取排行榜資料
       try {
         setIsLoadingLeaderboard(true);
@@ -403,6 +450,7 @@ export const ExamMonitor: React.FC = () => {
   const handleBack = () => {
     navigate('/instructor');
   };
+
 
   // 載入中
   if (isLoading) {
@@ -533,7 +581,7 @@ export const ExamMonitor: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
           {/* 左側 - QR Code 與學員列表 */}
           <div>
-            {/* QR Code */}
+            {/* QR Code - 測驗進行中時始終顯示，讓學生可隨時加入 */}
             {isStarted && qrCodeUrl && (
               <div style={{ marginBottom: '24px' }}>
                 <QRCodeDisplay

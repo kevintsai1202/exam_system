@@ -63,27 +63,15 @@ public class ExamController {
     }
 
     /**
-     * 根據講師 sessionId 取得測驗列表
-     * GET /api/exams/instructor/{instructorSessionId}
-     */
-    @GetMapping("/instructor/{instructorSessionId}")
-    public ResponseEntity<List<ExamDTO>> getInstructorExams(@PathVariable String instructorSessionId) {
-        log.info("Getting exams for instructor session: {}", instructorSessionId);
-        List<ExamDTO> exams = examService.getExamsByInstructorSessionId(instructorSessionId);
-        return ResponseEntity.ok(exams);
-    }
-
-    /**
      * 啟動測驗
      * PUT /api/exams/{examId}/start
      */
     @PutMapping("/{examId}/start")
     public ResponseEntity<ExamDTO> startExam(
             @PathVariable Long examId,
-            @RequestHeader("Instructor-Session-Id") String instructorSessionId,
             @RequestParam(required = false, defaultValue = "http://localhost:5173") String baseUrl) {
-        log.info("Starting exam: {} by instructor session: {}", examId, instructorSessionId);
-        ExamDTO exam = examService.startExam(examId, instructorSessionId, baseUrl);
+        log.info("Starting exam: {}", examId);
+        ExamDTO exam = examService.startExam(examId, baseUrl);
         return ResponseEntity.ok(exam);
     }
 
@@ -177,6 +165,21 @@ public class ExamController {
         response.put("examId", examId);
         response.put("totalStudents", students.size());
         response.put("students", students);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 清除測驗的 Session
+     * DELETE /api/exams/{examId}/session
+     */
+    @DeleteMapping("/{examId}/session")
+    public ResponseEntity<Map<String, String>> clearExamSession(@PathVariable Long examId) {
+        log.info("Clearing session for exam: {}", examId);
+        examService.clearExamSession(examId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Session 已清除");
 
         return ResponseEntity.ok(response);
     }

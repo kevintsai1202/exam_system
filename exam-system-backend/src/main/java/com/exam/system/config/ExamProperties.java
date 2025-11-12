@@ -29,6 +29,11 @@ public class ExamProperties {
      */
     private WebSocketProperties websocket = new WebSocketProperties();
 
+    /**
+     * 安全配置
+     */
+    private SecurityConfig security = new SecurityConfig();
+
     @Data
     public static class QRCodeConfig {
         /**
@@ -61,6 +66,14 @@ public class ExamProperties {
          * 允許的 CORS 來源列表
          */
         private List<String> allowedOrigins = List.of("http://localhost:5173", "http://localhost:3000");
+    }
+
+    @Data
+    public static class SecurityConfig {
+        /**
+         * 管理員 Token，用於講師端特權操作驗證
+         */
+        private String adminToken;
     }
 
 }

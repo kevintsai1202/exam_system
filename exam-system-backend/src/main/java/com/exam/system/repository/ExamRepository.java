@@ -58,21 +58,4 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     @Query("SELECT e FROM Exam e LEFT JOIN FETCH e.students WHERE e.id = :id")
     Optional<Exam> findByIdWithStudents(@Param("id") Long id);
 
-    /**
-     * 根據講師 sessionId 查詢測驗列表
-     *
-     * @param instructorSessionId 講師 Session ID
-     * @return 測驗列表
-     */
-    List<Exam> findByInstructorSessionId(String instructorSessionId);
-
-    /**
-     * 驗證講師是否有權限操作測驗
-     *
-     * @param id 測驗 ID
-     * @param instructorSessionId 講師 Session ID
-     * @return true 如果測驗存在且 instructorSessionId 匹配
-     */
-    boolean existsByIdAndInstructorSessionId(Long id, String instructorSessionId);
-
 }

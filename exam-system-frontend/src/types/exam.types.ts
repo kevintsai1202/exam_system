@@ -42,6 +42,7 @@ export interface Exam {
   status: ExamStatus;             // 測驗狀態
   accessCode: string;             // 加入碼（QR Code 內容）
   currentQuestionIndex: number;   // 當前題目索引
+  currentQuestionStartedAt?: string;  // 當前題目開始時間（null 表示還沒推送過任何題目）
   createdAt: string;              // 建立時間
   startedAt?: string;             // 開始時間
   endedAt?: string;               // 結束時間
@@ -76,12 +77,13 @@ export interface CreateOptionRequest {
 
 // 啟動測驗回應介面
 export interface StartExamResponse {
-  id: number;               // 測驗 ID
-  status: ExamStatus;       // 測驗狀態
-  accessCode: string;       // 加入碼
-  qrCodeUrl: string;        // QR Code URL
-  qrCodeBase64: string;     // QR Code Base64 編碼
-  startedAt: string;        // 開始時間
+  id: number;                // 測驗 ID
+  status: ExamStatus;        // 測驗狀態
+  accessCode: string;        // 加入碼
+  qrCodeUrl: string;         // QR Code URL
+  qrCodeBase64: string;      // QR Code Base64 編碼
+  instructorSessionId: string;  // 講師 Session ID（首次啟動時產生）
+  startedAt: string;         // 開始時間
 }
 
 // 開始題目回應介面

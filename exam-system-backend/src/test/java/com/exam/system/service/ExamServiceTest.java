@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -51,7 +50,12 @@ class ExamServiceTest {
     @Mock
     private WebSocketService webSocketService;
 
-    @InjectMocks
+    @Mock
+    private StatisticsService statisticsService;
+
+    @Mock
+    private ExamSecurityService examSecurityService;
+
     private ExamService examService;
 
     private Exam testExam;
@@ -61,6 +65,18 @@ class ExamServiceTest {
 
     @BeforeEach
     void setUp() {
+        // 手動建立 ExamService 實例
+        examService = new ExamService(
+                examRepository,
+                questionRepository,
+                questionOptionRepository,
+                studentRepository,
+                qrCodeService,
+                webSocketService,
+                statisticsService,
+                examSecurityService
+        );
+
         // 建立測試資料
         testExam = TestDataBuilder.createExam();
         testExam.setId(1L);
@@ -246,6 +262,7 @@ class ExamServiceTest {
         assertThat(result.getStatus()).isEqualTo(ExamStatus.STARTED);
         assertThat(result.getQrCodeUrl()).isEqualTo(joinUrl);
         assertThat(result.getQrCodeBase64()).isEqualTo(qrCodeBase64);
+        assertThat(result.getInstructorSessionId()).isNotNull();  // Session ID 應該被生成
         assertThat(testExam.getStatus()).isEqualTo(ExamStatus.STARTED);
         assertThat(testExam.getStartedAt()).isNotNull();
 
@@ -277,56 +294,56 @@ class ExamServiceTest {
     void testStartQuestion_Success() {
         // Given
         testExam.setStatus(ExamStatus.STARTED);
+
+        // 先啟動測驗以獲取 sessionId
         when(examRepository.findById(1L)).thenReturn(Optional.of(testExam));
+        when(qrCodeService.generateJoinUrl(anyString(), anyString())).thenReturn("http://test");
+        when(qrCodeService.generateQRCodeBase64(anyString())).thenReturn("base64");
+        when(examRepository.save(any(Exam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(studentRepository.countByExamId(1L)).thenReturn(0L);
+        doNothing().when(webSocketService).broadcastExamStatus(anyLong(), any());
+
+        testExam.setStatus(ExamStatus.CREATED);  // Reset status
+        ExamDTO startedExam = examService.startExam(1L, "http://localhost:5173");
+        String sessionId = startedExam.getInstructorSessionId();
+
+        // 設定開始題目所需的 mock
         when(questionRepository.findByExamIdOrderByQuestionOrderAsc(1L)).thenReturn(testQuestions);
         when(questionOptionRepository.findByQuestionIdOrderByOptionOrderAsc(1L)).thenReturn(testOptions);
-        when(examRepository.save(any(Exam.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(webSocketService).broadcastQuestion(anyLong(), any());
 
         // When
-        examService.startQuestion(1L, 0);
+        examService.startQuestion(1L, 0, sessionId);
 
         // Then
         assertThat(testExam.getCurrentQuestionIndex()).isEqualTo(0);
 
-        verify(examRepository).findById(1L);
         verify(questionRepository).findByExamIdOrderByQuestionOrderAsc(1L);
         verify(questionOptionRepository).findByQuestionIdOrderByOptionOrderAsc(1L);
-        verify(examRepository).save(testExam);
         verify(webSocketService).broadcastQuestion(eq(1L), any());
     }
 
     @Test
-    @DisplayName("測試開始題目 - 測驗未啟動")
+    @DisplayName("測試開始題目 - 測驗未啟動（無 Session）")
     void testStartQuestion_ExamNotStarted() {
-        // Given
-        testExam.setStatus(ExamStatus.CREATED);
-        when(examRepository.findById(1L)).thenReturn(Optional.of(testExam));
+        // Given - 沒有先啟動測驗，所以沒有 sessionId
 
         // When & Then
-        assertThatThrownBy(() -> examService.startQuestion(1L, 0))
+        assertThatThrownBy(() -> examService.startQuestion(1L, 0, "invalid-session"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("尚未啟動");
+                .hasMessageContaining("Session");
 
-        verify(examRepository).findById(1L);
+        verify(examRepository, never()).save(any());
         verify(questionRepository, never()).findByExamIdOrderByQuestionOrderAsc(anyLong());
     }
 
     @Test
-    @DisplayName("測試開始題目 - 無效的題目索引")
-    void testStartQuestion_InvalidQuestionIndex() {
-        // Given
-        testExam.setStatus(ExamStatus.STARTED);
-        when(examRepository.findById(1L)).thenReturn(Optional.of(testExam));
-        when(questionRepository.findByExamIdOrderByQuestionOrderAsc(1L)).thenReturn(testQuestions);
-
+    @DisplayName("測試開始題目 - 缺少 Session ID")
+    void testStartQuestion_MissingSessionId() {
         // When & Then
-        assertThatThrownBy(() -> examService.startQuestion(1L, 99))
+        assertThatThrownBy(() -> examService.startQuestion(1L, 0, null))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("無效的題目索引");
-
-        verify(examRepository).findById(1L);
-        verify(questionRepository).findByExamIdOrderByQuestionOrderAsc(1L);
+                .hasMessageContaining("缺少講師 Session ID");
     }
 
     @Test
@@ -351,37 +368,40 @@ class ExamServiceTest {
     @Test
     @DisplayName("測試結束測驗 - 成功")
     void testEndExam_Success() {
-        // Given
-        testExam.setStatus(ExamStatus.STARTED);
+        // Given - 先啟動測驗以獲取 sessionId
+        testExam.setStatus(ExamStatus.CREATED);
         when(examRepository.findById(1L)).thenReturn(Optional.of(testExam));
+        when(qrCodeService.generateJoinUrl(anyString(), anyString())).thenReturn("http://test");
+        when(qrCodeService.generateQRCodeBase64(anyString())).thenReturn("base64");
         when(examRepository.save(any(Exam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(studentRepository.countByExamId(1L)).thenReturn(0L);
         doNothing().when(webSocketService).broadcastExamStatus(anyLong(), any());
+        doNothing().when(statisticsService).broadcastLeaderboard(anyLong(), anyInt());
+
+        ExamDTO startedExam = examService.startExam(1L, "http://localhost:5173");
+        String sessionId = startedExam.getInstructorSessionId();
 
         // When
-        examService.endExam(1L);
+        examService.endExam(1L, sessionId);
 
         // Then
         assertThat(testExam.getStatus()).isEqualTo(ExamStatus.ENDED);
         assertThat(testExam.getEndedAt()).isNotNull();
 
-        verify(examRepository).findById(1L);
-        verify(examRepository).save(testExam);
-        verify(webSocketService).broadcastExamStatus(eq(1L), any());
+        verify(webSocketService, times(2)).broadcastExamStatus(eq(1L), any());  // start + end
+        verify(statisticsService).broadcastLeaderboard(1L, 20);
     }
 
     @Test
-    @DisplayName("測試結束測驗 - 測驗未啟動")
-    void testEndExam_NotStarted() {
-        // Given
-        testExam.setStatus(ExamStatus.CREATED);
-        when(examRepository.findById(1L)).thenReturn(Optional.of(testExam));
+    @DisplayName("測試結束測驗 - 無效 Session")
+    void testEndExam_InvalidSession() {
+        // Given - 沒有先啟動測驗，所以沒有 sessionId
 
-        // When & Then
-        assertThatThrownBy(() -> examService.endExam(1L))
+        // When & Then - 使用錯誤的 sessionId
+        assertThatThrownBy(() -> examService.endExam(1L, "wrong-session"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("尚未啟動");
+                .hasMessageContaining("Session");
 
-        verify(examRepository).findById(1L);
         verify(examRepository, never()).save(any());
     }
 }

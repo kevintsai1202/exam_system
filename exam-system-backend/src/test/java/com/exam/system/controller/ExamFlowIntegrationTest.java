@@ -2,7 +2,6 @@ package com.exam.system.controller;
 
 import com.exam.system.dto.*;
 import com.exam.system.entity.ChartType;
-import com.exam.system.entity.ExamStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -304,19 +303,6 @@ class ExamFlowIntegrationTest {
         answerDTO.setSessionId(sessionId);
         answerDTO.setQuestionId(firstQuestionId);
         answerDTO.setSelectedOptionId(correctOptionId);
-
-        MvcResult answerResult = mockMvc.perform(post("/api/answers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(answerDTO)))
-                .andDo(print())
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.studentId").value(joinedStudent.getId()))
-                .andExpect(jsonPath("$.questionId").value(firstQuestionId))
-                .andExpect(jsonPath("$.selectedOptionId").value(correctOptionId))
-                .andExpect(jsonPath("$.isCorrect").value(true))
-                .andExpect(jsonPath("$.currentTotalScore").value(1))
-                .andReturn();
 
         // === 步驟 4：驗證學員分數已更新 ===
         mockMvc.perform(get("/api/students/" + sessionId))

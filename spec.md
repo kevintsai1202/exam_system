@@ -1075,6 +1075,8 @@ public StatisticsDTO generateStatistics(Long examId, Long questionId) {
 - 前端實作重連機制
 
 ### 14.3 Session 管理
+
+#### 14.3.1 學員 Session 管理
 **挑戰**：每個學員獨立 Session
 **實作重點**：
 - 使用 UUID 作為 sessionId
@@ -1082,6 +1084,60 @@ public StatisticsDTO generateStatistics(Long examId, Long questionId) {
 - 透過 localStorage 同步儲存 `sessionId` 與 `currentStudent`，重新整理（F5）即可立即還原畫面，再視情況呼叫 API 取得最新資料
 - StudentExam 重新整理時需等待 Zustand `persist` hydration（`hasHydrated = true`）完成後，再以 sessionId 打 API 以確保資料正確
 - StudentJoin 導向 StudentExam 時需帶上 `/student/exam/{examId}?sessionId={UUID}`，讓 StudentExam 可以從 URL 或 localStorage 取得 sessionId，即使瀏覽器限制 localStorage 也能恢復狀態
+
+#### 14.3.2 講師 Session 管理
+**設計原則**：講師的 Session 控制依據測驗狀態動態調整
+
+**實作規則**：
+
+1. **主控台（InstructorDashboard）**
+   - 無須 Session 管理
+   - 可自由瀏覽測驗列表
+   - 可進入任何測驗的監控頁面
+
+2. **測驗監控頁面 - 測驗未開始時（status = CREATED）**
+   - 無須 Session 驗證
+   - 講師可查看測驗資訊
+   - 講師可查看已加入的學員列表
+   - 講師可啟動測驗（start）
+
+3. **測驗監控頁面 - 測驗進行中時（status = STARTED）**
+   - 測驗啟動時自動產生講師 `instructorSessionId`（UUID）
+   - `instructorSessionId` 儲存於：
+     - 後端：維護在記憶體或資料庫中，與 examId 綁定
+     - 前端：儲存於 localStorage (`instructorSession_${examId}`)
+   - 所有控制操作（推送題目、結束測驗）都需要驗證 `instructorSessionId`
+   - 若 sessionId 不存在或不匹配，回傳 `SESSION_NOT_FOUND` 錯誤
+
+4. **測驗監控頁面 - 測驗結束後（status = ENDED）**
+   - 自動清除 `instructorSessionId`
+   - 前端清除 localStorage 中的 session
+   - 回到無須 Session 驗證狀態
+   - 可查看統計與排行榜（唯讀模式）
+
+5. **Session 生命週期**
+```
+測驗建立(CREATED)
+    ↓
+   無 Session 要求
+    ↓
+測驗啟動(start) → 產生 instructorSessionId → 儲存 localStorage
+    ↓
+測驗進行中(STARTED)
+    ↓
+   需要 Session 驗證
+    ↓
+測驗結束(end) → 清除 instructorSessionId → 移除 localStorage
+    ↓
+測驗已結束(ENDED)
+    ↓
+   無 Session 要求（唯讀）
+```
+
+6. **API 變更**
+   - `POST /api/exams/{examId}/start` - 啟動測驗時回傳 `instructorSessionId`
+   - `POST /api/exams/{examId}/questions/{index}/start` - 需帶 Header `X-Instructor-Session`
+   - `POST /api/exams/{examId}/end` - 需帶 Header `X-Instructor-Session`，結束後清除 session
 
 
 

@@ -11,7 +11,6 @@ import { ChartType } from '../types';
 import type { CreateExamRequest } from '../types';
 import { useMessage } from '../hooks';
 import { Message } from '../components/Message';
-import { useInstructorStore } from '../store';
 
 /**
  * 表單題目狀態介面
@@ -41,7 +40,6 @@ export const ExamCreator: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const message = useMessage();
   const isEditMode = !!examId;
-  const { setInstructorSessionId } = useInstructorStore();
 
   // 測驗基本資訊
   const [title, setTitle] = useState('');
@@ -277,15 +275,9 @@ export const ExamCreator: React.FC = () => {
         ? await examApi.updateExam(parseInt(examId), requestData)
         : await examApi.createExam(requestData);
 
-      // 建立模式：儲存 instructorSessionId 到 store
-      if (!isEditMode && exam.instructorSessionId) {
-        setInstructorSessionId(exam.instructorSessionId);
-      }
-
-      // 成功，導航至監控頁面（帶上 instructorSessionId）
+      // 成功，導航至監控頁面
       message.success(isEditMode ? '測驗更新成功！' : '測驗建立成功！');
-      const queryParam = exam.instructorSessionId ? `?instructorSessionId=${exam.instructorSessionId}` : '';
-      navigate(`/instructor/exam/${exam.id}/monitor${queryParam}`);
+      navigate(`/instructor/exam/${exam.id}/monitor`);
     } catch (err: any) {
       setError(err.message || '建立測驗失敗，請稍後再試');
     } finally {

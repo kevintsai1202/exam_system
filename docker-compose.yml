@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  exam-system:
+    # 使用本地 Dockerfile 構建映像
+    build:
+      context: ./exam-system-backend
+      dockerfile: Dockerfile
+
+    # 容器名稱
+    container_name: exam-system
+
+    # 映像名稱和標籤
+    image: exam-system:1.0.0
+
+    # 端口映射（宿主機:容器）
+    ports:
+      - "80:80"
+
+    # 環境變數
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - TZ=Asia/Taipei
+
+    # 資料卷掛載（持久化資料庫）
+    volumes:
+      - exam-data:/app/data
+
+    # 重啟策略
+    restart: unless-stopped
+
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
+    # 資源限制（可選）
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# 定義資料卷
+volumes:
+  exam-data:
+    driver: local

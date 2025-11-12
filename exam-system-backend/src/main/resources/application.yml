@@ -77,8 +77,11 @@ exam:
   websocket:
     allowed-origins:
       - "http://localhost:5173"  # 開發環境（前端開發伺服器）
+      - "http://localhost:5174"  # 開發環境（前端開發伺服器 - 備用端口）
       - "http://localhost:3000"  # 開發環境（備用）
       - "http://localhost:8080"  # 生產環境（整合部署）
   access-code:
     length: 6
     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  security:
+    admin-token: "vHJ24I8hjgW7AU8BkJIDIM7MOX3J2hOq1yis9EmIsms="

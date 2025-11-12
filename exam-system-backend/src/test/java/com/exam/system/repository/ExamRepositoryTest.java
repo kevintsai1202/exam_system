@@ -29,12 +29,6 @@ class ExamRepositoryTest {
     @Autowired
     private ExamRepository examRepository;
 
-    @Autowired
-    private QuestionRepository questionRepository;
-
-    @Autowired
-    private StudentRepository studentRepository;
-
     private Exam testExam;
 
     @BeforeEach

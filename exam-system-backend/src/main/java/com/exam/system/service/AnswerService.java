@@ -10,7 +10,7 @@ import com.exam.system.entity.Student;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.AnswerRepository;
-import com.exam.system.repository.ExamRepository;
+// import com.exam.system.repository.ExamRepository;
 import com.exam.system.repository.QuestionOptionRepository;
 import com.exam.system.repository.QuestionRepository;
 import com.exam.system.repository.StudentRepository;
@@ -36,7 +36,7 @@ public class AnswerService {
     private final StudentRepository studentRepository;
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository questionOptionRepository;
-    private final ExamRepository examRepository;
+    // private final ExamRepository examRepository;
     private final StatisticsService statisticsService;
 
     /**
