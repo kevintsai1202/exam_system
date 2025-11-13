@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 學員 DTO
@@ -57,10 +58,16 @@ public class StudentDTO {
     private String email;
 
     /**
-     * 學員職業
+     * 學員職業（保留向下兼容）
      */
     @Size(max = 50, message = "職業長度不能超過 50")
     private String occupation;
+
+    /**
+     * 調查資料（其他調查欄位的回答）
+     * 例如: {"age_range": "20-30", "gender": "male"}
+     */
+    private Map<String, String> surveyData;
 
     /**
      * 頭像圖示名稱
