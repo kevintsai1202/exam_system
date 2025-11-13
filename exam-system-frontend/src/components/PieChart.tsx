@@ -13,14 +13,23 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { OptionStatistic, ScoreDistribution, OccupationStatistic } from '../types';
+import type { OptionStatistic, ScoreDistribution, OccupationStatistic, SurveyFieldValueStatistic } from '../types';
+
+/**
+ * 調查欄位值統計（簡化版，用於圖表）
+ */
+interface SurveyFieldChartData {
+  value: string;
+  count: number;
+  percentage: number;
+}
 
 /**
  * 圓餅圖 Props 介面
  */
 interface PieChartProps {
-  data: OptionStatistic[] | ScoreDistribution[] | OccupationStatistic[];
-  dataType: 'option' | 'score' | 'occupation';  // 資料類型
+  data: OptionStatistic[] | ScoreDistribution[] | OccupationStatistic[] | SurveyFieldChartData[];
+  dataType: 'option' | 'score' | 'occupation' | 'surveyField';  // 資料類型
   width?: string | number;                       // 寬度
   height?: number;                               // 高度
   showLegend?: boolean;                          // 是否顯示圖例
@@ -99,6 +108,17 @@ export const PieChart: React.FC<PieChartProps> = ({
   };
 
   /**
+   * 格式化調查欄位統計資料
+   */
+  const formatSurveyFieldData = (surveyStats: SurveyFieldChartData[]) => {
+    return surveyStats.map((stat) => ({
+      name: stat.value,
+      value: stat.count,
+      percentage: stat.percentage,
+    }));
+  };
+
+  /**
    * 取得圖表資料
    */
   const chartData =
@@ -106,7 +126,9 @@ export const PieChart: React.FC<PieChartProps> = ({
       ? formatOptionData(data as OptionStatistic[])
       : dataType === 'score'
       ? formatScoreData(data as ScoreDistribution[])
-      : formatOccupationData(data as OccupationStatistic[]);
+      : dataType === 'occupation'
+      ? formatOccupationData(data as OccupationStatistic[])
+      : formatSurveyFieldData(data as SurveyFieldChartData[]);
 
   /**
    * 自訂標籤
