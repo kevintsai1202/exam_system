@@ -41,7 +41,9 @@
       "Bash(JAVA_HOME=\"/d/java/jdk-21\" PATH=\"/d/java/jdk-21/bin:$PATH\" mvn clean package:*)",
       "Bash(jar tf:*)",
       "Bash(docker build:*)",
-      "Bash(docker save:*)"
+      "Bash(docker save:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []

@@ -56,6 +56,9 @@ logs/
 *.bak
 *-backup.md
 
+# tar
+*.tar
+
 # Package
 package/
 
