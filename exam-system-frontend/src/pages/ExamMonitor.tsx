@@ -45,6 +45,8 @@ export const ExamMonitor: React.FC = () => {
   const [surveyDistributions, setSurveyDistributions] = useState<SurveyFieldDistribution[]>([]); // 調查欄位統計
   const [isLoadingSurveyStats, setIsLoadingSurveyStats] = useState(false); // 調查統計載入狀態
   const [currentQuestionExpiresAt, setCurrentQuestionExpiresAt] = useState<string | null>(null); // 當前題目到期時間
+  const [currentQuestionChartType, setCurrentQuestionChartType] = useState<'BAR' | 'PIE'>('BAR'); // 當前題目統計圖表類型
+  const [surveyChartTypes, setSurveyChartTypes] = useState<Record<string, 'BAR' | 'PIE'>>({}); // 調查欄位統計圖表類型 (key: fieldKey)
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -409,6 +411,8 @@ export const ExamMonitor: React.FC = () => {
       // 立即顯示推送的題目（不等待 WebSocket）
       if (pushedQuestion) {
         setCurrentQuestion(pushedQuestion);
+        // 設定圖表類型為題目的預設值
+        setCurrentQuestionChartType(pushedQuestion.singleStatChartType || 'BAR');
       }
 
       // 計算題目到期時間並設定（與後端同步）
@@ -725,36 +729,89 @@ export const ExamMonitor: React.FC = () => {
                     </div>
                   )}
 
-                  {surveyDistributions.length > 0 && surveyDistributions.map((distribution) => (
-                    <div key={distribution.fieldKey} style={{ marginTop: '24px' }}>
-                      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
-                        📊 {distribution.fieldName}統計
-                      </h3>
-                      {distribution.valueStatistics.length > 0 ? (
-                        <>
-                          <PieChart
-                            data={distribution.valueStatistics.map((vs) => ({
-                              value: vs.value,
-                              count: vs.count,
-                              percentage: vs.percentage,
-                            }))}
-                            dataType="surveyField"
-                            height={400}
-                          />
-                          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📊 總學員數：{distribution.totalStudents} 人</p>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>✍️ 填寫人數：{distribution.respondentCount} 人 （{((distribution.respondentCount / distribution.totalStudents) * 100).toFixed(1)}%）</p>
-                            <p style={{ margin: 0, fontWeight: '500' }}>📋 選項數：{distribution.valueStatistics.length} 個</p>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
-                          <div style={{ fontSize: '16px', color: '#999' }}>尚無{distribution.fieldName}統計資料</div>
-                          <div style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>學員加入時可選填此資訊</div>
+                  {surveyDistributions.length > 0 && surveyDistributions.map((distribution) => {
+                    const chartType = surveyChartTypes[distribution.fieldKey] || 'PIE'; // 預設為圓餅圖
+                    return (
+                      <div key={distribution.fieldKey} style={{ marginTop: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
+                            📊 {distribution.fieldName}統計
+                          </h3>
+                          {distribution.valueStatistics.length > 0 && (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => setSurveyChartTypes(prev => ({ ...prev, [distribution.fieldKey]: 'BAR' }))}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  color: chartType === 'BAR' ? '#fff' : '#666',
+                                  backgroundColor: chartType === 'BAR' ? '#1976d2' : '#f5f5f5',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                📊 長條圖
+                              </button>
+                              <button
+                                onClick={() => setSurveyChartTypes(prev => ({ ...prev, [distribution.fieldKey]: 'PIE' }))}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  color: chartType === 'PIE' ? '#fff' : '#666',
+                                  backgroundColor: chartType === 'PIE' ? '#1976d2' : '#f5f5f5',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                🥧 圓餅圖
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {distribution.valueStatistics.length > 0 ? (
+                          <>
+                            {chartType === 'BAR' ? (
+                              <BarChart
+                                data={distribution.valueStatistics.map((vs) => ({
+                                  value: vs.value,
+                                  count: vs.count,
+                                  percentage: vs.percentage,
+                                }))}
+                                dataType="surveyField"
+                                height={300}
+                              />
+                            ) : (
+                              <PieChart
+                                data={distribution.valueStatistics.map((vs) => ({
+                                  value: vs.value,
+                                  count: vs.count,
+                                  percentage: vs.percentage,
+                                }))}
+                                dataType="surveyField"
+                                height={400}
+                              />
+                            )}
+                            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
+                              <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📊 總學員數：{distribution.totalStudents} 人</p>
+                              <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>✍️ 填寫人數：{distribution.respondentCount} 人 （{((distribution.respondentCount / distribution.totalStudents) * 100).toFixed(1)}%）</p>
+                              <p style={{ margin: 0, fontWeight: '500' }}>📋 選項數：{distribution.valueStatistics.length} 個</p>
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '16px', color: '#999' }}>尚無{distribution.fieldName}統計資料</div>
+                            <div style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>學員加入時可選填此資訊</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -788,8 +845,44 @@ export const ExamMonitor: React.FC = () => {
 
                       {currentQuestionStats && (
                         <div style={{ marginTop: '24px' }}>
-                          <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📊 答題統計</h3>
-                          {currentQuestion.singleStatChartType === 'BAR' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📊 答題統計</h3>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => setCurrentQuestionChartType('BAR')}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  color: currentQuestionChartType === 'BAR' ? '#fff' : '#666',
+                                  backgroundColor: currentQuestionChartType === 'BAR' ? '#1976d2' : '#f5f5f5',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                📊 長條圖
+                              </button>
+                              <button
+                                onClick={() => setCurrentQuestionChartType('PIE')}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  color: currentQuestionChartType === 'PIE' ? '#fff' : '#666',
+                                  backgroundColor: currentQuestionChartType === 'PIE' ? '#1976d2' : '#f5f5f5',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                🥧 圓餅圖
+                              </button>
+                            </div>
+                          </div>
+                          {currentQuestionChartType === 'BAR' ? (
                             <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} />
                           ) : (
                             <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
@@ -812,11 +905,8 @@ export const ExamMonitor: React.FC = () => {
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>累積統計</h3>
                   {cumulativeStats ? (
                     <>
-                      {cumulativeStats.chartType === 'BAR' ? (
-                        <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
-                      ) : (
-                        <PieChart data={cumulativeStats.scoreDistribution} dataType="score" height={400} />
-                      )}
+                      {/* 累積統計固定為長條圖 */}
+                      <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
                       <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', fontSize: '14px' }}>
                         <p style={{ margin: 0 }}>平均分數：{cumulativeStats.averageScore.toFixed(1)} 分</p>
                       </div>
