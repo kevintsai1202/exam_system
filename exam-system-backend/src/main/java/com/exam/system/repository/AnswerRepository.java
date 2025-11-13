@@ -2,9 +2,11 @@ package com.exam.system.repository;
 
 import com.exam.system.entity.Answer;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -91,6 +93,8 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
      *
      * @param examId 測驗 ID
      */
+    @Modifying
+    @Transactional
     @Query("DELETE FROM Answer a WHERE a.question.exam.id = :examId")
     void deleteByExamId(@Param("examId") Long examId);
 
