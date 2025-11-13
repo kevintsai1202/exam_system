@@ -64,15 +64,25 @@ export const ExamMonitor: React.FC = () => {
     }
   }, [setCurrentExam]);
 
-  const handleStudentJoined = useCallback((message: WebSocketMessage) => {
+  const handleStudentJoined = useCallback(async (message: WebSocketMessage) => {
     console.log('[ExamMonitor] 學員加入:', message);
     const msg = message as any;
     // 後端 WebSocketMessage 結構：{type, data, timestamp}
     // 學員資訊在 data 欄位中
     if (msg.data) {
       addStudent(msg.data);
+
+      // 重新獲取職業分布統計
+      if (examId) {
+        try {
+          const occupationData = await statisticsApi.getOccupationDistribution(parseInt(examId));
+          setOccupationDistribution(occupationData);
+        } catch (err) {
+          console.error('[ExamMonitor] 更新職業分布失敗:', err);
+        }
+      }
     }
-  }, [addStudent]);
+  }, [addStudent, examId]);
 
   const handleQuestionStarted = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 題目開始:', message);
