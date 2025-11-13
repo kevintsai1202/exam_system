@@ -15,6 +15,7 @@ export interface Student {
   surveyData?: Record<string, string>;  // 調查資料（動態欄位）
   avatarIcon: string;       // 頭像圖示名稱
   totalScore: number;       // 累積總分
+  correctAnswersCount?: number;  // 答對題數
   joinedAt: string;         // 加入時間
   examStatus?: ExamStatus;  // 測驗狀態
 }

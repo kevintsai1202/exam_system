@@ -33,6 +33,31 @@ export const StudentList: React.FC<StudentListProps> = ({
 }) => {
   const displayTotal = totalStudents ?? students.length;
 
+  // 按答對題數排序（從高到低），然後按分數排序，最後按加入時間排序
+  const sortedStudents = React.useMemo(() => {
+    return [...students].sort((a, b) => {
+      // 先按答對題數排序（從高到低）
+      const correctA = a.correctAnswersCount ?? 0;
+      const correctB = b.correctAnswersCount ?? 0;
+      if (correctB !== correctA) {
+        return correctB - correctA;
+      }
+
+      // 答對題數相同時，按分數排序（從高到低）
+      if (b.totalScore !== a.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+
+      // 分數也相同時，按加入時間排序（早加入的在前）
+      return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
+    });
+  }, [students]);
+
+  // 計算最大答對題數，用於計算條狀圖比例
+  const maxCorrectAnswers = React.useMemo(() => {
+    return Math.max(...sortedStudents.map(s => s.correctAnswersCount ?? 0), 1);
+  }, [sortedStudents]);
+
   return (
     <div
       style={{
@@ -99,114 +124,174 @@ export const StudentList: React.FC<StudentListProps> = ({
           </div>
         ) : (
           // 學員項目
-          students.map((student, index) => (
-            <div
-              key={student.id}
-              style={{
-                padding: '16px 20px',
-                borderBottom:
-                  index < students.length - 1 ? '1px solid #f0f0f0' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                transition: 'background-color 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9f9f9';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              {/* 序號 */}
+          sortedStudents.map((student, index) => {
+            const rank = index + 1;
+            const correctAnswers = student.correctAnswersCount ?? 0;
+            const barWidth = maxCorrectAnswers > 0 ? (correctAnswers / maxCorrectAnswers) * 100 : 0;
+            const isTop3 = rank <= 3;
+            const isGold = rank === 1;
+            const isSilver = rank === 2;
+            const isBronze = rank === 3;
+
+            return (
               <div
+                key={student.id}
                 style={{
-                  width: '28px',
-                  height: '28px',
+                  padding: '16px 20px',
+                  borderBottom:
+                    index < sortedStudents.length - 1 ? '1px solid #f0f0f0' : 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2',
-                  borderRadius: '50%',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  flexShrink: 0,
+                  gap: '12px',
+                  transition: 'background-color 0.2s ease',
+                  backgroundColor: isTop3 ? '#fffbf0' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = isTop3 ? '#fff8e1' : '#f9f9f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = isTop3 ? '#fffbf0' : 'transparent';
                 }}
               >
-                {index + 1}
-              </div>
-
-              {/* 頭像 */}
-              <div style={{ flexShrink: 0 }}>
-                <AvatarDisplay avatar={student.avatarIcon} size="medium" />
-              </div>
-
-              {/* 學員資訊 */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {/* 姓名 */}
+                {/* 排名 */}
                 <div
                   style={{
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    color: '#333',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isGold
+                      ? '#ffd700'
+                      : isSilver
+                      ? '#c0c0c0'
+                      : isBronze
+                      ? '#cd7f32'
+                      : '#e3f2fd',
+                    color: isTop3 ? '#fff' : '#1976d2',
+                    borderRadius: '50%',
+                    fontSize: isTop3 ? '18px' : '14px',
+                    fontWeight: '700',
+                    flexShrink: 0,
+                    boxShadow: isTop3 ? '0 2px 6px rgba(0,0,0,0.2)' : 'none',
                   }}
                 >
-                  {student.name}
+                  {rank}
                 </div>
 
-                {/* Email */}
-                {showEmail && (
+                {/* 頭像 */}
+                <div style={{ flexShrink: 0 }}>
+                  <AvatarDisplay avatar={student.avatarIcon} size="medium" />
+                </div>
+
+                {/* 學員資訊 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* 姓名 */}
                   <div
                     style={{
-                      fontSize: '12px',
-                      color: '#999',
-                      marginTop: '2px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      color: '#333',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
+                      marginBottom: '6px',
                     }}
                   >
-                    {student.email}
+                    {student.name}
+                  </div>
+
+                  {/* 答對題數條狀圖 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: '20px',
+                        backgroundColor: '#f0f0f0',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${barWidth}%`,
+                          height: '100%',
+                          backgroundColor: isGold
+                            ? '#ffd700'
+                            : isSilver
+                            ? '#c0c0c0'
+                            : isBronze
+                            ? '#cd7f32'
+                            : '#4caf50',
+                          borderRadius: '10px',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#666',
+                        minWidth: '50px',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {correctAnswers} 題
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  {showEmail && (
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: '#999',
+                        marginTop: '4px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {student.email}
+                    </div>
+                  )}
+                </div>
+
+                {/* 分數 */}
+                {showScore && (
+                  <div
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#e8f5e9',
+                      color: '#2e7d32',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {student.totalScore} 分
                   </div>
                 )}
-              </div>
 
-              {/* 分數 */}
-              {showScore && (
+                {/* 加入時間 */}
                 <div
                   style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#e8f5e9',
-                    color: '#2e7d32',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '600',
+                    fontSize: '12px',
+                    color: '#999',
                     flexShrink: 0,
                   }}
                 >
-                  {student.totalScore} 分
+                  {student.joinedAt ? new Date(student.joinedAt).toLocaleTimeString('zh-TW', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }) : '--:--'}
                 </div>
-              )}
-
-              {/* 加入時間 */}
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#999',
-                  flexShrink: 0,
-                }}
-              >
-                {student.joinedAt ? new Date(student.joinedAt).toLocaleTimeString('zh-TW', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }) : '--:--'}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
