@@ -46,16 +46,43 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
 
   /**
    * 複製 URL 到剪貼簿
+   * 使用降級方案以支援不同瀏覽器和環境
    */
   const handleCopyUrl = async () => {
     try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      // 2 秒後重置狀態
-      setTimeout(() => setCopied(false), 2000);
+      // 方法 1: 優先使用 Clipboard API (需要 HTTPS 或 localhost)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+
+      // 方法 2: 降級使用 document.execCommand (適用於舊版瀏覽器)
+      const textArea = document.createElement('textarea');
+      textArea.value = value;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } else {
+          throw new Error('execCommand 複製失敗');
+        }
+      } finally {
+        document.body.removeChild(textArea);
+      }
     } catch (error) {
       console.error('複製失敗:', error);
-      alert('複製失敗，請手動複製');
+      // 顯示友善的錯誤訊息，並提供手動複製的提示
+      alert(`複製失敗，請手動複製以下 URL:\n\n${value}`);
     }
   };
   return (
