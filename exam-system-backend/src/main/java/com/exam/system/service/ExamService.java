@@ -265,8 +265,8 @@ public class ExamService {
             throw new BusinessException("INVALID_QUESTION_INDEX", "無效的題目索引");
         }
 
-        // 更新當前題目索引和題目開始時間
-        exam.setCurrentQuestionIndex(questionIndex);
+        // 更新當前題目索引為下一題（與前端語義保持一致）和題目開始時間
+        exam.setCurrentQuestionIndex(questionIndex + 1);
         exam.setCurrentQuestionStartedAt(LocalDateTime.now());
         examRepository.save(exam);
 
