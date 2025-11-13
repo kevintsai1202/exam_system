@@ -5,10 +5,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 學員實體
@@ -61,10 +64,18 @@ public class Student {
     private String email;
 
     /**
-     * 學員職業
+     * 學員職業（保留向下兼容）
      */
     @Column(length = 50)
     private String occupation;
+
+    /**
+     * 調查資料（JSON 格式儲存其他調查欄位的回答）
+     * 例如: {"age_range": "20-30", "gender": "male"}
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "json")
+    private Map<String, String> surveyData;
 
     /**
      * 頭像圖示名稱

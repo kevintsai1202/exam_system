@@ -63,6 +63,17 @@ public class ExamController {
     }
 
     /**
+     * 透過 accessCode 取得測驗預覽資訊（學員加入時使用）
+     * GET /api/exams/preview?accessCode={accessCode}
+     */
+    @GetMapping("/preview")
+    public ResponseEntity<ExamDTO> getExamPreview(@RequestParam String accessCode) {
+        log.info("Getting exam preview with accessCode: {}", accessCode);
+        ExamDTO exam = examService.getExamByAccessCode(accessCode);
+        return ResponseEntity.ok(exam);
+    }
+
+    /**
      * 啟動測驗
      * PUT /api/exams/{examId}/start
      */

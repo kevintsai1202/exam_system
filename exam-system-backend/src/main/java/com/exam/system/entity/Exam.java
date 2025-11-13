@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -86,6 +88,14 @@ public class Exam {
      * 當前題目開始時間（用於答題時間驗證）
      */
     private LocalDateTime currentQuestionStartedAt;
+
+    /**
+     * 啟用的調查欄位鍵值清單（JSON 格式儲存）
+     * 例如: ["occupation", "age_range", "gender"]
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "json")
+    private List<String> surveyFieldKeys;
 
     /**
      * 測驗包含的題目列表

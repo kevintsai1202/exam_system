@@ -214,4 +214,77 @@ public class StatisticsDTO {
         private Double percentage;
     }
 
+    /**
+     * 通用調查欄位分布統計 DTO
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SurveyFieldDistribution {
+        /**
+         * 測驗 ID
+         */
+        private Long examId;
+
+        /**
+         * 調查欄位鍵值
+         */
+        private String fieldKey;
+
+        /**
+         * 調查欄位名稱
+         */
+        private String fieldName;
+
+        /**
+         * 總學員數
+         */
+        private Integer totalStudents;
+
+        /**
+         * 填寫此欄位的學員數
+         */
+        private Integer respondentCount;
+
+        /**
+         * 值統計列表
+         */
+        private List<SurveyFieldValueStatistic> valueStatistics;
+
+        /**
+         * 統計時間
+         */
+        private LocalDateTime timestamp;
+    }
+
+    /**
+     * 調查欄位值統計
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SurveyFieldValueStatistic {
+        /**
+         * 欄位值（如 "工程師", "20-30", "男"）
+         */
+        private String value;
+
+        /**
+         * 選擇此值的人數
+         */
+        private Long count;
+
+        /**
+         * 百分比（相對於總學員數）
+         */
+        private Double percentage;
+
+        /**
+         * 百分比（相對於填寫者）
+         */
+        private Double respondentPercentage;
+    }
+
 }

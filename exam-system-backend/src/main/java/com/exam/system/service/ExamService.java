@@ -84,6 +84,7 @@ public class ExamService {
                         .status(ExamStatus.CREATED)
                         .currentQuestionIndex(0)
                         .accessCode(accessCode)
+                        .surveyFieldKeys(examDTO.getSurveyFieldKeys())
                         .build();
 
                 // 儲存測驗以獲得 ID（如果 accessCode 重複會拋出 DataIntegrityViolationException）
@@ -541,6 +542,7 @@ public class ExamService {
                 .endedAt(exam.getEndedAt())
                 .totalQuestions(exam.getQuestions().size())
                 .totalStudents((int) totalStudents)
+                .surveyFieldKeys(exam.getSurveyFieldKeys())
                 .build();
 
         return dto;

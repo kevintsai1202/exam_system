@@ -46,6 +46,7 @@ export interface Exam {
   createdAt: string;              // 建立時間
   startedAt?: string;             // 開始時間
   endedAt?: string;               // 結束時間
+  surveyFieldKeys?: string[];     // 啟用的調查欄位鍵值清單
   questions?: Question[];         // 題目列表
   totalQuestions?: number;        // 總題目數
   totalStudents?: number;         // 總學員數
@@ -56,6 +57,7 @@ export interface CreateExamRequest {
   title: string;                  // 測驗標題
   description: string;            // 測驗描述
   questionTimeLimit: number;      // 每題倒數時間（秒）
+  surveyFieldKeys?: string[];     // 啟用的調查欄位鍵值清單
   questions: CreateQuestionRequest[];  // 題目列表
 }
 

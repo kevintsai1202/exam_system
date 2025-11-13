@@ -66,6 +66,7 @@ public class StudentService {
                 .name(studentDTO.getName())
                 .email(studentDTO.getEmail())
                 .occupation(studentDTO.getOccupation())
+                .surveyData(studentDTO.getSurveyData())
                 .avatarIcon(studentDTO.getAvatarIcon())
                 .totalScore(0)
                 .build();
@@ -134,6 +135,7 @@ public class StudentService {
                 .name(student.getName())
                 .email(student.getEmail())
                 .occupation(student.getOccupation())
+                .surveyData(student.getSurveyData())
                 .avatarIcon(student.getAvatarIcon())
                 .totalScore(student.getTotalScore())
                 .joinedAt(student.getJoinedAt())

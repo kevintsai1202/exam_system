@@ -6,11 +6,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { studentApi } from '../services/apiService';
+import { studentApi, examApi, surveyFieldApi } from '../services/apiService';
 import { useStudentStore } from '../store';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
-import type { AvatarIcon, JoinExamRequest } from '../types';
+import type { AvatarIcon, JoinExamRequest, SurveyField } from '../types';
 
 /**
  * 學員加入頁面
@@ -33,7 +33,13 @@ export const StudentJoin: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 常用職業列表
+  // 調查欄位狀態
+  const [surveyFields, setSurveyFields] = useState<SurveyField[]>([]);
+  const [surveyData, setSurveyData] = useState<Record<string, string>>({});
+  const [customSurveyData, setCustomSurveyData] = useState<Record<string, string>>({});
+  const [isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(false);
+
+  // 常用職業列表（保留向下兼容）
   const commonOccupations = [
     '學生',
     '教師',
@@ -53,6 +59,54 @@ export const StudentJoin: React.FC = () => {
       setAccessCode(urlAccessCode);
     }
   }, [urlAccessCode]);
+
+  // 載入調查欄位（當 accessCode 變更時）
+  useEffect(() => {
+    const loadSurveyFields = async () => {
+      // accessCode 需要至少 6 個字元才載入
+      if (!accessCode || accessCode.trim().length < 6) {
+        setSurveyFields([]);
+        setSurveyData({});
+        setCustomSurveyData({});
+        return;
+      }
+
+      try {
+        setIsLoadingSurveyFields(true);
+        setError(null);
+
+        // 取得測驗預覽資訊
+        const exam = await examApi.getExamPreview(accessCode.trim());
+
+        // 如果測驗有設定調查欄位
+        if (exam.surveyFieldKeys && exam.surveyFieldKeys.length > 0) {
+          // 載入所有調查欄位定義
+          const fieldPromises = exam.surveyFieldKeys.map((fieldKey) =>
+            surveyFieldApi.getSurveyFieldByKey(fieldKey)
+          );
+          const fields = await Promise.all(fieldPromises);
+
+          // 過濾掉職業欄位（職業欄位使用舊有邏輯，保持向下兼容）
+          const nonOccupationFields = fields.filter((field) => field.fieldKey !== 'occupation');
+          setSurveyFields(nonOccupationFields);
+        } else {
+          setSurveyFields([]);
+        }
+
+        setIsLoadingSurveyFields(false);
+      } catch (err: any) {
+        console.error('[StudentJoin] 載入調查欄位失敗:', err);
+        // 不要因為無法載入調查欄位而阻擋學員加入
+        // 只是清空調查欄位即可
+        setSurveyFields([]);
+        setIsLoadingSurveyFields(false);
+      }
+    };
+
+    // 使用 debounce 避免頻繁呼叫 API
+    const timer = setTimeout(loadSurveyFields, 500);
+    return () => clearTimeout(timer);
+  }, [accessCode]);
 
   /**
    * 表單驗證
@@ -89,11 +143,24 @@ export const StudentJoin: React.FC = () => {
         ? customOccupation.trim()
         : occupation;
 
+      // 處理調查資料：合併選擇值和自訂值
+      const finalSurveyData: Record<string, string> = {};
+      Object.keys(surveyData).forEach((fieldKey) => {
+        const value = surveyData[fieldKey];
+        // 如果選擇「其他」，使用自訂值
+        if (value === '其他' && customSurveyData[fieldKey]) {
+          finalSurveyData[fieldKey] = customSurveyData[fieldKey].trim();
+        } else if (value) {
+          finalSurveyData[fieldKey] = value;
+        }
+      });
+
       const requestData: JoinExamRequest = {
         accessCode: accessCode.trim(),
         name: name.trim(),
         email: email.trim(),
         occupation: finalOccupation || undefined,
+        surveyData: Object.keys(finalSurveyData).length > 0 ? finalSurveyData : undefined,
         avatarIcon,
       };
 
@@ -351,6 +418,81 @@ export const StudentJoin: React.FC = () => {
               />
             </div>
           )}
+
+          {/* 動態調查欄位 */}
+          {surveyFields.map((field) => (
+            <div key={field.fieldKey} style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                }}
+              >
+                {field.fieldName}
+              </label>
+              <select
+                value={surveyData[field.fieldKey] || ''}
+                onChange={(e) => {
+                  setSurveyData({ ...surveyData, [field.fieldKey]: e.target.value });
+                  if (e.target.value !== '其他') {
+                    setCustomSurveyData({ ...customSurveyData, [field.fieldKey]: '' });
+                  }
+                }}
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                  backgroundColor: '#fff',
+                  cursor: 'pointer',
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+              >
+                <option value="">請選擇（選填）</option>
+                {field.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+
+              {/* 自訂輸入框（當選擇「其他」時顯示） */}
+              {surveyData[field.fieldKey] === '其他' && (
+                <div style={{ marginTop: '12px' }}>
+                  <input
+                    type="text"
+                    value={customSurveyData[field.fieldKey] || ''}
+                    onChange={(e) =>
+                      setCustomSurveyData({ ...customSurveyData, [field.fieldKey]: e.target.value })
+                    }
+                    placeholder={`請輸入${field.fieldName}`}
+                    disabled={isSubmitting}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      fontSize: '16px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
 
           {/* 頭像選擇 */}
           <div style={{ marginBottom: '32px' }}>

@@ -15,7 +15,7 @@ import QuestionCard from '../components/QuestionCard';
 import BarChart from '../components/BarChart';
 import PieChart from '../components/PieChart';
 import { Message } from '../components/Message';
-import type { WebSocketMessage, OccupationDistribution } from '../types';
+import type { WebSocketMessage, OccupationDistribution, SurveyFieldDistribution } from '../types';
 
 /**
  * 測驗監控頁面
@@ -36,12 +36,15 @@ export const ExamMonitor: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'students' | 'question' | 'cumulative' | 'leaderboard'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'question' | 'cumulative' | 'leaderboard' | 'survey'>('students');
   const [showAnswer, setShowAnswer] = useState(false); // 控制答案顯示
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
   const [occupationDistribution, setOccupationDistribution] = useState<OccupationDistribution | null>(null); // 職業分布
   const [isLoadingOccupation, setIsLoadingOccupation] = useState(false); // 職業分布載入狀態
+  const [surveyDistributions, setSurveyDistributions] = useState<SurveyFieldDistribution[]>([]); // 調查欄位統計
+  const [selectedSurveyFieldKey, setSelectedSurveyFieldKey] = useState<string>(''); // 當前選擇的調查欄位
+  const [isLoadingSurveyStats, setIsLoadingSurveyStats] = useState(false); // 調查統計載入狀態
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -79,9 +82,21 @@ export const ExamMonitor: React.FC = () => {
         } catch (err) {
           console.error('[ExamMonitor] 更新職業分布失敗:', err);
         }
+
+        // 重新獲取調查欄位統計
+        try {
+          const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
+          setSurveyDistributions(surveyData);
+          // 如果還沒選擇任何欄位，預設選擇第一個
+          if (!selectedSurveyFieldKey && surveyData.length > 0) {
+            setSelectedSurveyFieldKey(surveyData[0].fieldKey);
+          }
+        } catch (err) {
+          console.error('[ExamMonitor] 更新調查欄位統計失敗:', err);
+        }
       }
     }
-  }, [addStudent, examId]);
+  }, [addStudent, examId, selectedSurveyFieldKey]);
 
   const handleQuestionStarted = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 題目開始:', message);
@@ -236,6 +251,21 @@ export const ExamMonitor: React.FC = () => {
         } catch (err) {
           console.error('[ExamMonitor] 載入職業分布失敗:', err);
           setIsLoadingOccupation(false);
+        }
+
+        // 載入調查欄位統計
+        try {
+          setIsLoadingSurveyStats(true);
+          const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
+          setSurveyDistributions(surveyData);
+          // 預設選擇第一個調查欄位
+          if (surveyData.length > 0) {
+            setSelectedSurveyFieldKey(surveyData[0].fieldKey);
+          }
+          setIsLoadingSurveyStats(false);
+        } catch (err) {
+          console.error('[ExamMonitor] 載入調查欄位統計失敗:', err);
+          setIsLoadingSurveyStats(false);
         }
 
         // 如果測驗已結束，載入排行榜
@@ -612,7 +642,7 @@ export const ExamMonitor: React.FC = () => {
           <div>
             {/* 標籤列 */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              {(['students', 'question', 'cumulative', 'leaderboard'] as const).map((tab) => (
+              {(['students', 'question', 'cumulative', 'leaderboard', 'survey'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -642,7 +672,7 @@ export const ExamMonitor: React.FC = () => {
                     }
                   }}
                 >
-                  {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : tab === 'cumulative' ? '累積統計' : '排行榜'}
+                  {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : tab === 'cumulative' ? '累積統計' : tab === 'leaderboard' ? '排行榜' : '調查統計'}
                 </button>
               ))}
             </div>
@@ -849,6 +879,138 @@ export const ExamMonitor: React.FC = () => {
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', animation: 'fadeIn 0.3s ease-in' }}>
                       暫無排行榜資料
                     </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'survey' && (
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>調查欄位統計</h3>
+
+                  {/* 載入中 */}
+                  {isLoadingSurveyStats && surveyDistributions.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                      <div style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid #e0e0e0',
+                        borderTop: '4px solid #1976d2',
+                        borderRadius: '50%',
+                        margin: '0 auto 16px',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      <div style={{ fontSize: '14px', color: '#999' }}>載入調查統計中...</div>
+                    </div>
+                  )}
+
+                  {/* 無調查欄位 */}
+                  {!isLoadingSurveyStats && surveyDistributions.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
+                      <div style={{ fontSize: '16px', marginBottom: '8px' }}>此測驗未設定調查欄位</div>
+                      <div style={{ fontSize: '14px', color: '#999' }}>建立測驗時可選擇要調查的欄位</div>
+                    </div>
+                  )}
+
+                  {/* 調查欄位選擇器 */}
+                  {surveyDistributions.length > 0 && (
+                    <>
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '8px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#333',
+                        }}>
+                          選擇調查欄位：
+                        </label>
+                        <select
+                          value={selectedSurveyFieldKey}
+                          onChange={(e) => setSelectedSurveyFieldKey(e.target.value)}
+                          style={{
+                            width: '100%',
+                            maxWidth: '400px',
+                            padding: '12px',
+                            fontSize: '16px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.2s',
+                          }}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                        >
+                          {surveyDistributions.map((dist) => (
+                            <option key={dist.fieldKey} value={dist.fieldKey}>
+                              {dist.fieldName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 顯示選中的調查欄位統計 */}
+                      {(() => {
+                        const selectedDistribution = surveyDistributions.find(
+                          (d) => d.fieldKey === selectedSurveyFieldKey
+                        );
+
+                        if (!selectedDistribution) return null;
+
+                        return (
+                          <div>
+                            {selectedDistribution.valueStatistics.length > 0 ? (
+                              <>
+                                <PieChart
+                                  data={selectedDistribution.valueStatistics.map((vs) => ({
+                                    value: vs.value,
+                                    count: vs.count,
+                                    percentage: vs.percentage,
+                                  }))}
+                                  dataType="surveyField"
+                                  height={400}
+                                />
+                                <div style={{
+                                  marginTop: '16px',
+                                  padding: '16px',
+                                  backgroundColor: '#e3f2fd',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  border: '1px solid #1976d2',
+                                }}>
+                                  <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                                    📊 總學員數：{selectedDistribution.totalStudents} 人
+                                  </p>
+                                  <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                                    ✍️ 填寫人數：{selectedDistribution.respondentCount} 人
+                                    （{((selectedDistribution.respondentCount / selectedDistribution.totalStudents) * 100).toFixed(1)}%）
+                                  </p>
+                                  <p style={{ margin: 0, fontWeight: '500' }}>
+                                    📋 選項數：{selectedDistribution.valueStatistics.length} 個
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{
+                                textAlign: 'center',
+                                padding: '40px',
+                                backgroundColor: '#f5f5f5',
+                                borderRadius: '12px',
+                              }}>
+                                <div style={{ fontSize: '16px', color: '#999' }}>
+                                  尚無「{selectedDistribution.fieldName}」的統計資料
+                                </div>
+                                <div style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>
+                                  學員加入時可選填此欄位
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </>
                   )}
                 </div>
               )}
