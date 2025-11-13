@@ -79,8 +79,16 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    // 優先使用後端返回的錯誤訊息
+    let errorMessage = error.message;
+    if (error.response?.data) {
+      const errorData = error.response.data as any;
+      // 後端返回的錯誤格式：{ message: string, code?: string, ... }
+      errorMessage = errorData.message || errorData.error || errorMessage;
+    }
+
     const apiError: ApiError = {
-      message: error.message,
+      message: errorMessage,
       status: error.response?.status,
       data: error.response?.data,
     };
