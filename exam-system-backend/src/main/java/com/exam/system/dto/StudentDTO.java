@@ -82,6 +82,11 @@ public class StudentDTO {
     private Integer totalScore;
 
     /**
+     * 答對題數（回應時使用）
+     */
+    private Integer correctAnswersCount;
+
+    /**
      * 加入時間（回應時使用）
      */
     private LocalDateTime joinedAt;

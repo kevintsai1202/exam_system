@@ -112,6 +112,7 @@ public class StudentService {
         studentData.put("name", student.getName());
         studentData.put("avatarIcon", student.getAvatarIcon());
         studentData.put("totalScore", student.getTotalScore());
+        studentData.put("correctAnswersCount", 0); // 新加入的學員答對題數為 0
         studentData.put("totalStudents", studentRepository.countByExamId(exam.getId()));
 
         webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
@@ -205,6 +206,11 @@ public class StudentService {
      * 將 Student 實體轉換為 DTO
      */
     private StudentDTO convertToDTO(Student student, Exam exam) {
+        // 計算答對題數
+        long correctAnswersCount = student.getAnswers().stream()
+                .filter(answer -> answer.getIsCorrect() != null && answer.getIsCorrect())
+                .count();
+
         StudentDTO.StudentDTOBuilder builder = StudentDTO.builder()
                 .id(student.getId())
                 .sessionId(student.getSessionId())
@@ -215,6 +221,7 @@ public class StudentService {
                 .surveyData(student.getSurveyData())
                 .avatarIcon(student.getAvatarIcon())
                 .totalScore(student.getTotalScore())
+                .correctAnswersCount((int) correctAnswersCount)
                 .joinedAt(student.getJoinedAt())
                 .examStatus(exam.getStatus().name());
 
