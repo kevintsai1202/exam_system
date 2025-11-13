@@ -15,6 +15,7 @@ import ExamMonitor from './pages/ExamMonitor';
 import StudentJoin from './pages/StudentJoin';
 import StudentExam from './pages/StudentExam';
 import Leaderboard from './pages/Leaderboard';
+import SurveyFieldManager from './pages/SurveyFieldManager';
 
 /**
  * 首頁元件 - 選擇角色
@@ -254,6 +255,7 @@ const App: React.FC = () => {
       <Route path="/instructor/exam/create" element={<ExamCreator />} />
       <Route path="/instructor/exam/:examId/edit" element={<ExamCreator />} />
       <Route path="/instructor/exam/:examId/monitor" element={<ExamMonitor />} />
+      <Route path="/instructor/survey-fields" element={<SurveyFieldManager />} />
 
       {/* 學員路由 */}
       <Route path="/student/join" element={<StudentJoin />} />

@@ -10,7 +10,7 @@ import { studentApi, examApi, surveyFieldApi } from '../services/apiService';
 import { useStudentStore } from '../store';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
-import type { AvatarIcon, JoinExamRequest, SurveyField } from '../types';
+import type { AvatarIcon, JoinExamRequest, SurveyField, ExamSurveyFieldConfig } from '../types';
 
 /**
  * 學員加入頁面
@@ -34,10 +34,14 @@ export const StudentJoin: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // 調查欄位狀態
-  const [surveyFields, setSurveyFields] = useState<SurveyField[]>([]);
+  const [surveyFieldConfigs, setSurveyFieldConfigs] = useState<ExamSurveyFieldConfig[]>([]);
   const [surveyData, setSurveyData] = useState<Record<string, string>>({});
   const [customSurveyData, setCustomSurveyData] = useState<Record<string, string>>({});
   const [isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(false);
+
+  // 測驗狀態
+  const [examStatus, setExamStatus] = useState<string | null>(null);
+  const [examTitle, setExamTitle] = useState<string>('');
 
   // 常用職業列表（保留向下兼容）
   const commonOccupations = [
@@ -60,12 +64,12 @@ export const StudentJoin: React.FC = () => {
     }
   }, [urlAccessCode]);
 
-  // 載入調查欄位（當 accessCode 變更時）
+  // 載入調查欄位配置（當 accessCode 變更時）
   useEffect(() => {
-    const loadSurveyFields = async () => {
+    const loadSurveyFieldConfigs = async () => {
       // accessCode 需要至少 6 個字元才載入
       if (!accessCode || accessCode.trim().length < 6) {
-        setSurveyFields([]);
+        setSurveyFieldConfigs([]);
         setSurveyData({});
         setCustomSurveyData({});
         return;
@@ -78,33 +82,31 @@ export const StudentJoin: React.FC = () => {
         // 取得測驗預覽資訊
         const exam = await examApi.getExamPreview(accessCode.trim());
 
-        // 如果測驗有設定調查欄位
-        if (exam.surveyFieldKeys && exam.surveyFieldKeys.length > 0) {
-          // 載入所有調查欄位定義
-          const fieldPromises = exam.surveyFieldKeys.map((fieldKey) =>
-            surveyFieldApi.getSurveyFieldByKey(fieldKey)
-          );
-          const fields = await Promise.all(fieldPromises);
+        // 儲存測驗狀態和標題
+        setExamStatus(exam.status);
+        setExamTitle(exam.title);
 
-          // 過濾掉職業欄位（職業欄位使用舊有邏輯，保持向下兼容）
-          const nonOccupationFields = fields.filter((field) => field.fieldKey !== 'occupation');
-          setSurveyFields(nonOccupationFields);
+        // 如果測驗有設定調查欄位配置
+        if (exam.surveyFieldConfigs && exam.surveyFieldConfigs.length > 0) {
+          // 使用動態調查欄位配置（包含職業欄位）
+          setSurveyFieldConfigs(exam.surveyFieldConfigs);
         } else {
-          setSurveyFields([]);
+          setSurveyFieldConfigs([]);
         }
 
         setIsLoadingSurveyFields(false);
       } catch (err: any) {
-        console.error('[StudentJoin] 載入調查欄位失敗:', err);
-        // 不要因為無法載入調查欄位而阻擋學員加入
-        // 只是清空調查欄位即可
-        setSurveyFields([]);
+        console.error('[StudentJoin] 載入調查欄位配置失敗:', err);
+        // 清空狀態
+        setExamStatus(null);
+        setExamTitle('');
+        setSurveyFieldConfigs([]);
         setIsLoadingSurveyFields(false);
       }
     };
 
     // 使用 debounce 避免頻繁呼叫 API
-    const timer = setTimeout(loadSurveyFields, 500);
+    const timer = setTimeout(loadSurveyFieldConfigs, 500);
     return () => clearTimeout(timer);
   }, [accessCode]);
 
@@ -118,6 +120,29 @@ export const StudentJoin: React.FC = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return 'Email 格式不正確';
     }
+
+    // 驗證必填的調查欄位
+    for (const config of surveyFieldConfigs) {
+      if (config.isRequired) {
+        const fieldKey = config.fieldKey;
+        const fieldName = config.fieldName || fieldKey;
+
+        // 檢查欄位是否已填寫
+        const value = surveyData[fieldKey];
+        if (!value || value.trim() === '') {
+          return `必填欄位「${fieldName}」不能為空`;
+        }
+
+        // 如果選擇「其他」，檢查自訂值是否已填寫
+        if (value === '其他') {
+          const customValue = customSurveyData[fieldKey];
+          if (!customValue || customValue.trim() === '') {
+            return `請輸入「${fieldName}」的自訂值`;
+          }
+        }
+      }
+    }
+
     return null;
   };
 
@@ -192,6 +217,9 @@ export const StudentJoin: React.FC = () => {
   const cardPadding = useResponsiveValue('24px', '32px', '40px');
   const maxWidth = useResponsiveValue('100%', '450px', '500px');
 
+  // 判斷表單是否應該被禁用（測驗未開始或已結束）
+  const isFormDisabled = examStatus !== null && examStatus !== 'STARTED';
+
   return (
     <div
       style={{
@@ -229,6 +257,57 @@ export const StudentJoin: React.FC = () => {
             請填寫以下資訊開始答題
           </p>
         </div>
+
+        {/* 測驗狀態提示（當測驗未開始或已結束時顯示） */}
+        {examStatus && examStatus !== 'STARTED' && (
+          <div
+            style={{
+              padding: '20px',
+              marginBottom: '24px',
+              backgroundColor: examStatus === 'CREATED' ? '#fff3cd' : '#f8d7da',
+              border: `2px solid ${examStatus === 'CREATED' ? '#ffc107' : '#dc3545'}`,
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+              {examStatus === 'CREATED' ? '⏳' : '🔒'}
+            </div>
+            <h2
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: '24px',
+                fontWeight: '600',
+                color: examStatus === 'CREATED' ? '#856404' : '#721c24',
+              }}
+            >
+              {examStatus === 'CREATED' ? '測驗尚未開始' : '測驗已結束'}
+            </h2>
+            <p
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: '16px',
+                color: examStatus === 'CREATED' ? '#856404' : '#721c24',
+                lineHeight: '1.6',
+              }}
+            >
+              {examStatus === 'CREATED'
+                ? `測驗「${examTitle}」尚未開始，請等待講師啟動測驗後再加入。`
+                : `測驗「${examTitle}」已經結束，無法再加入。`}
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '14px',
+                color: examStatus === 'CREATED' ? '#856404' : '#721c24',
+              }}
+            >
+              {examStatus === 'CREATED'
+                ? '請保持此頁面開啟，或稍後重新輸入加入碼。'
+                : '如有疑問，請聯繫講師。'}
+            </p>
+          </div>
+        )}
 
         {/* 表單 */}
         <form onSubmit={handleSubmit}>
@@ -286,7 +365,7 @@ export const StudentJoin: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               placeholder="請輸入您的姓名"
               required
-              disabled={isSubmitting}
+              disabled={isSubmitting || isFormDisabled}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -321,7 +400,7 @@ export const StudentJoin: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="請輸入您的 Email"
               required
-              disabled={isSubmitting}
+              disabled={isSubmitting || isFormDisabled}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -337,172 +416,103 @@ export const StudentJoin: React.FC = () => {
             />
           </div>
 
-          {/* 職業選擇 */}
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333',
-              }}
-            >
-              職業
-            </label>
-            <select
-              value={occupation}
-              onChange={(e) => {
-                setOccupation(e.target.value);
-                if (e.target.value !== '其他') {
-                  setCustomOccupation('');
-                }
-              }}
-              disabled={isSubmitting}
-              style={{
-                width: '100%',
-                padding: '14px',
-                fontSize: '16px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'border-color 0.2s',
-                backgroundColor: '#fff',
-                cursor: 'pointer',
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
-            >
-              <option value="">請選擇職業（選填）</option>
-              {commonOccupations.map((occ) => (
-                <option key={occ} value={occ}>
-                  {occ}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* 動態調查欄位 */}
+          {surveyFieldConfigs.map((config) => {
+            const fieldKey = config.fieldKey;
+            const fieldName = config.fieldName || fieldKey;
+            const isRequired = config.isRequired;
+            const options = config.options || [];
 
-          {/* 自訂職業輸入框（當選擇「其他」時顯示） */}
-          {occupation === '其他' && (
-            <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#333',
-                }}
-              >
-                請輸入您的職業
-              </label>
-              <input
-                type="text"
-                value={customOccupation}
-                onChange={(e) => setCustomOccupation(e.target.value)}
-                placeholder="請輸入您的職業"
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  fontSize: '16px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.2s',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+            return (
+              <div key={fieldKey} style={{ marginBottom: '24px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#333',
+                  }}
+                >
+                  {fieldName} {isRequired && <span style={{ color: '#f44336' }}>*</span>}
+                </label>
+                <select
+                  value={surveyData[fieldKey] || ''}
+                  onChange={(e) => {
+                    setSurveyData({ ...surveyData, [fieldKey]: e.target.value });
+                    if (e.target.value !== '其他') {
+                      setCustomSurveyData({ ...customSurveyData, [fieldKey]: '' });
+                    }
+                  }}
+                  required={isRequired}
+                  disabled={isSubmitting || isFormDisabled}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    fontSize: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                >
+                  <option value="">
+                    請選擇（{isRequired ? '必填' : '選填'}）
+                  </option>
+                  {options.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+
+                {/* 自訂輸入框（當選擇「其他」時顯示） */}
+                {surveyData[fieldKey] === '其他' && (
+                  <div style={{ marginTop: '12px' }}>
+                    <input
+                      type="text"
+                      value={customSurveyData[fieldKey] || ''}
+                      onChange={(e) =>
+                        setCustomSurveyData({ ...customSurveyData, [fieldKey]: e.target.value })
+                      }
+                      placeholder={`請輸入${fieldName}`}
+                      required={isRequired}
+                      disabled={isSubmitting || isFormDisabled}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        fontSize: '16px',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '8px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                      }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 頭像選擇（測驗未開始或已結束時隱藏） */}
+          {!isFormDisabled && (
+            <div style={{ marginBottom: '32px' }}>
+              <AvatarSelector
+                selectedAvatar={avatarIcon}
+                onSelect={setAvatarIcon}
+                size="medium"
+                columns={4}
               />
             </div>
           )}
-
-          {/* 動態調查欄位 */}
-          {surveyFields.map((field) => (
-            <div key={field.fieldKey} style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#333',
-                }}
-              >
-                {field.fieldName}
-              </label>
-              <select
-                value={surveyData[field.fieldKey] || ''}
-                onChange={(e) => {
-                  setSurveyData({ ...surveyData, [field.fieldKey]: e.target.value });
-                  if (e.target.value !== '其他') {
-                    setCustomSurveyData({ ...customSurveyData, [field.fieldKey]: '' });
-                  }
-                }}
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  fontSize: '16px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.2s',
-                  backgroundColor: '#fff',
-                  cursor: 'pointer',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
-              >
-                <option value="">請選擇（選填）</option>
-                {field.options.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-
-              {/* 自訂輸入框（當選擇「其他」時顯示） */}
-              {surveyData[field.fieldKey] === '其他' && (
-                <div style={{ marginTop: '12px' }}>
-                  <input
-                    type="text"
-                    value={customSurveyData[field.fieldKey] || ''}
-                    onChange={(e) =>
-                      setCustomSurveyData({ ...customSurveyData, [field.fieldKey]: e.target.value })
-                    }
-                    placeholder={`請輸入${field.fieldName}`}
-                    disabled={isSubmitting}
-                    style={{
-                      width: '100%',
-                      padding: '14px',
-                      fontSize: '16px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 0.2s',
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* 頭像選擇 */}
-          <div style={{ marginBottom: '32px' }}>
-            <AvatarSelector
-              selectedAvatar={avatarIcon}
-              onSelect={setAvatarIcon}
-              size="medium"
-              columns={4}
-            />
-          </div>
 
           {/* 錯誤訊息 */}
           {error && (
@@ -524,26 +534,26 @@ export const StudentJoin: React.FC = () => {
           {/* 提交按鈕 */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isFormDisabled}
             style={{
               width: '100%',
               padding: '16px',
               fontSize: '18px',
               fontWeight: '600',
               color: '#fff',
-              backgroundColor: isSubmitting ? '#999' : '#1976d2',
+              backgroundColor: (isSubmitting || isFormDisabled) ? '#999' : '#1976d2',
               border: 'none',
               borderRadius: '8px',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              cursor: (isSubmitting || isFormDisabled) ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              if (!isSubmitting) {
+              if (!isSubmitting && !isFormDisabled) {
                 e.currentTarget.style.backgroundColor = '#1565c0';
               }
             }}
             onMouseLeave={(e) => {
-              if (!isSubmitting) {
+              if (!isSubmitting && !isFormDisabled) {
                 e.currentTarget.style.backgroundColor = '#1976d2';
               }
             }}

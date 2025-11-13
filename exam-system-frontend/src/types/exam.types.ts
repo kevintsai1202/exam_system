@@ -15,6 +15,17 @@ export enum ChartType {
   PIE = 'PIE'    // 圓餅圖
 }
 
+// 測驗調查欄位配置介面
+export interface ExamSurveyFieldConfig {
+  id?: number;                 // 配置 ID (回應時)
+  fieldKey: string;           // 調查欄位鍵值
+  fieldName?: string;         // 調查欄位名稱 (回應時)
+  fieldType?: string;         // 調查欄位類型 (回應時)
+  options?: string[];         // 選項列表 (回應時)
+  isRequired: boolean;        // 是否必填
+  displayOrder: number;       // 顯示順序
+}
+
 // 選項介面
 export interface QuestionOption {
   id: number;              // 選項 ID
@@ -46,7 +57,7 @@ export interface Exam {
   createdAt: string;              // 建立時間
   startedAt?: string;             // 開始時間
   endedAt?: string;               // 結束時間
-  surveyFieldKeys?: string[];     // 啟用的調查欄位鍵值清單
+  surveyFieldConfigs?: ExamSurveyFieldConfig[];  // 測驗調查欄位配置列表
   questions?: Question[];         // 題目列表
   totalQuestions?: number;        // 總題目數
   totalStudents?: number;         // 總學員數
@@ -57,7 +68,7 @@ export interface CreateExamRequest {
   title: string;                  // 測驗標題
   description: string;            // 測驗描述
   questionTimeLimit: number;      // 每題倒數時間（秒）
-  surveyFieldKeys?: string[];     // 啟用的調查欄位鍵值清單
+  surveyFieldConfigs?: ExamSurveyFieldConfig[];  // 測驗調查欄位配置列表
   questions: CreateQuestionRequest[];  // 題目列表
 }
 

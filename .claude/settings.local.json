@@ -43,7 +43,20 @@
       "Bash(docker build:*)",
       "Bash(docker save:*)",
       "Bash(git push:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(JAVA_HOME=/d/java/jdk-21 PATH=/d/java/jdk-21/bin:$PATH mvn spring-boot:run:*)",
+      "Bash(Start-Sleep -Seconds 8)",
+      "Bash(python:*)",
+      "mcp__chrome-devtools__fill_form",
+      "Bash(JAVA_HOME=/d/java/jdk-21 PATH=/d/java/jdk-21/bin:$PATH mvn clean compile:*)",
+      "Bash(Start-Sleep -Seconds 15)",
+      "Bash(src/pages/ExamCreator.tsx)",
+      "Bash(Get-Process)",
+      "Bash(Where-Object {$_rocessName -eq 'node'})",
+      "Bash(Start-Sleep -Seconds 5)",
+      "mcp__chrome-devtools__handle_dialog",
+      "mcp__ide__getDiagnostics",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

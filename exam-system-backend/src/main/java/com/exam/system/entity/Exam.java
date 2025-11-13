@@ -5,9 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,12 +87,12 @@ public class Exam {
     private LocalDateTime currentQuestionStartedAt;
 
     /**
-     * 啟用的調查欄位鍵值清單（JSON 格式儲存）
-     * 例如: ["occupation", "age_range", "gender"]
+     * 測驗的調查欄位配置列表
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private List<String> surveyFieldKeys;
+    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
+    @Builder.Default
+    private List<ExamSurveyFieldConfig> surveyFieldConfigs = new ArrayList<>();
 
     /**
      * 測驗包含的題目列表

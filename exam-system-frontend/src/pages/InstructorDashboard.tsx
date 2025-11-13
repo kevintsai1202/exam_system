@@ -55,6 +55,13 @@ export const InstructorDashboard: React.FC = () => {
   };
 
   /**
+   * 前往調查欄位管理頁面
+   */
+  const handleManageSurveyFields = () => {
+    navigate('/instructor/survey-fields');
+  };
+
+  /**
    * 前往監控頁面
    */
   const handleMonitorExam = (examId: number) => {
@@ -260,11 +267,13 @@ export const InstructorDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* 建立測驗按鈕 */}
+        {/* 建立測驗與管理按鈕 */}
         <div
           style={{
             marginBottom: '32px',
-            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '16px',
           }}
         >
           <button
@@ -294,6 +303,35 @@ export const InstructorDashboard: React.FC = () => {
             }}
           >
             + 建立新測驗
+          </button>
+
+          <button
+            onClick={handleManageSurveyFields}
+            style={{
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#1976d2',
+              backgroundColor: '#fff',
+              border: '2px solid #1976d2',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(25, 118, 210, 0.1)',
+              transition: 'all 0.2s ease',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#e3f2fd';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(25, 118, 210, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(25, 118, 210, 0.1)';
+            }}
+          >
+            📊 管理調查欄位
           </button>
         </div>
 

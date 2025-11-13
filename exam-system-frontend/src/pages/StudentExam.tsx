@@ -7,6 +7,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { answerApi, studentApi } from '../services/apiService';
+import websocketService from '../services/websocketService';
 import { useStudentStore } from '../store';
 import { useExamWebSocket, useMediaQuery, useResponsiveValue, useMessage } from '../hooks';
 import OptionButton from '../components/OptionButton';
@@ -156,7 +157,7 @@ export const StudentExam: React.FC = () => {
     }
   }, [hasSubmitted, selectedOptionId]);
 
-  // WebSocket 連線
+  // WebSocket 連線（訂閱通用主題）
   const { isConnected } = useExamWebSocket(
     examId ? parseInt(examId) : null,
     {
@@ -165,6 +166,54 @@ export const StudentExam: React.FC = () => {
       onTimerUpdate: handleTimerExpired,
     }
   );
+
+  /**
+   * 訂閱個人專屬的題目推送主題
+   * 當學生在題目已推送後才加入時，後端會推送當前題目到個人主題
+   */
+  useEffect(() => {
+    if (!examId || !sessionId || !isConnected) return;
+
+    const examIdNum = parseInt(examId);
+
+    console.log('[StudentExam] 訂閱個人題目主題:', `/topic/exam/${examIdNum}/question/${sessionId}`);
+
+    // 訂閱個人題目主題
+    const topic = websocketService.subscribePersonalQuestion(
+      examIdNum,
+      sessionId,
+      handleQuestionStarted
+    );
+
+    // 清理函式
+    return () => {
+      console.log('[StudentExam] 取消訂閱個人題目主題');
+      websocketService.unsubscribe(topic);
+    };
+  }, [examId, sessionId, isConnected, handleQuestionStarted]);
+
+  /**
+   * 從 currentStudent 載入當前題目（如果有的話）
+   * 這解決了 WebSocket 訂閱時序問題：當學生加入時後端推送題目到個人主題，
+   * 但前端可能還沒完成訂閱，所以從 API 回應中取得當前題目作為備援
+   */
+  useEffect(() => {
+    if (!currentStudent?.currentQuestion || currentQuestion) return;
+
+    console.log('[StudentExam] 從 API 回應載入當前題目:', currentStudent.currentQuestion);
+
+    // 設定當前題目
+    setCurrentQuestion({
+      questionId: currentStudent.currentQuestion.questionId,
+      questionIndex: currentStudent.currentQuestion.questionIndex,
+      questionText: currentStudent.currentQuestion.questionText,
+      options: currentStudent.currentQuestion.options,
+      expiresAt: currentStudent.currentQuestion.expiresAt,
+    });
+
+    // 更新測驗狀態
+    setExamStatus('STARTED');
+  }, [currentStudent, currentQuestion]);
 
   /**
    * 送出答案

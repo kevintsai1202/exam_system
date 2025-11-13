@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -89,5 +90,38 @@ public class StudentDTO {
      * 測驗狀態（回應時使用）
      */
     private String examStatus;
+
+    /**
+     * 當前正在進行的題目（如果有的話）
+     */
+    private CurrentQuestionInfo currentQuestion;
+
+    /**
+     * 當前題目資訊（內部類別）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CurrentQuestionInfo {
+        private Long questionId;
+        private Integer questionIndex;
+        private String questionText;
+        private List<QuestionOptionInfo> options;
+        private LocalDateTime expiresAt;
+    }
+
+    /**
+     * 題目選項資訊（內部類別）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class QuestionOptionInfo {
+        private Long id;
+        private Integer optionOrder;
+        private String optionText;
+    }
 
 }

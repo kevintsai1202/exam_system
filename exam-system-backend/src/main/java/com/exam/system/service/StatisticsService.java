@@ -296,8 +296,7 @@ public class StatisticsService {
     public StatisticsDTO.SurveyFieldDistribution generateSurveyFieldDistribution(Long examId, String fieldKey) {
         log.debug("Generating survey field distribution for exam: {}, fieldKey: {}", examId, fieldKey);
 
-        // 檢查測驗是否存在
-        Exam exam = examRepository.findById(examId)
+        examRepository.findById(examId)
                 .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
 
         // 檢查調查欄位是否存在
@@ -306,11 +305,11 @@ public class StatisticsService {
 
         // 取得所有學員
         List<Student> students = studentRepository.findByExamId(examId);
-        long totalStudents = students.size();
+        final long totalStudents = students.size();
 
         // 統計各值的出現次數
         Map<String, Long> valueCountMap = new HashMap<>();
-        int respondentCount = 0;
+        int tempRespondentCount = 0;
 
         for (Student student : students) {
             String value = null;
@@ -326,9 +325,12 @@ public class StatisticsService {
 
             if (value != null && !value.trim().isEmpty()) {
                 valueCountMap.put(value, valueCountMap.getOrDefault(value, 0L) + 1);
-                respondentCount++;
+                tempRespondentCount++;
             }
         }
+
+        // 將 respondentCount 設為 final 以便在 Lambda 中使用
+        final int respondentCount = tempRespondentCount;
 
         // 建立值統計列表
         List<StatisticsDTO.SurveyFieldValueStatistic> valueStatistics = valueCountMap.entrySet().stream()
@@ -374,17 +376,18 @@ public class StatisticsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
 
         // 如果測驗沒有設定調查欄位，返回空列表
-        if (exam.getSurveyFieldKeys() == null || exam.getSurveyFieldKeys().isEmpty()) {
+        if (exam.getSurveyFieldConfigs() == null || exam.getSurveyFieldConfigs().isEmpty()) {
             return Collections.emptyList();
         }
 
         // 生成每個調查欄位的統計
-        return exam.getSurveyFieldKeys().stream()
-                .map(fieldKey -> {
+        return exam.getSurveyFieldConfigs().stream()
+                .map(config -> {
                     try {
+                        String fieldKey = config.getSurveyField().getFieldKey();
                         return generateSurveyFieldDistribution(examId, fieldKey);
                     } catch (ResourceNotFoundException e) {
-                        log.warn("Survey field not found: {}", fieldKey);
+                        log.warn("Survey field not found for config: {}", config.getId());
                         return null;
                     }
                 })

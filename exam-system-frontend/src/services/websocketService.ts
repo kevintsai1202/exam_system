@@ -156,10 +156,18 @@ class WebSocketService {
   }
 
   /**
-   * 訂閱題目推送
+   * 訂閱題目推送（通用主題，所有學員）
    */
   subscribeQuestion(examId: number, callback: SubscriptionCallback): string {
     const topic = `/topic/exam/${examId}/question`;
+    return this.subscribe(topic, callback);
+  }
+
+  /**
+   * 訂閱個人題目推送（個人專屬主題，用於後加入的學員）
+   */
+  subscribePersonalQuestion(examId: number, sessionId: string, callback: SubscriptionCallback): string {
+    const topic = `/topic/exam/${examId}/question/${sessionId}`;
     return this.subscribe(topic, callback);
   }
 

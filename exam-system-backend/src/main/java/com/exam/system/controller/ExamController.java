@@ -2,6 +2,8 @@ package com.exam.system.controller;
 
 import com.exam.system.dto.ExamDTO;
 import com.exam.system.dto.QuestionDTO;
+import com.exam.system.dto.ReorderRequestDTO;
+import com.exam.system.dto.ReorderResponseDTO;
 import com.exam.system.dto.StudentDTO;
 import com.exam.system.service.ExamService;
 import com.exam.system.service.StudentService;
@@ -191,6 +193,47 @@ public class ExamController {
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "Session 已清除");
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 調整題目順序
+     * PUT /api/exams/{examId}/questions/reorder
+     */
+    @PutMapping("/{examId}/questions/reorder")
+    public ResponseEntity<ReorderResponseDTO> reorderQuestions(
+            @PathVariable Long examId,
+            @Valid @RequestBody ReorderRequestDTO request) {
+        log.info("Reordering questions for exam: {}", examId);
+        examService.reorderQuestions(examId, request.getIds());
+
+        ReorderResponseDTO response = ReorderResponseDTO.builder()
+                .message("題目順序更新成功")
+                .referenceId(examId)
+                .newOrder(request.getIds())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 調整選項順序
+     * PUT /api/exams/{examId}/questions/{questionId}/options/reorder
+     */
+    @PutMapping("/{examId}/questions/{questionId}/options/reorder")
+    public ResponseEntity<ReorderResponseDTO> reorderOptions(
+            @PathVariable Long examId,
+            @PathVariable Long questionId,
+            @Valid @RequestBody ReorderRequestDTO request) {
+        log.info("Reordering options for question: {} in exam: {}", questionId, examId);
+        examService.reorderOptions(questionId, request.getIds());
+
+        ReorderResponseDTO response = ReorderResponseDTO.builder()
+                .message("選項順序更新成功")
+                .referenceId(questionId)
+                .newOrder(request.getIds())
+                .build();
 
         return ResponseEntity.ok(response);
     }

@@ -56,6 +56,12 @@ class ExamServiceTest {
     @Mock
     private ExamSecurityService examSecurityService;
 
+    @Mock
+    private SurveyFieldRepository surveyFieldRepository;
+
+    @Mock
+    private ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+
     private ExamService examService;
 
     private Exam testExam;
@@ -74,7 +80,9 @@ class ExamServiceTest {
                 qrCodeService,
                 webSocketService,
                 statisticsService,
-                examSecurityService
+                examSecurityService,
+                surveyFieldRepository,
+                examSurveyFieldConfigRepository
         );
 
         // 建立測試資料

@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { examApi, surveyFieldApi } from '../services/apiService';
 import { ChartType } from '../types';
-import type { CreateExamRequest, SurveyField } from '../types';
+import type { CreateExamRequest, SurveyField, ExamSurveyFieldConfig } from '../types';
 import { useMessage } from '../hooks';
 import { Message } from '../components/Message';
 
@@ -49,7 +49,7 @@ export const ExamCreator: React.FC = () => {
 
   // 調查欄位
   const [availableSurveyFields, setAvailableSurveyFields] = useState<SurveyField[]>([]);
-  const [selectedSurveyFieldKeys, setSelectedSurveyFieldKeys] = useState<string[]>([]);
+  const [surveyFieldConfigs, setSurveyFieldConfigs] = useState<ExamSurveyFieldConfig[]>([]);
   const [isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(true);
 
   // 題目列表
@@ -107,7 +107,7 @@ export const ExamCreator: React.FC = () => {
         setTitle(examData.title);
         setDescription(examData.description);
         setQuestionTimeLimit(examData.questionTimeLimit);
-        setSelectedSurveyFieldKeys(examData.surveyFieldKeys || []);
+        setSurveyFieldConfigs(examData.surveyFieldConfigs || []);
 
         // 轉換題目資料格式
         const formQuestions: FormQuestion[] = questionsData.questions.map((q: any) => ({
@@ -231,6 +231,68 @@ export const ExamCreator: React.FC = () => {
   };
 
   /**
+   * 上移題目
+   */
+  const handleMoveQuestionUp = (index: number) => {
+    if (index === 0) return; // 已經是第一題
+    const updated = [...questions];
+    // 交換位置
+    [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+    // 重新排序
+    updated.forEach((q, i) => {
+      q.questionOrder = i + 1;
+    });
+    setQuestions(updated);
+  };
+
+  /**
+   * 下移題目
+   */
+  const handleMoveQuestionDown = (index: number) => {
+    if (index === questions.length - 1) return; // 已經是最後一題
+    const updated = [...questions];
+    // 交換位置
+    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+    // 重新排序
+    updated.forEach((q, i) => {
+      q.questionOrder = i + 1;
+    });
+    setQuestions(updated);
+  };
+
+  /**
+   * 上移選項
+   */
+  const handleMoveOptionUp = (questionIndex: number, optionIndex: number) => {
+    if (optionIndex === 0) return; // 已經是第一個選項
+    const updated = [...questions];
+    const options = updated[questionIndex].options;
+    // 交換位置
+    [options[optionIndex - 1], options[optionIndex]] = [options[optionIndex], options[optionIndex - 1]];
+    // 重新排序
+    options.forEach((opt, i) => {
+      opt.optionOrder = i + 1;
+    });
+    setQuestions(updated);
+  };
+
+  /**
+   * 下移選項
+   */
+  const handleMoveOptionDown = (questionIndex: number, optionIndex: number) => {
+    const updated = [...questions];
+    const options = updated[questionIndex].options;
+    if (optionIndex === options.length - 1) return; // 已經是最後一個選項
+    // 交換位置
+    [options[optionIndex], options[optionIndex + 1]] = [options[optionIndex + 1], options[optionIndex]];
+    // 重新排序
+    options.forEach((opt, i) => {
+      opt.optionOrder = i + 1;
+    });
+    setQuestions(updated);
+  };
+
+  /**
    * 表單驗證
    */
   const validateForm = (): string | null => {
@@ -282,7 +344,7 @@ export const ExamCreator: React.FC = () => {
         title,
         description,
         questionTimeLimit,
-        surveyFieldKeys: selectedSurveyFieldKeys.length > 0 ? selectedSurveyFieldKeys : undefined,
+        surveyFieldConfigs: surveyFieldConfigs.length > 0 ? surveyFieldConfigs : undefined,
         questions: questions.map((q) => ({
           questionOrder: q.questionOrder,
           questionText: q.questionText,
@@ -493,7 +555,7 @@ export const ExamCreator: React.FC = () => {
                   color: '#333',
                 }}
               >
-                📊 調查欄位設定（選填）
+                📊 調查欄位設定
               </label>
               <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#666', lineHeight: '1.6' }}>
                 選擇學員加入時需要填寫的調查資訊，如職業、年齡層等。系統將自動統計並顯示圖表。
@@ -508,72 +570,149 @@ export const ExamCreator: React.FC = () => {
                   目前沒有可用的調查欄位
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {availableSurveyFields.map((field) => {
-                    const isSelected = selectedSurveyFieldKeys.includes(field.fieldKey);
+                    // 查找該欄位的配置
+                    const config = surveyFieldConfigs.find(c => c.fieldKey === field.fieldKey);
+                    const isSelected = !!config;
+
                     return (
-                      <label
+                      <div
                         key={field.fieldKey}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 16px',
+                          padding: '16px',
                           border: isSelected ? '2px solid #1976d2' : '1px solid #e0e0e0',
                           borderRadius: '8px',
                           backgroundColor: isSelected ? '#e3f2fd' : '#fff',
-                          cursor: 'pointer',
                           transition: 'all 0.2s',
-                          userSelect: 'none',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = '#1976d2';
-                            e.currentTarget.style.backgroundColor = '#f5f5f5';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = '#e0e0e0';
-                            e.currentTarget.style.backgroundColor = '#fff';
-                          }
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedSurveyFieldKeys([...selectedSurveyFieldKeys, field.fieldKey]);
-                            } else {
-                              setSelectedSurveyFieldKeys(
-                                selectedSurveyFieldKeys.filter((key) => key !== field.fieldKey)
-                              );
-                            }
-                          }}
+                        {/* 欄位選擇 Checkbox */}
+                        <label
                           style={{
-                            marginRight: '8px',
-                            width: '18px',
-                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
                             cursor: 'pointer',
+                            userSelect: 'none',
+                            marginBottom: isSelected ? '12px' : '0',
                           }}
-                        />
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
-                            {field.fieldName}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // 新增配置，預設為選填
+                                setSurveyFieldConfigs([
+                                  ...surveyFieldConfigs,
+                                  {
+                                    fieldKey: field.fieldKey,
+                                    isRequired: false,
+                                    displayOrder: surveyFieldConfigs.length,
+                                  }
+                                ]);
+                              } else {
+                                // 移除配置
+                                setSurveyFieldConfigs(
+                                  surveyFieldConfigs.filter((c) => c.fieldKey !== field.fieldKey)
+                                );
+                              }
+                            }}
+                            style={{
+                              marginRight: '8px',
+                              width: '18px',
+                              height: '18px',
+                              cursor: 'pointer',
+                            }}
+                          />
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                              {field.fieldName}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                              {field.options.length} 個選項
+                            </div>
                           </div>
-                          <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
-                            {field.options.length} 個選項
+                        </label>
+
+                        {/* 必填/選填選項（僅在選中時顯示） */}
+                        {isSelected && (
+                          <div
+                            style={{
+                              marginLeft: '26px',
+                              paddingLeft: '12px',
+                              borderLeft: '2px solid #1976d2',
+                            }}
+                          >
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                              欄位設定：
+                            </div>
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`required-${field.fieldKey}`}
+                                  checked={!config?.isRequired}
+                                  onChange={() => {
+                                    setSurveyFieldConfigs(
+                                      surveyFieldConfigs.map((c) =>
+                                        c.fieldKey === field.fieldKey
+                                          ? { ...c, isRequired: false }
+                                          : c
+                                      )
+                                    );
+                                  }}
+                                  style={{ marginRight: '6px' }}
+                                />
+                                選填
+                              </label>
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`required-${field.fieldKey}`}
+                                  checked={config?.isRequired}
+                                  onChange={() => {
+                                    setSurveyFieldConfigs(
+                                      surveyFieldConfigs.map((c) =>
+                                        c.fieldKey === field.fieldKey
+                                          ? { ...c, isRequired: true }
+                                          : c
+                                      )
+                                    );
+                                  }}
+                                  style={{ marginRight: '6px' }}
+                                />
+                                必填 <span style={{ color: '#f44336' }}>*</span>
+                              </label>
+                            </div>
                           </div>
-                        </div>
-                      </label>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               )}
 
-              {selectedSurveyFieldKeys.length > 0 && (
+              {surveyFieldConfigs.length > 0 && (
                 <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '6px', fontSize: '13px', color: '#2e7d32' }}>
-                  ✓ 已選擇 {selectedSurveyFieldKeys.length} 個調查欄位
+                  ✓ 已選擇 {surveyFieldConfigs.length} 個調查欄位
+                  （必填: {surveyFieldConfigs.filter(c => c.isRequired).length} 個，
+                  選填: {surveyFieldConfigs.filter(c => !c.isRequired).length} 個）
                 </div>
               )}
             </div>
@@ -647,23 +786,64 @@ export const ExamCreator: React.FC = () => {
                   >
                     第 {qIndex + 1} 題
                   </h3>
-                  {questions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveQuestion(qIndex)}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '12px',
-                        color: '#f44336',
-                        backgroundColor: '#fff',
-                        border: '1px solid #f44336',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      刪除題目
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* 上移按鈕 */}
+                    {qIndex > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleMoveQuestionUp(qIndex)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          color: '#1976d2',
+                          backgroundColor: '#fff',
+                          border: '1px solid #1976d2',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                        title="上移"
+                      >
+                        ↑
+                      </button>
+                    )}
+                    {/* 下移按鈕 */}
+                    {qIndex < questions.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleMoveQuestionDown(qIndex)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          color: '#1976d2',
+                          backgroundColor: '#fff',
+                          border: '1px solid #1976d2',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                        title="下移"
+                      >
+                        ↓
+                      </button>
+                    )}
+                    {/* 刪除按鈕 */}
+                    {questions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQuestion(qIndex)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          color: '#f44336',
+                          backgroundColor: '#fff',
+                          border: '1px solid #f44336',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        刪除題目
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* 題目文字 */}
@@ -773,23 +953,64 @@ export const ExamCreator: React.FC = () => {
                           outline: 'none',
                         }}
                       />
-                      {question.options.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveOption(qIndex, oIndex)}
-                          style={{
-                            padding: '8px 12px',
-                            fontSize: '12px',
-                            color: '#f44336',
-                            backgroundColor: '#fff',
-                            border: '1px solid #f44336',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          刪除
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {/* 上移按鈕 */}
+                        {oIndex > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveOptionUp(qIndex, oIndex)}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              color: '#1976d2',
+                              backgroundColor: '#fff',
+                              border: '1px solid #1976d2',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                            title="上移"
+                          >
+                            ↑
+                          </button>
+                        )}
+                        {/* 下移按鈕 */}
+                        {oIndex < question.options.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveOptionDown(qIndex, oIndex)}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              color: '#1976d2',
+                              backgroundColor: '#fff',
+                              border: '1px solid #1976d2',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                            title="下移"
+                          >
+                            ↓
+                          </button>
+                        )}
+                        {/* 刪除按鈕 */}
+                        {question.options.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(qIndex, oIndex)}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              color: '#f44336',
+                              backgroundColor: '#fff',
+                              border: '1px solid #f44336',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            刪除
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -983,3 +1204,4 @@ export const ExamCreator: React.FC = () => {
 };
 
 export default ExamCreator;
+

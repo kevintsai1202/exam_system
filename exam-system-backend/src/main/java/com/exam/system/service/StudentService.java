@@ -4,10 +4,12 @@ import com.exam.system.dto.StudentDTO;
 import com.exam.system.dto.WebSocketMessage;
 import com.exam.system.entity.Exam;
 import com.exam.system.entity.ExamStatus;
+import com.exam.system.entity.ExamSurveyFieldConfig;
 import com.exam.system.entity.Student;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.ExamRepository;
+import com.exam.system.repository.ExamSurveyFieldConfigRepository;
 import com.exam.system.repository.StudentRepository;
 import com.exam.system.websocket.WebSocketService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final ExamRepository examRepository;
     private final WebSocketService webSocketService;
+    private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
 
     /**
      * 學員加入測驗
@@ -54,6 +57,34 @@ public class StudentService {
         }
         if (exam.getStatus() != ExamStatus.STARTED) {
             throw new BusinessException("EXAM_NOT_STARTED", "測驗尚未開始");
+        }
+
+        // 驗證必填調查欄位
+        List<ExamSurveyFieldConfig> requiredConfigs = examSurveyFieldConfigRepository
+                .findByExamIdOrderByDisplayOrderAsc(exam.getId())
+                .stream()
+                .filter(ExamSurveyFieldConfig::getIsRequired)
+                .collect(Collectors.toList());
+
+        for (ExamSurveyFieldConfig config : requiredConfigs) {
+            String fieldKey = config.getSurveyField().getFieldKey();
+            String fieldName = config.getSurveyField().getFieldName();
+
+            // 檢查 occupation 欄位（向下兼容）
+            if ("occupation".equals(fieldKey)) {
+                if (studentDTO.getOccupation() == null || studentDTO.getOccupation().trim().isEmpty()) {
+                    throw new BusinessException("REQUIRED_FIELD_MISSING",
+                            String.format("必填欄位「%s」不能為空", fieldName));
+                }
+            } else {
+                // 檢查 surveyData 中的其他欄位
+                if (studentDTO.getSurveyData() == null ||
+                    studentDTO.getSurveyData().get(fieldKey) == null ||
+                    studentDTO.getSurveyData().get(fieldKey).trim().isEmpty()) {
+                    throw new BusinessException("REQUIRED_FIELD_MISSING",
+                            String.format("必填欄位「%s」不能為空", fieldName));
+                }
+            }
         }
 
         // 生成唯一的 sessionId
@@ -85,7 +116,53 @@ public class StudentService {
 
         webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
 
+        // 如果當前有正在進行的題目，推送給新加入的學員
+        if (exam.getCurrentQuestionStartedAt() != null && exam.getCurrentQuestionIndex() < exam.getQuestions().size()) {
+            sendCurrentQuestionToStudent(student.getSessionId(), exam);
+        }
+
         return convertToDTO(student, exam);
+    }
+
+    /**
+     * 推送當前題目給指定學員
+     *
+     * @param sessionId 學員 Session ID
+     * @param exam 測驗實體
+     */
+    private void sendCurrentQuestionToStudent(String sessionId, Exam exam) {
+        try {
+            var question = exam.getQuestions().get(exam.getCurrentQuestionIndex());
+
+            Map<String, Object> questionData = new HashMap<>();
+            questionData.put("questionId", question.getId());
+            questionData.put("questionIndex", exam.getCurrentQuestionIndex());
+            questionData.put("questionText", question.getQuestionText());
+            questionData.put("expiresAt", exam.getCurrentQuestionStartedAt()
+                    .plusSeconds(exam.getQuestionTimeLimit())
+                    .toString());
+
+            // 選項列表（不包含正確答案）
+            List<Map<String, Object>> optionsList = question.getOptions().stream()
+                    .map(opt -> {
+                        Map<String, Object> optMap = new HashMap<>();
+                        optMap.put("id", opt.getId());
+                        optMap.put("optionOrder", opt.getOptionOrder());
+                        optMap.put("optionText", opt.getOptionText());
+                        return optMap;
+                    })
+                    .collect(Collectors.toList());
+            questionData.put("options", optionsList);
+
+            // 發送給特定學員（使用個人訂閱主題）
+            String destination = String.format("/topic/exam/%d/question/%s",
+                    exam.getId(), sessionId);
+            webSocketService.broadcast(destination, WebSocketMessage.questionStarted(questionData));
+
+            log.info("Sent current question to newly joined student at {}", destination);
+        } catch (Exception e) {
+            log.error("Failed to send current question to student: {}", sessionId, e);
+        }
     }
 
     /**
@@ -128,7 +205,7 @@ public class StudentService {
      * 將 Student 實體轉換為 DTO
      */
     private StudentDTO convertToDTO(Student student, Exam exam) {
-        return StudentDTO.builder()
+        StudentDTO.StudentDTOBuilder builder = StudentDTO.builder()
                 .id(student.getId())
                 .sessionId(student.getSessionId())
                 .examId(exam.getId())
@@ -139,8 +216,35 @@ public class StudentService {
                 .avatarIcon(student.getAvatarIcon())
                 .totalScore(student.getTotalScore())
                 .joinedAt(student.getJoinedAt())
-                .examStatus(exam.getStatus().name())
-                .build();
+                .examStatus(exam.getStatus().name());
+
+        // 如果有正在進行的題目，包含當前題目資訊
+        if (exam.getCurrentQuestionStartedAt() != null && exam.getCurrentQuestionIndex() < exam.getQuestions().size()) {
+            var question = exam.getQuestions().get(exam.getCurrentQuestionIndex());
+            var expiresAt = exam.getCurrentQuestionStartedAt().plusSeconds(exam.getQuestionTimeLimit());
+
+            // 建立選項列表（不包含正確答案）
+            List<StudentDTO.QuestionOptionInfo> optionsList = question.getOptions().stream()
+                    .map(opt -> StudentDTO.QuestionOptionInfo.builder()
+                            .id(opt.getId())
+                            .optionOrder(opt.getOptionOrder())
+                            .optionText(opt.getOptionText())
+                            .build())
+                    .collect(Collectors.toList());
+
+            // 建立當前題目資訊
+            StudentDTO.CurrentQuestionInfo currentQuestion = StudentDTO.CurrentQuestionInfo.builder()
+                    .questionId(question.getId())
+                    .questionIndex(exam.getCurrentQuestionIndex())
+                    .questionText(question.getQuestionText())
+                    .options(optionsList)
+                    .expiresAt(expiresAt)
+                    .build();
+
+            builder.currentQuestion(currentQuestion);
+        }
+
+        return builder.build();
     }
 
 }

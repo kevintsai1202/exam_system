@@ -99,6 +99,10 @@ Exam (測驗)
   │                │
   │                └─── 1:N ───> QuestionOption (選項)
   │
+  ├─── 1:N ───> ExamSurveyFieldConfig (測驗調查欄位配置)
+  │                │
+  │                └─── N:1 ───> SurveyField (調查欄位)
+  │
   └─── 1:N ───> Student (學員)
                    │
                    └─── 1:N ───> Answer (答案)
@@ -139,6 +143,28 @@ Exam (測驗)
 | optionOrder | Integer | 選項順序                |
 | optionText  | String  | 選項內容                |
 
+#### ExamSurveyFieldConfig (測驗調查欄位配置表)
+| 欄位名稱      | 類型    | 說明                            |
+|---------------|---------|--------------------------------|
+| id            | Long    | 主鍵                            |
+| examId        | Long    | 外鍵 (Exam.id)                  |
+| surveyFieldId | Long    | 外鍵 (SurveyField.id)           |
+| isRequired    | Boolean | 是否必填                        |
+| displayOrder  | Integer | 顯示順序                        |
+
+#### SurveyField (調查欄位表)
+| 欄位名稱     | 類型          | 說明                          |
+|--------------|---------------|------------------------------|
+| id           | Long          | 主鍵                          |
+| fieldKey     | String        | 欄位唯一鍵（如 "occupation"） |
+| fieldName    | String        | 欄位顯示名稱（如 "職業"）      |
+| fieldType    | String        | 欄位類型（SELECT）             |
+| options      | JSON          | 選項列表                      |
+| isActive     | Boolean       | 是否啟用                      |
+| displayOrder | Integer       | 全域顯示順序                  |
+| createdAt    | LocalDateTime | 建立時間                      |
+| updatedAt    | LocalDateTime | 更新時間                      |
+
 #### Student (學員表)
 | 欄位名稱    | 類型          | 說明                         |
 |-------------|---------------|------------------------------|
@@ -147,6 +173,8 @@ Exam (測驗)
 | sessionId   | String        | Session ID（UUID）           |
 | name        | String        | 學員姓名                     |
 | email       | String        | 學員 Email                   |
+| occupation  | String        | 學員職業（保留向下兼容）      |
+| surveyData  | JSON          | 調查資料（其他調查欄位回答）  |
 | avatarIcon  | String        | 頭像圖示名稱                 |
 | totalScore  | Integer       | 累積總分                     |
 | joinedAt    | LocalDateTime | 加入時間                     |
@@ -169,6 +197,13 @@ Exam (測驗)
 3. 設定每題的統計圖表類型
 4. 系統生成唯一 accessCode
 5. 儲存測驗資料（狀態：CREATED）
+
+### 3.1.1 題目與選項順序調整流程
+1. 講師在編輯測驗時可調整題目順序（拖曳或按鈕）
+2. 講師在編輯題目時可調整選項順序（拖曳或按鈕）
+3. 系統更新對應的 `questionOrder` 或 `optionOrder` 欄位
+4. 前端即時反映順序變更
+5. 限制：僅在測驗狀態為 CREATED 時可調整順序
 
 ### 3.2 講師啟動測驗流程
 1. 講師點擊「啟動測驗」
@@ -283,6 +318,75 @@ public StatisticsDTO generateStatistics(Long examId, Long questionId) {
     webSocketService.broadcast("/topic/exam/" + examId + "/statistics", dto);
 
     return dto;
+}
+```
+
+### 4.4 調整題目順序
+```java
+// ExamService.java
+@Transactional
+public void reorderQuestions(Long examId, List<Long> questionIds) {
+    // 1. 驗證測驗狀態（僅 CREATED 狀態可調整）
+    Exam exam = examRepository.findById(examId);
+    if (exam.getStatus() != ExamStatus.CREATED) {
+        throw new BusinessException("測驗已啟動，無法調整順序");
+    }
+
+    // 2. 驗證題目數量與所屬關係
+    List<Question> questions = questionRepository.findByExamId(examId);
+    if (questions.size() != questionIds.size()) {
+        throw new BusinessException("題目數量不符");
+    }
+
+    // 3. 更新每個題目的順序
+    for (int i = 0; i < questionIds.size(); i++) {
+        Long questionId = questionIds.get(i);
+        Question question = questionRepository.findById(questionId)
+            .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
+
+        if (!question.getExam().getId().equals(examId)) {
+            throw new BusinessException("題目不屬於此測驗");
+        }
+
+        question.setQuestionOrder(i + 1);  // 從 1 開始
+        questionRepository.save(question);
+    }
+}
+```
+
+### 4.5 調整選項順序
+```java
+// ExamService.java
+@Transactional
+public void reorderOptions(Long questionId, List<Long> optionIds) {
+    // 1. 驗證題目所屬測驗狀態
+    Question question = questionRepository.findById(questionId)
+        .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
+
+    Exam exam = question.getExam();
+    if (exam.getStatus() != ExamStatus.CREATED) {
+        throw new BusinessException("測驗已啟動，無法調整順序");
+    }
+
+    // 2. 驗證選項數量與所屬關係
+    List<QuestionOption> options = questionOptionRepository.findByQuestionId(questionId);
+    if (options.size() != optionIds.size()) {
+        throw new BusinessException("選項數量不符");
+    }
+
+    // 3. 更新每個選項的順序
+    for (int i = 0; i < optionIds.size(); i++) {
+        Long optionId = optionIds.get(i);
+        QuestionOption option = questionOptionRepository.findById(optionId)
+            .orElseThrow(() -> new ResourceNotFoundException("QuestionOption", optionId));
+
+        if (!option.getQuestion().getId().equals(questionId)) {
+            throw new BusinessException("選項不屬於此題目");
+        }
+
+        option.setOptionOrder(i + 1);  // 從 1 開始
+        questionOptionRepository.save(option);
+    }
 }
 ```
 

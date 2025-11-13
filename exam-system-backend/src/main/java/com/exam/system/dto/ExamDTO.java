@@ -113,10 +113,10 @@ public class ExamDTO {
     private Integer totalStudents;
 
     /**
-     * 啟用的調查欄位鍵值清單
-     * 例如: ["occupation", "age_range", "gender"]
+     * 測驗的調查欄位配置列表
      */
-    private List<String> surveyFieldKeys;
+    @Valid
+    private List<ExamSurveyFieldConfigDTO> surveyFieldConfigs;
 
     /**
      * 題目列表

@@ -216,6 +216,28 @@ export const examApi = {
   clearExamSession: async (examId: number): Promise<void> => {
     await apiClient.delete(`/exams/${examId}/session`);
   },
+
+  /**
+   * 調整題目順序
+   * PUT /api/exams/{examId}/questions/reorder
+   */
+  reorderQuestions: async (examId: number, questionIds: number[]): Promise<{ message: string; referenceId: number; newOrder: number[] }> => {
+    const response = await apiClient.put(`/exams/${examId}/questions/reorder`, {
+      ids: questionIds,
+    });
+    return response.data;
+  },
+
+  /**
+   * 調整選項順序
+   * PUT /api/exams/{examId}/questions/{questionId}/options/reorder
+   */
+  reorderOptions: async (examId: number, questionId: number, optionIds: number[]): Promise<{ message: string; referenceId: number; newOrder: number[] }> => {
+    const response = await apiClient.put(`/exams/${examId}/questions/${questionId}/options/reorder`, {
+      ids: optionIds,
+    });
+    return response.data;
+  },
 };
 
 /**
@@ -378,6 +400,33 @@ export const surveyFieldApi = {
   getSurveyFieldByKey: async (fieldKey: string): Promise<SurveyField> => {
     const response = await apiClient.get<SurveyField>(`/survey-fields/by-key/${fieldKey}`);
     return response.data;
+  },
+
+  /**
+   * 建立調查欄位
+   * POST /api/survey-fields
+   */
+  createSurveyField: async (data: Omit<SurveyField, 'id' | 'createdAt' | 'updatedAt'>): Promise<SurveyField> => {
+    const response = await apiClient.post<SurveyField>('/survey-fields', data);
+    return response.data;
+  },
+
+  /**
+   * 更新調查欄位
+   * PUT /api/survey-fields/{id}
+   * 注意：fieldKey 雖然不可修改，但後端驗證需要此欄位
+   */
+  updateSurveyField: async (id: number, data: Omit<SurveyField, 'id' | 'createdAt' | 'updatedAt'>): Promise<SurveyField> => {
+    const response = await apiClient.put<SurveyField>(`/survey-fields/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * 刪除調查欄位
+   * DELETE /api/survey-fields/{id}
+   */
+  deleteSurveyField: async (id: number): Promise<void> => {
+    await apiClient.delete(`/survey-fields/${id}`);
   },
 };
 

@@ -35,7 +35,8 @@ public class ExamService {
     private final WebSocketService webSocketService;
     private final StatisticsService statisticsService;
     private final ExamSecurityService examSecurityService;
-
+    private final SurveyFieldRepository surveyFieldRepository;
+    private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
     /**
      * 建構子注入（使用 @Lazy 解決循環依賴）
      */
@@ -47,7 +48,9 @@ public class ExamService {
             QRCodeService qrCodeService,
             WebSocketService webSocketService,
             @Lazy StatisticsService statisticsService,
-            ExamSecurityService examSecurityService
+            ExamSecurityService examSecurityService,
+            SurveyFieldRepository surveyFieldRepository,
+            ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository
     ) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
@@ -57,6 +60,8 @@ public class ExamService {
         this.webSocketService = webSocketService;
         this.statisticsService = statisticsService;
         this.examSecurityService = examSecurityService;
+        this.surveyFieldRepository = surveyFieldRepository;
+        this.examSurveyFieldConfigRepository = examSurveyFieldConfigRepository;
     }
 
     /**
@@ -84,11 +89,29 @@ public class ExamService {
                         .status(ExamStatus.CREATED)
                         .currentQuestionIndex(0)
                         .accessCode(accessCode)
-                        .surveyFieldKeys(examDTO.getSurveyFieldKeys())
                         .build();
 
                 // 儲存測驗以獲得 ID（如果 accessCode 重複會拋出 DataIntegrityViolationException）
                 exam = examRepository.save(exam);
+
+                // 建立調查欄位配置
+                if (examDTO.getSurveyFieldConfigs() != null && !examDTO.getSurveyFieldConfigs().isEmpty()) {
+                    for (ExamSurveyFieldConfigDTO configDTO : examDTO.getSurveyFieldConfigs()) {
+                        // 根據 fieldKey 找到對應的 SurveyField
+                        SurveyField surveyField = surveyFieldRepository.findByFieldKey(configDTO.getFieldKey())
+                                .orElseThrow(() -> new ResourceNotFoundException("SurveyField", "fieldKey", configDTO.getFieldKey()));
+
+                        // 建立配置
+                        ExamSurveyFieldConfig config = ExamSurveyFieldConfig.builder()
+                                .exam(exam)
+                                .surveyField(surveyField)
+                                .isRequired(configDTO.getIsRequired())
+                                .displayOrder(configDTO.getDisplayOrder())
+                                .build();
+
+                        exam.getSurveyFieldConfigs().add(config);
+                    }
+                }
 
                 // 建立題目和選項
                 for (QuestionDTO questionDTO : examDTO.getQuestions()) {
@@ -96,7 +119,7 @@ public class ExamService {
                     exam.addQuestion(question);
                 }
 
-                // 再次儲存以包含題目
+                // 再次儲存以包含題目與調查欄位配置
                 exam = examRepository.save(exam);
 
                 log.info("Exam created successfully with ID: {} and accessCode: {} (attempt: {})",
@@ -363,6 +386,19 @@ public class ExamService {
 
                 newExam = examRepository.save(newExam);
 
+                // 複製調查欄位配置
+                List<ExamSurveyFieldConfig> originalSurveyFieldConfigs =
+                        examSurveyFieldConfigRepository.findByExamIdOrderByDisplayOrderAsc(examId);
+                for (ExamSurveyFieldConfig originalConfig : originalSurveyFieldConfigs) {
+                    ExamSurveyFieldConfig newConfig = ExamSurveyFieldConfig.builder()
+                            .exam(newExam)
+                            .surveyField(originalConfig.getSurveyField())
+                            .isRequired(originalConfig.getIsRequired())
+                            .displayOrder(originalConfig.getDisplayOrder())
+                            .build();
+                    newExam.getSurveyFieldConfigs().add(newConfig);
+                }
+
                 // 複製所有題目
                 List<Question> originalQuestions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
                 for (Question originalQuestion : originalQuestions) {
@@ -452,6 +488,28 @@ public class ExamService {
         exam.setDescription(examDTO.getDescription());
         exam.setQuestionTimeLimit(examDTO.getQuestionTimeLimit());
 
+        // 清空並更新調查欄位配置
+        exam.getSurveyFieldConfigs().clear();
+        examSurveyFieldConfigRepository.flush();  // 立即同步到資料庫
+
+        if (examDTO.getSurveyFieldConfigs() != null && !examDTO.getSurveyFieldConfigs().isEmpty()) {
+            for (ExamSurveyFieldConfigDTO configDTO : examDTO.getSurveyFieldConfigs()) {
+                // 根據 fieldKey 找到對應的 SurveyField
+                SurveyField surveyField = surveyFieldRepository.findByFieldKey(configDTO.getFieldKey())
+                        .orElseThrow(() -> new ResourceNotFoundException("SurveyField", "fieldKey", configDTO.getFieldKey()));
+
+                // 建立新的配置
+                ExamSurveyFieldConfig config = ExamSurveyFieldConfig.builder()
+                        .exam(exam)
+                        .surveyField(surveyField)
+                        .isRequired(configDTO.getIsRequired())
+                        .displayOrder(configDTO.getDisplayOrder())
+                        .build();
+
+                exam.getSurveyFieldConfigs().add(config);
+            }
+        }
+
         // 清空並刪除所有舊題目（cascade 會自動刪除選項）
         exam.getQuestions().clear();  // 先清空集合
         questionRepository.flush();    // 立即同步到資料庫
@@ -528,6 +586,19 @@ public class ExamService {
     private ExamDTO convertToDTO(Exam exam) {
         long totalStudents = studentRepository.countByExamId(exam.getId());
 
+        // 轉換調查欄位配置
+        List<ExamSurveyFieldConfigDTO> surveyFieldConfigDTOs = exam.getSurveyFieldConfigs().stream()
+                .map(config -> ExamSurveyFieldConfigDTO.builder()
+                        .id(config.getId())
+                        .fieldKey(config.getSurveyField().getFieldKey())
+                        .fieldName(config.getSurveyField().getFieldName())
+                        .fieldType(config.getSurveyField().getFieldType())
+                        .options(config.getSurveyField().getOptions())
+                        .isRequired(config.getIsRequired())
+                        .displayOrder(config.getDisplayOrder())
+                        .build())
+                .collect(Collectors.toList());
+
         ExamDTO dto = ExamDTO.builder()
                 .id(exam.getId())
                 .title(exam.getTitle())
@@ -542,7 +613,7 @@ public class ExamService {
                 .endedAt(exam.getEndedAt())
                 .totalQuestions(exam.getQuestions().size())
                 .totalStudents((int) totalStudents)
-                .surveyFieldKeys(exam.getSurveyFieldKeys())
+                .surveyFieldConfigs(surveyFieldConfigDTOs)
                 .build();
 
         return dto;
@@ -594,6 +665,105 @@ public class ExamService {
             examRepository.save(exam);
             log.info("Reset exam {} to initial STARTED state (no questions pushed)", examId);
         }
+    }
+
+    /**
+     * 調整題目順序
+     *
+     * @param examId 測驗 ID
+     * @param questionIds 題目 ID 列表（新順序）
+     */
+    @Transactional
+    public void reorderQuestions(Long examId, List<Long> questionIds) {
+        log.info("Reordering questions for exam: {}, new order: {}", examId, questionIds);
+
+        // 1. 驗證測驗狀態（僅 CREATED 狀態可調整）
+        Exam exam = findExamById(examId);
+        if (exam.getStatus() != ExamStatus.CREATED) {
+            throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已啟動或結束，無法調整順序");
+        }
+
+        // 2. 取得測驗的所有題目
+        List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+
+        // 3. 驗證題目數量
+        if (questions.size() != questionIds.size()) {
+            throw new BusinessException("INVALID_QUESTION_COUNT", "題目數量不符");
+        }
+
+        // 4. 驗證所有題目 ID 都屬於此測驗
+        List<Long> existingQuestionIds = questions.stream()
+                .map(Question::getId)
+                .collect(Collectors.toList());
+
+        for (Long questionId : questionIds) {
+            if (!existingQuestionIds.contains(questionId)) {
+                throw new BusinessException("INVALID_QUESTION_ID", "題目 ID " + questionId + " 不屬於此測驗");
+            }
+        }
+
+        // 5. 更新每個題目的順序
+        for (int i = 0; i < questionIds.size(); i++) {
+            Long questionId = questionIds.get(i);
+            Question question = questionRepository.findById(questionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
+
+            question.setQuestionOrder(i + 1);  // 從 1 開始
+            questionRepository.save(question);
+        }
+
+        log.info("Questions reordered successfully for exam: {}", examId);
+    }
+
+    /**
+     * 調整選項順序
+     *
+     * @param questionId 題目 ID
+     * @param optionIds 選項 ID 列表（新順序）
+     */
+    @Transactional
+    public void reorderOptions(Long questionId, List<Long> optionIds) {
+        log.info("Reordering options for question: {}, new order: {}", questionId, optionIds);
+
+        // 1. 驗證題目所屬測驗狀態
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
+
+        Exam exam = question.getExam();
+        if (exam.getStatus() != ExamStatus.CREATED) {
+            throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已啟動或結束，無法調整順序");
+        }
+
+        // 2. 取得題目的所有選項
+        List<QuestionOption> options = questionOptionRepository.findByQuestionIdOrderByOptionOrderAsc(questionId);
+
+        // 3. 驗證選項數量
+        if (options.size() != optionIds.size()) {
+            throw new BusinessException("INVALID_OPTION_COUNT", "選項數量不符");
+        }
+
+        // 4. 驗證所有選項 ID 都屬於此題目
+        List<Long> existingOptionIds = options.stream()
+                .map(QuestionOption::getId)
+                .collect(Collectors.toList());
+
+        for (Long optionId : optionIds) {
+            if (!existingOptionIds.contains(optionId)) {
+                throw new BusinessException("INVALID_OPTION_ID", "選項 ID " + optionId + " 不屬於此題目");
+            }
+        }
+
+        // 5. 更新每個選項的順序
+        for (int i = 0; i < optionIds.size(); i++) {
+            Long optionId = optionIds.get(i);
+            QuestionOption option = questionOptionRepository.findById(optionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("QuestionOption", optionId));
+
+            option.setOptionOrder(i + 1);  // 從 1 開始
+            questionOptionRepository.save(option);
+        }
+
+        log.info("Options reordered successfully for question: {}", questionId);
     }
 
 }

@@ -46,6 +46,18 @@
   "title": "Java 基礎測驗",
   "description": "測試 Java 基礎知識",
   "questionTimeLimit": 30,
+  "surveyFieldConfigs": [
+    {
+      "fieldKey": "occupation",
+      "isRequired": true,
+      "displayOrder": 1
+    },
+    {
+      "fieldKey": "age_range",
+      "isRequired": false,
+      "displayOrder": 2
+    }
+  ],
   "questions": [
     {
       "questionOrder": 1,
@@ -83,6 +95,26 @@
   "accessCode": "ABC123",
   "currentQuestionIndex": 0,
   "createdAt": "2025-09-30T10:00:00",
+  "surveyFieldConfigs": [
+    {
+      "id": 1,
+      "fieldKey": "occupation",
+      "fieldName": "職業",
+      "fieldType": "SELECT",
+      "options": ["學生", "工程師", "其他"],
+      "isRequired": true,
+      "displayOrder": 1
+    },
+    {
+      "id": 2,
+      "fieldKey": "age_range",
+      "fieldName": "年齡層",
+      "fieldType": "SELECT",
+      "options": ["18-25", "26-35", "36-45", "46+"],
+      "isRequired": false,
+      "displayOrder": 2
+    }
+  ],
   "questions": [
     {
       "id": 1,
@@ -374,6 +406,81 @@
   ]
 }
 ```
+
+### 1.8 調整題目順序
+
+**Endpoint**: `PUT /api/exams/{examId}/questions/reorder`
+
+**描述**: 調整測驗中的題目順序（僅限 CREATED 狀態）
+
+**Path Parameters**:
+- `examId` (Long): 測驗 ID
+
+**Request Body**:
+```json
+{
+  "questionIds": [3, 1, 2]
+}
+```
+
+**說明**:
+- `questionIds`: 題目 ID 的新順序陣列
+- 陣列中的 ID 順序即為新的題目順序
+- 必須包含該測驗的所有題目 ID
+- 僅在測驗狀態為 CREATED 時可調整
+
+**Response** (200 OK):
+```json
+{
+  "message": "題目順序更新成功",
+  "examId": 1,
+  "newOrder": [3, 1, 2]
+}
+```
+
+**錯誤回應**:
+- `400 Bad Request`: 題目數量不符或題目不屬於此測驗
+- `403 Forbidden`: 測驗已啟動，無法調整順序
+- `404 Not Found`: 測驗或題目不存在
+
+---
+
+### 1.9 調整選項順序
+
+**Endpoint**: `PUT /api/exams/{examId}/questions/{questionId}/options/reorder`
+
+**描述**: 調整題目中的選項順序（僅限 CREATED 狀態）
+
+**Path Parameters**:
+- `examId` (Long): 測驗 ID
+- `questionId` (Long): 題目 ID
+
+**Request Body**:
+```json
+{
+  "optionIds": [2, 3, 1]
+}
+```
+
+**說明**:
+- `optionIds`: 選項 ID 的新順序陣列
+- 陣列中的 ID 順序即為新的選項順序
+- 必須包含該題目的所有選項 ID
+- 僅在測驗狀態為 CREATED 時可調整
+
+**Response** (200 OK):
+```json
+{
+  "message": "選項順序更新成功",
+  "questionId": 1,
+  "newOrder": [2, 3, 1]
+}
+```
+
+**錯誤回應**:
+- `400 Bad Request`: 選項數量不符或選項不屬於此題目
+- `403 Forbidden`: 測驗已啟動，無法調整順序
+- `404 Not Found`: 測驗、題目或選項不存在
 
 ---
 
