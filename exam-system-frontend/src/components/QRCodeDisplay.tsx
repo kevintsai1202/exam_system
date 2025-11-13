@@ -4,7 +4,7 @@
  * 使用 qrcode.react 生成並顯示 QR Code
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 /**
@@ -40,6 +40,24 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
 }) => {
   // 使用 displayText 或 value 作為顯示文字
   const textToDisplay = displayText || value;
+
+  // 複製狀態
+  const [copied, setCopied] = useState(false);
+
+  /**
+   * 複製 URL 到剪貼簿
+   */
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      // 2 秒後重置狀態
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('複製失敗:', error);
+      alert('複製失敗，請手動複製');
+    }
+  };
   return (
     <div
       style={{
@@ -130,6 +148,36 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
           </p>
         </div>
       )}
+
+      {/* 複製 URL 按鈕 */}
+      <button
+        onClick={handleCopyUrl}
+        style={{
+          marginTop: '16px',
+          padding: '12px 24px',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          color: '#fff',
+          backgroundColor: copied ? '#4caf50' : '#1976d2',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}
+        onMouseEnter={(e) => {
+          if (!copied) {
+            e.currentTarget.style.backgroundColor = '#1565c0';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!copied) {
+            e.currentTarget.style.backgroundColor = '#1976d2';
+          }
+        }}
+      >
+        {copied ? '✓ 已複製!' : '📋 複製 URL'}
+      </button>
     </div>
   );
 };
