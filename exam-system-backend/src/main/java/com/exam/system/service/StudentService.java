@@ -49,8 +49,11 @@ public class StudentService {
                 .orElseThrow(() -> new BusinessException("INVALID_ACCESS_CODE", "無效的測驗代碼"));
 
         // 驗證測驗狀態（只能在 STARTED 狀態加入）
+        if (exam.getStatus() == ExamStatus.ENDED) {
+            throw new BusinessException("EXAM_ENDED", "測驗已結束");
+        }
         if (exam.getStatus() != ExamStatus.STARTED) {
-            throw new BusinessException("EXAM_NOT_STARTED", "測驗尚未開始或已結束，無法加入");
+            throw new BusinessException("EXAM_NOT_STARTED", "測驗尚未開始");
         }
 
         // 生成唯一的 sessionId

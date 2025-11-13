@@ -107,7 +107,14 @@ export const StudentJoin: React.FC = () => {
       // 導航至答題頁面
       navigate(`/student/exam/${student.examId}?sessionId=${encodeURIComponent(student.sessionId)}`);
     } catch (err: any) {
-      setError(err.message || '加入測驗失敗，請檢查加入碼是否正確');
+      // 顯示友善的錯誤訊息
+      const errorMessage = err.message || '加入測驗失敗，請檢查加入碼是否正確';
+      setError(errorMessage);
+
+      // 如果是測驗已結束的錯誤，可以記錄到 console 以便除錯
+      if (errorMessage.includes('測驗已結束') || errorMessage.includes('已結束')) {
+        console.log('用戶嘗試加入已結束的測驗');
+      }
     } finally {
       setIsSubmitting(false);
     }
