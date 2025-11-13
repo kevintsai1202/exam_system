@@ -37,7 +37,7 @@ export const ExamMonitor: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'students' | 'question' | 'cumulative' | 'leaderboard'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'question' | 'leaderboard'>('students');
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
   const [occupationDistribution, setOccupationDistribution] = useState<OccupationDistribution | null>(null); // 職業分布
@@ -668,7 +668,7 @@ export const ExamMonitor: React.FC = () => {
           <div>
             {/* 標籤列 */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              {(['students', 'question', 'cumulative', 'leaderboard'] as const).map((tab) => (
+              {(['students', 'question', 'leaderboard'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -698,7 +698,7 @@ export const ExamMonitor: React.FC = () => {
                     }
                   }}
                 >
-                  {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : tab === 'cumulative' ? '累積統計' : '排行榜'}
+                  {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : '排行榜'}
                 </button>
               ))}
             </div>
@@ -893,26 +893,23 @@ export const ExamMonitor: React.FC = () => {
                           </div>
                         </div>
                       )}
+
+                      {/* 累積統計 */}
+                      {cumulativeStats && (
+                        <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '2px solid #e0e0e0' }}>
+                          <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📈 累積統計</h3>
+                          {/* 累積統計固定為長條圖 */}
+                          <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
+                          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
+                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📊 總學員數：{cumulativeStats.totalStudents} 人</p>
+                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📝 總題目數：{cumulativeStats.totalQuestions} 題</p>
+                            <p style={{ margin: 0, fontWeight: '500' }}>📈 平均分數：{cumulativeStats.averageScore.toFixed(1)} 分</p>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>尚未推送題目</div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'cumulative' && (
-                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>累積統計</h3>
-                  {cumulativeStats ? (
-                    <>
-                      {/* 累積統計固定為長條圖 */}
-                      <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
-                      <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', fontSize: '14px' }}>
-                        <p style={{ margin: 0 }}>平均分數：{cumulativeStats.averageScore.toFixed(1)} 分</p>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>暫無統計資料</div>
                   )}
                 </div>
               )}
