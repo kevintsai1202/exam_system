@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 統計控制器
  * 處理統計資料相關的 REST API 請求
@@ -72,7 +74,7 @@ public class StatisticsController {
     }
 
     /**
-     * 取得職業分布統計
+     * 取得職業分布統計（保留向下兼容）
      * GET /api/statistics/exams/{examId}/occupation-distribution
      */
     @GetMapping("/exams/{examId}/occupation-distribution")
@@ -81,6 +83,33 @@ public class StatisticsController {
         log.info("Getting occupation distribution for exam: {}", examId);
         StatisticsDTO.OccupationDistribution distribution = statisticsService.generateOccupationDistribution(examId);
         return ResponseEntity.ok(distribution);
+    }
+
+    /**
+     * 取得指定調查欄位的分布統計
+     * GET /api/statistics/exams/{examId}/survey-fields/{fieldKey}
+     */
+    @GetMapping("/exams/{examId}/survey-fields/{fieldKey}")
+    public ResponseEntity<StatisticsDTO.SurveyFieldDistribution> getSurveyFieldDistribution(
+            @PathVariable Long examId,
+            @PathVariable String fieldKey) {
+        log.info("Getting survey field distribution for exam: {}, fieldKey: {}", examId, fieldKey);
+        StatisticsDTO.SurveyFieldDistribution distribution =
+                statisticsService.generateSurveyFieldDistribution(examId, fieldKey);
+        return ResponseEntity.ok(distribution);
+    }
+
+    /**
+     * 取得測驗所有調查欄位的分布統計
+     * GET /api/statistics/exams/{examId}/survey-fields
+     */
+    @GetMapping("/exams/{examId}/survey-fields")
+    public ResponseEntity<List<StatisticsDTO.SurveyFieldDistribution>> getAllSurveyFieldDistributions(
+            @PathVariable Long examId) {
+        log.info("Getting all survey field distributions for exam: {}", examId);
+        List<StatisticsDTO.SurveyFieldDistribution> distributions =
+                statisticsService.generateAllSurveyFieldDistributions(examId);
+        return ResponseEntity.ok(distributions);
     }
 
 }

@@ -3,9 +3,11 @@ package com.exam.system.service;
 import com.exam.system.dto.LeaderboardDTO;
 import com.exam.system.dto.StatisticsDTO;
 import com.exam.system.dto.WebSocketMessage;
+import com.exam.system.entity.Exam;
 import com.exam.system.entity.Question;
 import com.exam.system.entity.QuestionOption;
 import com.exam.system.entity.Student;
+import com.exam.system.entity.SurveyField;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.*;
 import com.exam.system.websocket.WebSocketService;
@@ -15,8 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,8 @@ public class StatisticsService {
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository questionOptionRepository;
     private final StudentRepository studentRepository;
+    private final ExamRepository examRepository;
+    private final SurveyFieldRepository surveyFieldRepository;
     private final WebSocketService webSocketService;
 
     /**
@@ -280,6 +283,113 @@ public class StatisticsService {
                 .occupationStatistics(occupationStatistics)
                 .timestamp(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * 生成指定調查欄位的分布統計
+     *
+     * @param examId 測驗 ID
+     * @param fieldKey 調查欄位鍵值
+     * @return 調查欄位分布統計 DTO
+     */
+    @Transactional(readOnly = true)
+    public StatisticsDTO.SurveyFieldDistribution generateSurveyFieldDistribution(Long examId, String fieldKey) {
+        log.debug("Generating survey field distribution for exam: {}, fieldKey: {}", examId, fieldKey);
+
+        // 檢查測驗是否存在
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
+
+        // 檢查調查欄位是否存在
+        SurveyField surveyField = surveyFieldRepository.findByFieldKey(fieldKey)
+                .orElseThrow(() -> new ResourceNotFoundException("SurveyField with key: " + fieldKey));
+
+        // 取得所有學員
+        List<Student> students = studentRepository.findByExamId(examId);
+        long totalStudents = students.size();
+
+        // 統計各值的出現次數
+        Map<String, Long> valueCountMap = new HashMap<>();
+        int respondentCount = 0;
+
+        for (Student student : students) {
+            String value = null;
+
+            // 先檢查 occupation 欄位（向下兼容）
+            if ("occupation".equals(fieldKey) && student.getOccupation() != null) {
+                value = student.getOccupation();
+            }
+            // 再檢查 surveyData
+            else if (student.getSurveyData() != null && student.getSurveyData().containsKey(fieldKey)) {
+                value = student.getSurveyData().get(fieldKey);
+            }
+
+            if (value != null && !value.trim().isEmpty()) {
+                valueCountMap.put(value, valueCountMap.getOrDefault(value, 0L) + 1);
+                respondentCount++;
+            }
+        }
+
+        // 建立值統計列表
+        List<StatisticsDTO.SurveyFieldValueStatistic> valueStatistics = valueCountMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(entry -> {
+                    String value = entry.getKey();
+                    long count = entry.getValue();
+                    double percentage = totalStudents > 0 ? (count * 100.0 / totalStudents) : 0.0;
+                    double respondentPercentage = respondentCount > 0 ? (count * 100.0 / respondentCount) : 0.0;
+
+                    return StatisticsDTO.SurveyFieldValueStatistic.builder()
+                            .value(value)
+                            .count(count)
+                            .percentage(Math.round(percentage * 100.0) / 100.0)
+                            .respondentPercentage(Math.round(respondentPercentage * 100.0) / 100.0)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return StatisticsDTO.SurveyFieldDistribution.builder()
+                .examId(examId)
+                .fieldKey(fieldKey)
+                .fieldName(surveyField.getFieldName())
+                .totalStudents((int) totalStudents)
+                .respondentCount(respondentCount)
+                .valueStatistics(valueStatistics)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * 生成測驗所有調查欄位的分布統計
+     *
+     * @param examId 測驗 ID
+     * @return 調查欄位分布統計列表
+     */
+    @Transactional(readOnly = true)
+    public List<StatisticsDTO.SurveyFieldDistribution> generateAllSurveyFieldDistributions(Long examId) {
+        log.debug("Generating all survey field distributions for exam: {}", examId);
+
+        // 檢查測驗是否存在
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
+
+        // 如果測驗沒有設定調查欄位，返回空列表
+        if (exam.getSurveyFieldKeys() == null || exam.getSurveyFieldKeys().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 生成每個調查欄位的統計
+        return exam.getSurveyFieldKeys().stream()
+                .map(fieldKey -> {
+                    try {
+                        return generateSurveyFieldDistribution(examId, fieldKey);
+                    } catch (ResourceNotFoundException e) {
+                        log.warn("Survey field not found: {}", fieldKey);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
 }
