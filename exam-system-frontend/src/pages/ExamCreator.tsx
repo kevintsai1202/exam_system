@@ -6,9 +6,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { examApi } from '../services/apiService';
+import { examApi, surveyFieldApi } from '../services/apiService';
 import { ChartType } from '../types';
-import type { CreateExamRequest } from '../types';
+import type { CreateExamRequest, SurveyField } from '../types';
 import { useMessage } from '../hooks';
 import { Message } from '../components/Message';
 
@@ -47,6 +47,11 @@ export const ExamCreator: React.FC = () => {
   const [questionTimeLimit, setQuestionTimeLimit] = useState(30);
   const [isLoading, setIsLoading] = useState(isEditMode);
 
+  // 調查欄位
+  const [availableSurveyFields, setAvailableSurveyFields] = useState<SurveyField[]>([]);
+  const [selectedSurveyFieldKeys, setSelectedSurveyFieldKeys] = useState<string[]>([]);
+  const [isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(true);
+
   // 題目列表
   const [questions, setQuestions] = useState<FormQuestion[]>([
     {
@@ -66,6 +71,25 @@ export const ExamCreator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   /**
+   * 載入可用的調查欄位
+   */
+  useEffect(() => {
+    const loadSurveyFields = async () => {
+      try {
+        setIsLoadingSurveyFields(true);
+        const fields = await surveyFieldApi.getAllSurveyFields(true); // 只載入啟用的欄位
+        setAvailableSurveyFields(fields);
+        setIsLoadingSurveyFields(false);
+      } catch (err: any) {
+        console.error('[ExamCreator] 載入調查欄位失敗:', err);
+        setIsLoadingSurveyFields(false);
+      }
+    };
+
+    loadSurveyFields();
+  }, []);
+
+  /**
    * 載入測驗資料（編輯模式）
    */
   useEffect(() => {
@@ -83,6 +107,7 @@ export const ExamCreator: React.FC = () => {
         setTitle(examData.title);
         setDescription(examData.description);
         setQuestionTimeLimit(examData.questionTimeLimit);
+        setSelectedSurveyFieldKeys(examData.surveyFieldKeys || []);
 
         // 轉換題目資料格式
         const formQuestions: FormQuestion[] = questionsData.questions.map((q: any) => ({
@@ -257,6 +282,7 @@ export const ExamCreator: React.FC = () => {
         title,
         description,
         questionTimeLimit,
+        surveyFieldKeys: selectedSurveyFieldKeys.length > 0 ? selectedSurveyFieldKeys : undefined,
         questions: questions.map((q) => ({
           questionOrder: q.questionOrder,
           questionText: q.questionText,
@@ -454,6 +480,102 @@ export const ExamCreator: React.FC = () => {
               <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
                 (5-300 秒)
               </span>
+            </div>
+
+            {/* 調查欄位選擇 */}
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e0e0e0' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                }}
+              >
+                📊 調查欄位設定（選填）
+              </label>
+              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#666', lineHeight: '1.6' }}>
+                選擇學員加入時需要填寫的調查資訊，如職業、年齡層等。系統將自動統計並顯示圖表。
+              </p>
+
+              {isLoadingSurveyFields ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                  載入調查欄位中...
+                </div>
+              ) : availableSurveyFields.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#999', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
+                  目前沒有可用的調查欄位
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  {availableSurveyFields.map((field) => {
+                    const isSelected = selectedSurveyFieldKeys.includes(field.fieldKey);
+                    return (
+                      <label
+                        key={field.fieldKey}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '10px 16px',
+                          border: isSelected ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          backgroundColor: isSelected ? '#e3f2fd' : '#fff',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          userSelect: 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.borderColor = '#1976d2';
+                            e.currentTarget.style.backgroundColor = '#f5f5f5';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                            e.currentTarget.style.backgroundColor = '#fff';
+                          }
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSurveyFieldKeys([...selectedSurveyFieldKeys, field.fieldKey]);
+                            } else {
+                              setSelectedSurveyFieldKeys(
+                                selectedSurveyFieldKeys.filter((key) => key !== field.fieldKey)
+                              );
+                            }
+                          }}
+                          style={{
+                            marginRight: '8px',
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                            {field.fieldName}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                            {field.options.length} 個選項
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {selectedSurveyFieldKeys.length > 0 && (
+                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '6px', fontSize: '13px', color: '#2e7d32' }}>
+                  ✓ 已選擇 {selectedSurveyFieldKeys.length} 個調查欄位
+                </div>
+              )}
             </div>
           </div>
 

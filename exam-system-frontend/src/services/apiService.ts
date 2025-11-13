@@ -29,7 +29,11 @@ import type {
   QuestionStatistics,
   CumulativeStatistics,
   Leaderboard,
-  OccupationDistribution
+  OccupationDistribution,
+  SurveyFieldDistribution,
+
+  // 調查欄位相關型別
+  SurveyField
 } from '../types';
 
 // API Base URL
@@ -294,13 +298,74 @@ export const statisticsApi = {
   },
 
   /**
-   * 取得職業分布統計
+   * 取得職業分布統計（保留向下兼容）
    * GET /api/statistics/exams/{examId}/occupation-distribution
    */
   getOccupationDistribution: async (examId: number): Promise<OccupationDistribution> => {
     const response = await apiClient.get<OccupationDistribution>(
       `/statistics/exams/${examId}/occupation-distribution`
     );
+    return response.data;
+  },
+
+  /**
+   * 取得指定調查欄位的分布統計
+   * GET /api/statistics/exams/{examId}/survey-fields/{fieldKey}
+   */
+  getSurveyFieldDistribution: async (
+    examId: number,
+    fieldKey: string
+  ): Promise<SurveyFieldDistribution> => {
+    const response = await apiClient.get<SurveyFieldDistribution>(
+      `/statistics/exams/${examId}/survey-fields/${fieldKey}`
+    );
+    return response.data;
+  },
+
+  /**
+   * 取得測驗所有調查欄位的分布統計
+   * GET /api/statistics/exams/{examId}/survey-fields
+   */
+  getAllSurveyFieldDistributions: async (examId: number): Promise<SurveyFieldDistribution[]> => {
+    const response = await apiClient.get<SurveyFieldDistribution[]>(
+      `/statistics/exams/${examId}/survey-fields`
+    );
+    return response.data;
+  },
+};
+
+// ==================== 調查欄位 API ====================
+
+/**
+ * 調查欄位相關 API
+ */
+export const surveyFieldApi = {
+  /**
+   * 取得所有調查欄位
+   * GET /api/survey-fields?activeOnly=true
+   */
+  getAllSurveyFields: async (activeOnly: boolean = false): Promise<SurveyField[]> => {
+    const response = await apiClient.get<SurveyField[]>('/survey-fields', {
+      params: { activeOnly },
+    });
+    return response.data;
+  },
+
+  /**
+   * 取得單一調查欄位
+   * GET /api/survey-fields/{id}
+   */
+  getSurveyField: async (id: number): Promise<SurveyField> => {
+    const response = await apiClient.get<SurveyField>(`/survey-fields/${id}`);
+    return response.data;
+  },
+
+  /**
+   * 根據欄位鍵值取得調查欄位
+   * GET /api/survey-fields/by-key/{fieldKey}
+   */
+  getSurveyFieldByKey: async (fieldKey: string): Promise<SurveyField> => {
+    const response = await apiClient.get<SurveyField>(`/survey-fields/by-key/${fieldKey}`);
     return response.data;
   },
 };
@@ -313,4 +378,5 @@ export default {
   student: studentApi,
   answer: answerApi,
   statistics: statisticsApi,
+  surveyField: surveyFieldApi,
 };
