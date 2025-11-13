@@ -136,6 +136,17 @@ export const examApi = {
   },
 
   /**
+   * 透過 accessCode 取得測驗預覽資訊（學員加入時使用）
+   * GET /api/exams/preview?accessCode={accessCode}
+   */
+  getExamPreview: async (accessCode: string): Promise<Exam> => {
+    const response = await apiClient.get<Exam>('/exams/preview', {
+      params: { accessCode },
+    });
+    return response.data;
+  },
+
+  /**
    * 啟動測驗
    * PUT /api/exams/{examId}/start
    * 回傳包含 instructorSessionId 的測驗資訊
