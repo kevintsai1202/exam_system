@@ -93,12 +93,16 @@ public class AnswerService {
             throw new BusinessException("NO_QUESTIONS", "測驗沒有題目");
         }
 
-        int currentIndex = exam.getCurrentQuestionIndex();
-        if (currentIndex < 0 || currentIndex >= questions.size()) {
+        // 使用 lastPushedQuestionIndex 判斷當前正在答題的題目
+        Integer lastPushedIndex = exam.getLastPushedQuestionIndex();
+        if (lastPushedIndex == null) {
+            throw new BusinessException("NO_QUESTION_PUSHED", "尚未推送任何題目");
+        }
+        if (lastPushedIndex < 0 || lastPushedIndex >= questions.size()) {
             throw new BusinessException("INVALID_CURRENT_QUESTION", "當前題目索引無效");
         }
 
-        Question currentQuestion = questions.get(currentIndex);
+        Question currentQuestion = questions.get(lastPushedIndex);
         if (!currentQuestion.getId().equals(question.getId())) {
             throw new BusinessException("WRONG_QUESTION", "只能回答當前題目");
         }

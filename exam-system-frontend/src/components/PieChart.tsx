@@ -35,6 +35,7 @@ interface PieChartProps {
   showLegend?: boolean;                          // 是否顯示圖例
   showLabel?: boolean;                           // 是否顯示標籤
   colors?: string[];                             // 自訂顏色
+  showCorrectAnswer?: boolean;                   // 是否顯示正確答案標記（僅 dataType='option' 時有效）
 }
 
 /**
@@ -72,6 +73,7 @@ export const PieChart: React.FC<PieChartProps> = ({
   showLegend = true,
   showLabel = true,
   colors = DEFAULT_COLORS,
+  showCorrectAnswer = true,
 }) => {
   /**
    * 格式化選項統計資料
@@ -162,7 +164,7 @@ export const PieChart: React.FC<PieChartProps> = ({
         <p style={{ margin: '4px 0 0 0', color: '#666' }}>
           百分比: {data.percentage.toFixed(1)}%
         </p>
-        {dataType === 'option' && data.isCorrect !== undefined && (
+        {dataType === 'option' && showCorrectAnswer && data.isCorrect !== undefined && (
           <p style={{ margin: '4px 0 0 0', color: data.isCorrect ? CORRECT_COLOR : INCORRECT_COLOR }}>
             {data.isCorrect ? '✓ 正確答案' : '✗ 錯誤答案'}
           </p>
@@ -175,7 +177,7 @@ export const PieChart: React.FC<PieChartProps> = ({
    * 取得扇形顏色
    */
   const getCellColor = (entry: any, index: number) => {
-    if (dataType === 'option' && entry.isCorrect !== undefined) {
+    if (dataType === 'option' && showCorrectAnswer && entry.isCorrect !== undefined) {
       return entry.isCorrect ? CORRECT_COLOR : INCORRECT_COLOR;
     }
     return colors[index % colors.length];

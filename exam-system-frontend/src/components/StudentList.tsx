@@ -19,6 +19,7 @@ interface StudentListProps {
   showEmail?: boolean;                    // 是否顯示 Email（預設 false）
   maxHeight?: string | number;            // 最大高度（預設無限制）
   emptyMessage?: string;                  // 空列表提示訊息
+  enableNewAnimation?: boolean;           // 是否啟用 NEW 動畫（預設 true）
 }
 
 /**
@@ -31,6 +32,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   showEmail = false,
   maxHeight,
   emptyMessage = '尚無學員加入',
+  enableNewAnimation = true,
 }) => {
   const displayTotal = totalStudents ?? students.length;
   const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
@@ -38,6 +40,13 @@ export const StudentList: React.FC<StudentListProps> = ({
 
   // 檢測新學員加入
   useEffect(() => {
+    // 如果禁用 NEW 動畫，直接更新 prevStudentIdsRef 但不顯示動畫
+    if (!enableNewAnimation) {
+      prevStudentIdsRef.current = new Set(students.map(s => s.id));
+      setNewStudentIds(new Set());
+      return;
+    }
+
     const currentIds = new Set(students.map(s => s.id));
     const prevIds = prevStudentIdsRef.current;
 
@@ -59,7 +68,7 @@ export const StudentList: React.FC<StudentListProps> = ({
     }
 
     prevStudentIdsRef.current = currentIds;
-  }, [students]);
+  }, [students, enableNewAnimation]);
 
   // 按答對題數排序（從高到低），然後按分數排序，最後按加入時間排序
   const sortedStudents = React.useMemo(() => {

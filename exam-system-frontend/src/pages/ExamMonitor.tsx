@@ -19,6 +19,7 @@ import CountdownTimer from '../components/CountdownTimer';
 import AnimatedNumber from '../components/AnimatedNumber';
 import Confetti from '../components/Confetti';
 import RippleButton from '../components/RippleButton';
+import LeaderboardDisplay from '../components/LeaderboardDisplay';
 import { Message } from '../components/Message';
 import type { WebSocketMessage, SurveyFieldDistribution } from '../types';
 
@@ -49,6 +50,8 @@ export const ExamMonitor: React.FC = () => {
   const [currentQuestionExpiresAt, setCurrentQuestionExpiresAt] = useState<string | null>(null); // 當前題目到期時間
   const [currentQuestionChartType, setCurrentQuestionChartType] = useState<'BAR' | 'PIE'>('BAR'); // 當前題目統計圖表類型
   const [showConfetti, setShowConfetti] = useState(false); // 顯示慶祝彩帶
+  const [isQuestionTimeExpired, setIsQuestionTimeExpired] = useState(false); // 當前題目時間是否已結束
+  const [enableStudentNewAnimation, setEnableStudentNewAnimation] = useState(true); // 是否啟用學員列表 NEW 動畫
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -382,6 +385,10 @@ export const ExamMonitor: React.FC = () => {
 
     try {
       console.log('[handleStartQuestion] 呼叫 API: startQuestion');
+
+      // 推送題目前暫時禁用學員列表 NEW 動畫
+      setEnableStudentNewAnimation(false);
+
       await examApi.startQuestion(parseInt(examId), questionIndex, instructorSessionId);
       console.log('[handleStartQuestion] API 呼叫成功');
 
@@ -413,6 +420,9 @@ export const ExamMonitor: React.FC = () => {
       // 清除舊的統計數據
       setCurrentQuestionStats(null);
 
+      // 重置題目時間狀態（題目開始時不顯示正確答案）
+      setIsQuestionTimeExpired(false);
+
       // 清理舊的統計定時器
       if (statisticsTimerRef.current) {
         clearTimeout(statisticsTimerRef.current);
@@ -428,9 +438,28 @@ export const ExamMonitor: React.FC = () => {
       statisticsTimerRef.current = setTimeout(async () => {
         console.log('[handleStartQuestion] 題目時間到,自動獲取統計');
         try {
+          // 題目時間到，現在可以顯示正確答案了
+          setIsQuestionTimeExpired(true);
+
+          // 獲取題目統計資料
           const stats = await statisticsApi.getQuestionStatistics(parseInt(examId), pushedQuestion.id);
           setCurrentQuestionStats(stats);
           setIsLoadingStats(false);
+
+          // 暫時禁用學員列表 NEW 動畫
+          setEnableStudentNewAnimation(false);
+
+          // 重新獲取學員列表,更新答對題數和總分
+          console.log('[handleStartQuestion] 重新獲取學員列表');
+          const studentsData = await studentApi.getStudents(parseInt(examId));
+          setStudents(studentsData.students);
+          console.log('[handleStartQuestion] 學員列表已更新');
+
+          // 延遲後重新啟用 NEW 動畫（給予足夠時間讓列表更新完成）
+          setTimeout(() => {
+            setEnableStudentNewAnimation(true);
+          }, 500);
+
           // 確保仍在「當前題目」標籤上
           setActiveTab('question');
           console.log('[handleStartQuestion] 統計資料已更新:', stats);
@@ -441,9 +470,17 @@ export const ExamMonitor: React.FC = () => {
       }, questionTimeLimit * 1000);
 
       message.success(`題目 ${questionIndex + 1} 已推送！`);
+
+      // 延遲後重新啟用 NEW 動畫（給予足夠時間讓狀態更新完成）
+      setTimeout(() => {
+        setEnableStudentNewAnimation(true);
+      }, 500);
     } catch (err: any) {
       console.error('[handleStartQuestion] API 呼叫失敗:', err);
       message.error(err.message || '推送題目失敗');
+
+      // 失敗時也需要重新啟用 NEW 動畫
+      setEnableStudentNewAnimation(true);
     }
   };
 
@@ -645,63 +682,73 @@ export const ExamMonitor: React.FC = () => {
         </div>
 
         {/* 主要內容區 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-          {/* 左側 - QR Code 與學員列表 */}
-          <div>
-            {/* QR Code - 測驗進行中時始終顯示，讓學生可隨時加入 */}
-            {isStarted && qrCodeUrl && (
-              <div style={{ marginBottom: '24px' }}>
-                <QRCodeDisplay
-                  value={qrCodeUrl}
-                  displayText={currentExam?.accessCode}
-                  size={200}
-                  title="掃描加入測驗"
-                  showValue={true}
-                />
-              </div>
-            )}
+        <div style={{ display: 'grid', gridTemplateColumns: isEnded ? '1fr' : '1fr 2fr', gap: '24px' }}>
+          {/* 左側 - QR Code 與學員列表（測驗結束時隱藏） */}
+          {!isEnded && (
+            <div>
+              {/* QR Code - 測驗進行中時始終顯示，讓學生可隨時加入 */}
+              {isStarted && qrCodeUrl && (
+                <div style={{ marginBottom: '24px' }}>
+                  <QRCodeDisplay
+                    value={qrCodeUrl}
+                    displayText={currentExam?.accessCode}
+                    size={200}
+                    title="掃描加入測驗"
+                    showValue={true}
+                  />
+                </div>
+              )}
 
-            {/* 學員列表 */}
-            <StudentList students={students} showScore={isEnded} maxHeight="600px" />
-          </div>
+              {/* 學員列表 */}
+              <StudentList students={students} showScore={isEnded} maxHeight="600px" enableNewAnimation={enableStudentNewAnimation} />
+            </div>
+          )}
 
           {/* 右側 - 標籤頁內容 */}
           <div>
             {/* 標籤列 */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              {(['students', 'question', 'leaderboard'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: activeTab === tab ? '#1976d2' : '#666',
-                    backgroundColor: activeTab === tab ? '#e3f2fd' : '#fff',
-                    border: 'none',
-                    borderRadius: '8px 8px 0 0',
-                    cursor: 'pointer',
-                    boxShadow: activeTab === tab ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== tab) {
-                      e.currentTarget.style.backgroundColor = '#f5f5f5';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== tab) {
-                      e.currentTarget.style.backgroundColor = '#fff';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : '排行榜'}
-                </button>
-              ))}
+              {(['students', 'question', 'leaderboard'] as const)
+                .filter((tab) => {
+                  // 測驗結束時只顯示排行榜標籤
+                  if (isEnded) {
+                    return tab === 'leaderboard';
+                  }
+                  return true;
+                })
+                .map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: activeTab === tab ? '#1976d2' : '#666',
+                      backgroundColor: activeTab === tab ? '#e3f2fd' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px 8px 0 0',
+                      cursor: 'pointer',
+                      boxShadow: activeTab === tab ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeTab !== tab) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeTab !== tab) {
+                        e.currentTarget.style.backgroundColor = '#fff';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }
+                    }}
+                  >
+                    {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : '排行榜'}
+                  </button>
+                ))}
             </div>
 
             {/* 標籤內容 */}
@@ -833,7 +880,7 @@ export const ExamMonitor: React.FC = () => {
                                 exit={{ opacity: 0, x: 20 }}
                                 transition={{ duration: 0.3 }}
                               >
-                                <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} />
+                                <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} showCorrectAnswer={isQuestionTimeExpired} />
                               </motion.div>
                             ) : (
                               <motion.div
@@ -843,40 +890,23 @@ export const ExamMonitor: React.FC = () => {
                                 exit={{ opacity: 0, x: -20 }}
                                 transition={{ duration: 0.3 }}
                               >
-                                <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
+                                <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} showCorrectAnswer={isQuestionTimeExpired} />
                               </motion.div>
                             )}
                           </AnimatePresence>
                           <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '14px', border: '1px solid #4caf50' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                            <p style={{ margin: isQuestionTimeExpired ? '0 0 8px 0' : 0, fontWeight: '500' }}>
                               📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color="#2e7d32" suffix=" 人" />
                             </p>
-                            <p style={{ margin: 0, fontWeight: '500' }}>
-                              ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
-                            </p>
+                            {isQuestionTimeExpired && (
+                              <p style={{ margin: 0, fontWeight: '500' }}>
+                                ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
 
-                      {/* 累積統計 */}
-                      {cumulativeStats && (
-                        <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '2px solid #e0e0e0' }}>
-                          <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📈 累積統計</h3>
-                          {/* 累積統計固定為長條圖 */}
-                          <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
-                          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
-                              📊 總學員數：<AnimatedNumber value={cumulativeStats.totalStudents} fontSize="18px" color="#1976d2" suffix=" 人" />
-                            </p>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
-                              📝 總題目數：<AnimatedNumber value={cumulativeStats.totalQuestions} fontSize="18px" color="#1976d2" suffix=" 題" />
-                            </p>
-                            <p style={{ margin: 0, fontWeight: '500' }}>
-                              📈 平均分數：<AnimatedNumber value={cumulativeStats.averageScore} decimals={1} fontSize="18px" color="#1976d2" suffix=" 分" />
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>尚未推送題目</div>
@@ -886,8 +916,6 @@ export const ExamMonitor: React.FC = () => {
 
               {activeTab === 'leaderboard' && (
                 <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>排行榜</h3>
-
                   {/* 載入中動畫 */}
                   {isLoadingLeaderboard && (
                     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -905,68 +933,16 @@ export const ExamMonitor: React.FC = () => {
                   )}
 
                   {/* 排行榜內容 */}
-                  {!isLoadingLeaderboard && leaderboard && leaderboard.leaderboard.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <AnimatePresence mode="popLayout">
-                        {leaderboard.leaderboard.map((entry) => (
-                          <motion.div
-                            key={entry.studentId}
-                            layout
-                            initial={{ opacity: 0, x: -50 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 50 }}
-                            transition={{
-                              layout: { type: 'spring', stiffness: 300, damping: 30 },
-                              opacity: { duration: 0.2 },
-                              x: { duration: 0.3 },
-                            }}
-                            whileHover={{
-                              y: -4,
-                              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                            }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '16px',
-                              padding: '16px',
-                              backgroundColor: entry.rank <= 3 ? '#fff9e6' : '#f9f9f9',
-                              borderRadius: '8px',
-                              border: entry.rank === 1 ? '2px solid #ffd700' : entry.rank === 2 ? '2px solid #c0c0c0' : entry.rank === 3 ? '2px solid #cd7f32' : '1px solid #e0e0e0',
-                              cursor: 'default'
-                            }}
-                          >
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: entry.rank === 1 ? '#ffd700' : entry.rank === 2 ? '#c0c0c0' : entry.rank === 3 ? '#cd7f32' : '#e0e0e0',
-                            color: entry.rank <= 3 ? '#fff' : '#666',
-                            borderRadius: '50%',
-                            fontSize: '18px',
-                            fontWeight: '700',
-                            boxShadow: entry.rank <= 3 ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                            transition: 'transform 0.2s ease'
-                          }}>
-                            {entry.rank}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>{entry.name}</div>
-                            <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>正確率：{(entry.correctRate * 100).toFixed(1)}%</div>
-                          </div>
-                          <div style={{
-                            fontSize: '20px',
-                            fontWeight: '700',
-                            color: entry.rank === 1 ? '#ffa000' : entry.rank === 2 ? '#757575' : entry.rank === 3 ? '#d84315' : '#1976d2'
-                          }}>
-                            {entry.totalScore} 分
-                          </div>
-                        </motion.div>
-                      ))}
-                      </AnimatePresence>
-                    </div>
-                  ) : !isLoadingLeaderboard && (
+                  {!isLoadingLeaderboard && leaderboard && (
+                    <LeaderboardDisplay
+                      leaderboard={leaderboard}
+                      isConnected={isConnected}
+                      compact={false}
+                    />
+                  )}
+
+                  {/* 無排行榜資料 */}
+                  {!isLoadingLeaderboard && !leaderboard && (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', animation: 'fadeIn 0.3s ease-in' }}>
                       暫無排行榜資料
                     </div>

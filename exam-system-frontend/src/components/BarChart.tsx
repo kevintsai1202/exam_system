@@ -28,6 +28,7 @@ interface BarChartProps {
   height?: number;                         // 高度
   showLegend?: boolean;                    // 是否顯示圖例
   colors?: string[];                       // 自訂顏色
+  showCorrectAnswer?: boolean;             // 是否顯示正確答案標記（僅 dataType='option' 時有效）
 }
 
 /**
@@ -64,6 +65,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   height = 300,
   showLegend = false,
   colors = DEFAULT_COLORS,
+  showCorrectAnswer = true,
 }) => {
   /**
    * 格式化選項統計資料
@@ -121,7 +123,7 @@ export const BarChart: React.FC<BarChartProps> = ({
         <p style={{ margin: '4px 0 0 0', color: '#666' }}>
           百分比: {data.percentage.toFixed(1)}%
         </p>
-        {dataType === 'option' && data.isCorrect !== undefined && (
+        {dataType === 'option' && showCorrectAnswer && data.isCorrect !== undefined && (
           <p style={{ margin: '4px 0 0 0', color: data.isCorrect ? CORRECT_COLOR : INCORRECT_COLOR }}>
             {data.isCorrect ? '✓ 正確答案' : '✗ 錯誤答案'}
           </p>
@@ -134,7 +136,7 @@ export const BarChart: React.FC<BarChartProps> = ({
    * 取得長條顏色
    */
   const getBarColor = (entry: any, index: number) => {
-    if (dataType === 'option' && entry.isCorrect !== undefined) {
+    if (dataType === 'option' && showCorrectAnswer && entry.isCorrect !== undefined) {
       return entry.isCorrect ? CORRECT_COLOR : INCORRECT_COLOR;
     }
     return colors[index % colors.length];
