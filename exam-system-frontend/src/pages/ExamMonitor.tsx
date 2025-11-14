@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { examApi, studentApi, statisticsApi } from '../services/apiService';
 import { useExamStore, useStudentStore, useStatisticsStore, useInstructorStore } from '../store';
 import { useExamWebSocket, useQuestionWebSocket, useMessage } from '../hooks';
@@ -15,8 +16,9 @@ import QuestionCard from '../components/QuestionCard';
 import BarChart from '../components/BarChart';
 import PieChart from '../components/PieChart';
 import CountdownTimer from '../components/CountdownTimer';
+import AnimatedNumber from '../components/AnimatedNumber';
 import { Message } from '../components/Message';
-import type { WebSocketMessage, OccupationDistribution, SurveyFieldDistribution } from '../types';
+import type { WebSocketMessage, SurveyFieldDistribution } from '../types';
 
 /**
  * 測驗監控頁面
@@ -40,13 +42,10 @@ export const ExamMonitor: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'students' | 'question' | 'leaderboard'>('students');
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
-  const [occupationDistribution, setOccupationDistribution] = useState<OccupationDistribution | null>(null); // 職業分布
-  const [isLoadingOccupation, setIsLoadingOccupation] = useState(false); // 職業分布載入狀態
   const [surveyDistributions, setSurveyDistributions] = useState<SurveyFieldDistribution[]>([]); // 調查欄位統計
   const [isLoadingSurveyStats, setIsLoadingSurveyStats] = useState(false); // 調查統計載入狀態
   const [currentQuestionExpiresAt, setCurrentQuestionExpiresAt] = useState<string | null>(null); // 當前題目到期時間
   const [currentQuestionChartType, setCurrentQuestionChartType] = useState<'BAR' | 'PIE'>('BAR'); // 當前題目統計圖表類型
-  const [surveyChartTypes, setSurveyChartTypes] = useState<Record<string, 'BAR' | 'PIE'>>({}); // 調查欄位統計圖表類型 (key: fieldKey)
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -76,16 +75,8 @@ export const ExamMonitor: React.FC = () => {
     if (msg.data) {
       addStudent(msg.data);
 
-      // 重新獲取職業分布統計
+      // 重新獲取調查欄位統計
       if (examId) {
-        try {
-          const occupationData = await statisticsApi.getOccupationDistribution(parseInt(examId));
-          setOccupationDistribution(occupationData);
-        } catch (err) {
-          console.error('[ExamMonitor] 更新職業分布失敗:', err);
-        }
-
-        // 重新獲取調查欄位統計
         try {
           const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
           setSurveyDistributions(surveyData);
@@ -245,26 +236,11 @@ export const ExamMonitor: React.FC = () => {
         const studentsData = await studentApi.getStudents(parseInt(examId));
         setStudents(studentsData.students);
 
-        // 載入職業分布統計
-        try {
-          setIsLoadingOccupation(true);
-          const occupationData = await statisticsApi.getOccupationDistribution(parseInt(examId));
-          setOccupationDistribution(occupationData);
-          setIsLoadingOccupation(false);
-        } catch (err) {
-          console.error('[ExamMonitor] 載入職業分布失敗:', err);
-          setIsLoadingOccupation(false);
-        }
-
         // 載入調查欄位統計
         try {
           setIsLoadingSurveyStats(true);
           const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
           setSurveyDistributions(surveyData);
-          // 預設選擇第一個調查欄位
-          if (surveyData.length > 0) {
-            setSelectedSurveyFieldKey(surveyData[0].fieldKey);
-          }
           setIsLoadingSurveyStats(false);
         } catch (err) {
           console.error('[ExamMonitor] 載入調查欄位統計失敗:', err);
@@ -729,89 +705,22 @@ export const ExamMonitor: React.FC = () => {
                     </div>
                   )}
 
-                  {surveyDistributions.length > 0 && surveyDistributions.map((distribution) => {
-                    const chartType = surveyChartTypes[distribution.fieldKey] || 'PIE'; // 預設為圓餅圖
-                    return (
-                      <div key={distribution.fieldKey} style={{ marginTop: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
-                            📊 {distribution.fieldName}統計
-                          </h3>
-                          {distribution.valueStatistics.length > 0 && (
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
-                                onClick={() => setSurveyChartTypes(prev => ({ ...prev, [distribution.fieldKey]: 'BAR' }))}
-                                style={{
-                                  padding: '6px 12px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: chartType === 'BAR' ? '#fff' : '#666',
-                                  backgroundColor: chartType === 'BAR' ? '#1976d2' : '#f5f5f5',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                📊 長條圖
-                              </button>
-                              <button
-                                onClick={() => setSurveyChartTypes(prev => ({ ...prev, [distribution.fieldKey]: 'PIE' }))}
-                                style={{
-                                  padding: '6px 12px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: chartType === 'PIE' ? '#fff' : '#666',
-                                  backgroundColor: chartType === 'PIE' ? '#1976d2' : '#f5f5f5',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                🥧 圓餅圖
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        {distribution.valueStatistics.length > 0 ? (
-                          <>
-                            {chartType === 'BAR' ? (
-                              <BarChart
-                                data={distribution.valueStatistics.map((vs) => ({
-                                  value: vs.value,
-                                  count: vs.count,
-                                  percentage: vs.percentage,
-                                }))}
-                                dataType="surveyField"
-                                height={300}
-                              />
-                            ) : (
-                              <PieChart
-                                data={distribution.valueStatistics.map((vs) => ({
-                                  value: vs.value,
-                                  count: vs.count,
-                                  percentage: vs.percentage,
-                                }))}
-                                dataType="surveyField"
-                                height={400}
-                              />
-                            )}
-                            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
-                              <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📊 總學員數：{distribution.totalStudents} 人</p>
-                              <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>✍️ 填寫人數：{distribution.respondentCount} 人 （{((distribution.respondentCount / distribution.totalStudents) * 100).toFixed(1)}%）</p>
-                              <p style={{ margin: 0, fontWeight: '500' }}>📋 選項數：{distribution.valueStatistics.length} 個</p>
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
-                            <div style={{ fontSize: '16px', color: '#999' }}>尚無{distribution.fieldName}統計資料</div>
-                            <div style={{ fontSize: '14px', color: '#999', marginTop: '8px' }}>學員加入時可選填此資訊</div>
+                  {/* 調查欄位統計 - 暫時隱藏 */}
+                  {surveyDistributions.length > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
+                        📊 調查欄位統計
+                      </h3>
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px' }}>
+                        {surveyDistributions.map((dist) => (
+                          <div key={dist.fieldKey} style={{ marginBottom: '8px' }}>
+                            <span style={{ fontWeight: '500' }}>{dist.fieldName}：</span>
+                            {dist.respondentCount} 人填寫 / 共 {dist.totalStudents} 人
                           </div>
-                        )}
+                        ))}
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -888,8 +797,12 @@ export const ExamMonitor: React.FC = () => {
                             <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
                           )}
                           <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '14px', border: '1px solid #4caf50' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📝 答題人數：{currentQuestionStats.totalAnswers} 人</p>
-                            <p style={{ margin: 0, fontWeight: '500' }}>✅ 正確率：{(currentQuestionStats.correctRate * 100).toFixed(1)}%</p>
+                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                              📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color="#2e7d32" suffix=" 人" />
+                            </p>
+                            <p style={{ margin: 0, fontWeight: '500' }}>
+                              ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
+                            </p>
                           </div>
                         </div>
                       )}
@@ -901,9 +814,15 @@ export const ExamMonitor: React.FC = () => {
                           {/* 累積統計固定為長條圖 */}
                           <BarChart data={cumulativeStats.scoreDistribution} dataType="score" height={300} />
                           <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px', border: '1px solid #1976d2' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📊 總學員數：{cumulativeStats.totalStudents} 人</p>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>📝 總題目數：{cumulativeStats.totalQuestions} 題</p>
-                            <p style={{ margin: 0, fontWeight: '500' }}>📈 平均分數：{cumulativeStats.averageScore.toFixed(1)} 分</p>
+                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                              📊 總學員數：<AnimatedNumber value={cumulativeStats.totalStudents} fontSize="18px" color="#1976d2" suffix=" 人" />
+                            </p>
+                            <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
+                              📝 總題目數：<AnimatedNumber value={cumulativeStats.totalQuestions} fontSize="18px" color="#1976d2" suffix=" 題" />
+                            </p>
+                            <p style={{ margin: 0, fontWeight: '500' }}>
+                              📈 平均分數：<AnimatedNumber value={cumulativeStats.averageScore} decimals={1} fontSize="18px" color="#1976d2" suffix=" 分" />
+                            </p>
                           </div>
                         </div>
                       )}
@@ -937,30 +856,34 @@ export const ExamMonitor: React.FC = () => {
                   {/* 排行榜內容 */}
                   {!isLoadingLeaderboard && leaderboard && leaderboard.leaderboard.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {leaderboard.leaderboard.map((entry, index) => (
-                        <div
-                          key={entry.studentId}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '16px',
-                            padding: '16px',
-                            backgroundColor: entry.rank <= 3 ? '#fff9e6' : '#f9f9f9',
-                            borderRadius: '8px',
-                            border: entry.rank === 1 ? '2px solid #ffd700' : entry.rank === 2 ? '2px solid #c0c0c0' : entry.rank === 3 ? '2px solid #cd7f32' : '1px solid #e0e0e0',
-                            transition: 'all 0.3s ease',
-                            animation: `slideInUp 0.4s ease ${index * 0.1}s both`,
-                            cursor: 'default'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-4px)';
-                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                        >
+                      <AnimatePresence mode="popLayout">
+                        {leaderboard.leaderboard.map((entry) => (
+                          <motion.div
+                            key={entry.studentId}
+                            layout
+                            initial={{ opacity: 0, x: -50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 50 }}
+                            transition={{
+                              layout: { type: 'spring', stiffness: 300, damping: 30 },
+                              opacity: { duration: 0.2 },
+                              x: { duration: 0.3 },
+                            }}
+                            whileHover={{
+                              y: -4,
+                              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px',
+                              padding: '16px',
+                              backgroundColor: entry.rank <= 3 ? '#fff9e6' : '#f9f9f9',
+                              borderRadius: '8px',
+                              border: entry.rank === 1 ? '2px solid #ffd700' : entry.rank === 2 ? '2px solid #c0c0c0' : entry.rank === 3 ? '2px solid #cd7f32' : '1px solid #e0e0e0',
+                              cursor: 'default'
+                            }}
+                          >
                           <div style={{
                             width: '40px',
                             height: '40px',
@@ -988,8 +911,9 @@ export const ExamMonitor: React.FC = () => {
                           }}>
                             {entry.totalScore} 分
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
+                      </AnimatePresence>
                     </div>
                   ) : !isLoadingLeaderboard && (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', animation: 'fadeIn 0.3s ease-in' }}>

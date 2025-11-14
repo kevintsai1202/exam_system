@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { Question } from '../types';
 
 /**
@@ -33,7 +34,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const displayIndex = questionIndex !== undefined ? questionIndex + 1 : question.questionOrder;
 
   return (
-    <div
+    <motion.div
+      key={question.id}
+      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{
+        type: 'spring',
+        stiffness: 200,
+        damping: 20,
+        duration: 0.6,
+      }}
       style={{
         backgroundColor: '#fff',
         borderRadius: '12px',
@@ -52,7 +62,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             marginBottom: '16px',
           }}
         >
-          <div
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1.3, 1] }}
+            transition={{ delay: 0.2, duration: 0.5 }}
             style={{
               fontSize: '16px',
               fontWeight: '600',
@@ -66,7 +79,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 / 共 {totalQuestions} 題
               </span>
             )}
-          </div>
+          </motion.div>
 
           {/* 圖表類型標籤 */}
           <div
@@ -103,7 +116,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       )}
 
       {/* 題目內容 */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
         style={{
           fontSize: '20px',
           fontWeight: '500',
@@ -117,7 +133,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         }}
       >
         {question.questionText}
-      </div>
+      </motion.div>
 
       {/* 選項列表 */}
       <div
@@ -129,13 +145,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       >
         {question.options
           .sort((a, b) => a.optionOrder - b.optionOrder)
-          .map((option) => {
+          .map((option, index) => {
             const isCorrect = option.id === question.correctOptionId;
             const shouldHighlight = highlightCorrect && isCorrect;
 
             return (
-              <div
+              <motion.div
                 key={option.id}
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{
+                  delay: 0.5 + index * 0.1,
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20,
+                }}
+                whileHover={{ scale: 1.02, x: 5 }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -145,7 +170,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     ? '2px solid #4caf50'
                     : '1px solid #e0e0e0',
                   borderRadius: '8px',
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {/* 選項編號 */}
@@ -196,11 +220,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     ✓ 正確答案
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
