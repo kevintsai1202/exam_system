@@ -889,4 +889,109 @@ public class ExamService {
         return markdown.toString();
     }
 
+    /**
+     * 匯出測驗為 JSON 格式
+     * 不包含 ID、狀態、調查欄位配置等運行時資料
+     *
+     * @param examId 測驗 ID
+     * @return ExamExportDTO
+     */
+    @Transactional(readOnly = true)
+    public ExamExportDTO exportToJson(Long examId) {
+        log.info("Exporting exam {} to JSON", examId);
+
+        // 查詢測驗
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("測驗不存在，ID: " + examId));
+
+        // 查詢題目和選項
+        List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+
+        // 轉換為 ExamExportDTO
+        List<ExamExportDTO.QuestionExportDTO> questionExportDTOs = questions.stream()
+                .map(question -> {
+                    // 轉換選項
+                    List<ExamExportDTO.OptionExportDTO> optionExportDTOs = question.getOptions().stream()
+                            .map(option -> ExamExportDTO.OptionExportDTO.builder()
+                                    .optionOrder(option.getOptionOrder())
+                                    .optionText(option.getOptionText())
+                                    .build())
+                            .collect(Collectors.toList());
+
+                    // 找出正確答案的選項順序
+                    Integer correctOptionOrder = question.getOptions().stream()
+                            .filter(option -> option.getId().equals(question.getCorrectOptionId()))
+                            .findFirst()
+                            .map(QuestionOption::getOptionOrder)
+                            .orElse(1);
+
+                    return ExamExportDTO.QuestionExportDTO.builder()
+                            .questionOrder(question.getQuestionOrder())
+                            .questionText(question.getQuestionText())
+                            .correctOptionOrder(correctOptionOrder)
+                            .singleStatChartType(question.getSingleStatChartType())
+                            .cumulativeChartType(question.getCumulativeChartType())
+                            .options(optionExportDTOs)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        ExamExportDTO exportDTO = ExamExportDTO.builder()
+                .title(exam.getTitle())
+                .description(exam.getDescription())
+                .questionTimeLimit(exam.getQuestionTimeLimit())
+                .questions(questionExportDTOs)
+                .build();
+
+        log.info("JSON export completed for exam: {}", examId);
+        return exportDTO;
+    }
+
+    /**
+     * 從 JSON 匯入測驗
+     * 會建立新的測驗（不包含調查欄位配置）
+     *
+     * @param exportDTO 匯出的測驗資料
+     * @return 建立的測驗 DTO
+     */
+    @Transactional
+    public ExamDTO importFromJson(ExamExportDTO exportDTO) {
+        log.info("Importing exam from JSON: {}", exportDTO.getTitle());
+
+        // 轉換為 ExamDTO
+        List<QuestionDTO> questionDTOs = exportDTO.getQuestions().stream()
+                .map(questionExport -> {
+                    // 轉換選項
+                    List<QuestionOptionDTO> optionDTOs = questionExport.getOptions().stream()
+                            .map(optionExport -> QuestionOptionDTO.builder()
+                                    .optionOrder(optionExport.getOptionOrder())
+                                    .optionText(optionExport.getOptionText())
+                                    .build())
+                            .collect(Collectors.toList());
+
+                    return QuestionDTO.builder()
+                            .questionOrder(questionExport.getQuestionOrder())
+                            .questionText(questionExport.getQuestionText())
+                            .correctOptionOrder(questionExport.getCorrectOptionOrder())
+                            .singleStatChartType(questionExport.getSingleStatChartType())
+                            .cumulativeChartType(questionExport.getCumulativeChartType())
+                            .options(optionDTOs)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        ExamDTO examDTO = ExamDTO.builder()
+                .title(exportDTO.getTitle())
+                .description(exportDTO.getDescription())
+                .questionTimeLimit(exportDTO.getQuestionTimeLimit())
+                .questions(questionDTOs)
+                .build();
+
+        // 使用現有的 createExam 方法建立測驗
+        ExamDTO createdExam = createExam(examDTO);
+
+        log.info("JSON import completed, created exam: {}", createdExam.getId());
+        return createdExam;
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.exam.system.controller;
 
 import com.exam.system.dto.ExamDTO;
+import com.exam.system.dto.ExamExportDTO;
 import com.exam.system.dto.MarkdownExportRequestDTO;
 import com.exam.system.dto.QuestionDTO;
 import com.exam.system.dto.ReorderRequestDTO;
@@ -284,6 +285,42 @@ public class ExamController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(markdown);
+    }
+
+    /**
+     * 匯出測驗為 JSON 檔案
+     * GET /api/exams/{examId}/export/json
+     */
+    @GetMapping("/{examId}/export/json")
+    public ResponseEntity<ExamExportDTO> exportToJson(@PathVariable Long examId) {
+        log.info("Exporting exam {} to JSON", examId);
+
+        // 調用服務層匯出 JSON
+        ExamExportDTO exportDTO = examService.exportToJson(examId);
+
+        // 取得測驗資訊以生成檔名
+        String filename = sanitizeFilename(exportDTO.getTitle()) + ".json";
+
+        // 設定 HTTP 標頭，觸發瀏覽器下載
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setContentDispositionFormData("attachment", filename);
+        headers.add("Content-Description", "JSON File Transfer");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(exportDTO);
+    }
+
+    /**
+     * 從 JSON 匯入測驗
+     * POST /api/exams/import
+     */
+    @PostMapping("/import")
+    public ResponseEntity<ExamDTO> importFromJson(@Valid @RequestBody ExamExportDTO exportDTO) {
+        log.info("Importing exam from JSON: {}", exportDTO.getTitle());
+        ExamDTO createdExam = examService.importFromJson(exportDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdExam);
     }
 
     /**
