@@ -18,6 +18,7 @@ import PieChart from '../components/PieChart';
 import CountdownTimer from '../components/CountdownTimer';
 import AnimatedNumber from '../components/AnimatedNumber';
 import Confetti from '../components/Confetti';
+import RippleButton from '../components/RippleButton';
 import { Message } from '../components/Message';
 import type { WebSocketMessage, SurveyFieldDistribution } from '../types';
 
@@ -607,7 +608,7 @@ export const ExamMonitor: React.FC = () => {
             )}
             {isStarted && (
               <>
-                <button
+                <RippleButton
                   onClick={handleStartQuestion}
                   disabled={currentExam.currentQuestionIndex >= questions.length}
                   style={{
@@ -618,15 +619,26 @@ export const ExamMonitor: React.FC = () => {
                     backgroundColor: currentExam.currentQuestionIndex >= questions.length ? '#ccc' : '#1976d2',
                     border: 'none',
                     borderRadius: '6px',
-                    cursor: currentExam.currentQuestionIndex >= questions.length ? 'not-allowed' : 'pointer',
                     opacity: currentExam.currentQuestionIndex >= questions.length ? 0.6 : 1
                   }}
                 >
                   推送下一題
-                </button>
-                <button onClick={handleEndExam} style={{ padding: '10px 20px', fontSize: '14px', fontWeight: '500', color: '#fff', backgroundColor: '#f44336', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                </RippleButton>
+                <RippleButton
+                  onClick={handleEndExam}
+                  rippleColor="rgba(255, 255, 255, 0.5)"
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#fff',
+                    backgroundColor: '#f44336',
+                    border: 'none',
+                    borderRadius: '6px'
+                  }}
+                >
                   結束測驗
-                </button>
+                </RippleButton>
               </>
             )}
           </div>
@@ -770,45 +782,71 @@ export const ExamMonitor: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>📊 答題統計</h3>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
+                              <motion.button
                                 onClick={() => setCurrentQuestionChartType('BAR')}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                animate={{
+                                  backgroundColor: currentQuestionChartType === 'BAR' ? '#1976d2' : '#f5f5f5',
+                                  color: currentQuestionChartType === 'BAR' ? '#fff' : '#666',
+                                }}
+                                transition={{ duration: 0.2 }}
                                 style={{
                                   padding: '6px 12px',
                                   fontSize: '12px',
                                   fontWeight: '500',
-                                  color: currentQuestionChartType === 'BAR' ? '#fff' : '#666',
-                                  backgroundColor: currentQuestionChartType === 'BAR' ? '#1976d2' : '#f5f5f5',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
                                 }}
                               >
                                 📊 長條圖
-                              </button>
-                              <button
+                              </motion.button>
+                              <motion.button
                                 onClick={() => setCurrentQuestionChartType('PIE')}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                animate={{
+                                  backgroundColor: currentQuestionChartType === 'PIE' ? '#1976d2' : '#f5f5f5',
+                                  color: currentQuestionChartType === 'PIE' ? '#fff' : '#666',
+                                }}
+                                transition={{ duration: 0.2 }}
                                 style={{
                                   padding: '6px 12px',
                                   fontSize: '12px',
                                   fontWeight: '500',
-                                  color: currentQuestionChartType === 'PIE' ? '#fff' : '#666',
-                                  backgroundColor: currentQuestionChartType === 'PIE' ? '#1976d2' : '#f5f5f5',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
                                 }}
                               >
                                 🥧 圓餅圖
-                              </button>
+                              </motion.button>
                             </div>
                           </div>
-                          {currentQuestionChartType === 'BAR' ? (
-                            <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} />
-                          ) : (
-                            <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
-                          )}
+                          <AnimatePresence mode="wait">
+                            {currentQuestionChartType === 'BAR' ? (
+                              <motion.div
+                                key="bar-chart"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <BarChart data={currentQuestionStats.optionStatistics} dataType="option" height={300} />
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                key="pie-chart"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <PieChart data={currentQuestionStats.optionStatistics} dataType="option" height={400} />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                           <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '14px', border: '1px solid #4caf50' }}>
                             <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>
                               📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color="#2e7d32" suffix=" 人" />
