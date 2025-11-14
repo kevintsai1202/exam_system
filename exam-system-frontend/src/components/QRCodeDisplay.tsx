@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 
 /**
@@ -125,23 +126,86 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
         </p>
       )}
 
-      {/* QR Code */}
+      {/* QR Code 容器與波紋動畫 */}
       <div
         style={{
-          padding: '16px',
-          backgroundColor: bgColor,
-          borderRadius: '8px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          position: 'relative',
+          display: 'inline-block',
         }}
       >
-        <QRCodeSVG
-          value={value}
-          size={size}
-          level={level}
-          includeMargin={includeMargin}
-          bgColor={bgColor}
-          fgColor={fgColor}
+        {/* 波紋動畫 - 外圈 */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1.3],
+            opacity: [0.6, 0, 0],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: 'easeOut',
+          }}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: size + 32,
+            height: size + 32,
+            marginTop: -(size + 32) / 2,
+            marginLeft: -(size + 32) / 2,
+            borderRadius: '8px',
+            border: '3px solid #1976d2',
+            pointerEvents: 'none',
+          }}
         />
+
+        {/* 波紋動畫 - 內圈 */}
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1.2],
+            opacity: [0.8, 0, 0],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: 'easeOut',
+            delay: 0.5,
+          }}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: size + 32,
+            height: size + 32,
+            marginTop: -(size + 32) / 2,
+            marginLeft: -(size + 32) / 2,
+            borderRadius: '8px',
+            border: '3px solid #4caf50',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* QR Code */}
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          transition={{ type: 'spring', stiffness: 300 }}
+          style={{
+            padding: '16px',
+            backgroundColor: bgColor,
+            borderRadius: '8px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <QRCodeSVG
+            value={value}
+            size={size}
+            level={level}
+            includeMargin={includeMargin}
+            bgColor={bgColor}
+            fgColor={fgColor}
+          />
+        </motion.div>
       </div>
 
       {/* 加入碼文字 */}

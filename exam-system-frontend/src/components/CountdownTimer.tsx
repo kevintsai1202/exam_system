@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useCountdown, useExamTimer } from '../hooks';
 
 /**
@@ -83,6 +84,88 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
     }
   };
 
+  /**
+   * 取得動畫變體（根據時間狀態）
+   */
+  const getTimerAnimation = () => {
+    if (isExpired) {
+      return {
+        scale: 1,
+        rotate: 0,
+      };
+    }
+
+    // 最後 5 秒：劇烈抖動 + 放大 + 旋轉
+    if (secondsRemaining <= dangerThreshold) {
+      return {
+        scale: [1, 1.15, 1, 1.15, 1],
+        rotate: [0, -3, 3, -3, 0],
+        transition: {
+          duration: 0.5,
+          repeat: Infinity,
+          repeatType: 'loop' as const,
+        },
+      };
+    }
+
+    // 最後 10 秒：輕微抖動 + 脈沖
+    if (secondsRemaining <= warningThreshold) {
+      return {
+        scale: [1, 1.08, 1],
+        rotate: [0, -2, 2, 0],
+        transition: {
+          duration: 0.8,
+          repeat: Infinity,
+          repeatType: 'loop' as const,
+        },
+      };
+    }
+
+    return {
+      scale: 1,
+      rotate: 0,
+    };
+  };
+
+  /**
+   * 取得背景光暈動畫
+   */
+  const getGlowAnimation = () => {
+    if (secondsRemaining <= dangerThreshold && !isExpired) {
+      return {
+        boxShadow: [
+          '0 0 20px rgba(244, 67, 54, 0.3)',
+          '0 0 40px rgba(244, 67, 54, 0.6)',
+          '0 0 20px rgba(244, 67, 54, 0.3)',
+        ],
+        transition: {
+          duration: 0.6,
+          repeat: Infinity,
+          repeatType: 'loop' as const,
+        },
+      };
+    }
+
+    if (secondsRemaining <= warningThreshold && !isExpired) {
+      return {
+        boxShadow: [
+          '0 0 15px rgba(255, 152, 0, 0.2)',
+          '0 0 30px rgba(255, 152, 0, 0.4)',
+          '0 0 15px rgba(255, 152, 0, 0.2)',
+        ],
+        transition: {
+          duration: 1,
+          repeat: Infinity,
+          repeatType: 'loop' as const,
+        },
+      };
+    }
+
+    return {
+      boxShadow: '0 0 0px rgba(0, 0, 0, 0)',
+    };
+  };
+
   return (
     <div
       style={{
@@ -106,22 +189,27 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
       )}
 
       {/* 計時器顯示 */}
-      <div
+      <motion.div
+        animate={getTimerAnimation()}
         style={{
           fontSize: getFontSize(),
           fontWeight: 'bold',
           color: getColorStatus(),
           fontFamily: 'monospace',
           letterSpacing: '2px',
-          transition: 'color 0.3s ease',
           textShadow:
             secondsRemaining <= dangerThreshold
               ? '0 0 10px rgba(244, 67, 54, 0.5)'
               : 'none',
+          padding: '16px 32px',
+          borderRadius: '16px',
+          backgroundColor: isExpired ? '#f5f5f5' : secondsRemaining <= dangerThreshold ? 'rgba(244, 67, 54, 0.1)' : secondsRemaining <= warningThreshold ? 'rgba(255, 152, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)',
         }}
       >
-        {formattedTime}
-      </div>
+        <motion.span animate={getGlowAnimation()}>
+          {formattedTime}
+        </motion.span>
+      </motion.div>
 
       {/* 進度條（可選） */}
       {type === 'basic' && !isExpired && (
