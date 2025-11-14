@@ -17,6 +17,7 @@ import BarChart from '../components/BarChart';
 import PieChart from '../components/PieChart';
 import CountdownTimer from '../components/CountdownTimer';
 import AnimatedNumber from '../components/AnimatedNumber';
+import Confetti from '../components/Confetti';
 import { Message } from '../components/Message';
 import type { WebSocketMessage, SurveyFieldDistribution } from '../types';
 
@@ -46,6 +47,7 @@ export const ExamMonitor: React.FC = () => {
   const [isLoadingSurveyStats, setIsLoadingSurveyStats] = useState(false); // 調查統計載入狀態
   const [currentQuestionExpiresAt, setCurrentQuestionExpiresAt] = useState<string | null>(null); // 當前題目到期時間
   const [currentQuestionChartType, setCurrentQuestionChartType] = useState<'BAR' | 'PIE'>('BAR'); // 當前題目統計圖表類型
+  const [showConfetti, setShowConfetti] = useState(false); // 顯示慶祝彩帶
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -272,12 +274,20 @@ export const ExamMonitor: React.FC = () => {
   }, [examId, currentExam, setQuestions, setStudents, setLeaderboard]);
 
   /**
-   * 監聽測驗狀態，結束時自動切換到排行榜頁籤
+   * 監聽測驗狀態，結束時自動切換到排行榜頁籤並觸發慶祝動畫
    */
   useEffect(() => {
     if (currentExam?.status === 'ENDED') {
       // 測驗結束，自動切換到排行榜頁籤
       setActiveTab('leaderboard');
+
+      // 觸發慶祝彩帶動畫
+      setShowConfetti(true);
+
+      // 5 秒後關閉彩帶動畫
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 5000);
     }
   }, [currentExam?.status]);
 
@@ -507,6 +517,9 @@ export const ExamMonitor: React.FC = () => {
 
   return (
     <>
+      {/* 慶祝彩帶動畫 */}
+      <Confetti active={showConfetti} duration={4} particleCount={80} />
+
       {/* CSS 動畫定義 */}
       <style>{`
         @keyframes fadeIn {

@@ -4,7 +4,8 @@
  * 顯示已加入的學員清單
  */
 
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AvatarDisplay } from './AvatarSelector';
 import type { Student } from '../types';
 
@@ -32,6 +33,33 @@ export const StudentList: React.FC<StudentListProps> = ({
   emptyMessage = '尚無學員加入',
 }) => {
   const displayTotal = totalStudents ?? students.length;
+  const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
+  const prevStudentIdsRef = useRef<Set<number>>(new Set());
+
+  // 檢測新學員加入
+  useEffect(() => {
+    const currentIds = new Set(students.map(s => s.id));
+    const prevIds = prevStudentIdsRef.current;
+
+    // 找出新加入的學員
+    const newIds = new Set<number>();
+    currentIds.forEach(id => {
+      if (!prevIds.has(id)) {
+        newIds.add(id);
+      }
+    });
+
+    if (newIds.size > 0) {
+      setNewStudentIds(newIds);
+
+      // 3 秒後清除高亮
+      setTimeout(() => {
+        setNewStudentIds(new Set());
+      }, 3000);
+    }
+
+    prevStudentIdsRef.current = currentIds;
+  }, [students]);
 
   // 按答對題數排序（從高到低），然後按分數排序，最後按加入時間排序
   const sortedStudents = React.useMemo(() => {
@@ -124,35 +152,50 @@ export const StudentList: React.FC<StudentListProps> = ({
           </div>
         ) : (
           // 學員項目
-          sortedStudents.map((student, index) => {
-            const rank = index + 1;
-            const correctAnswers = student.correctAnswersCount ?? 0;
-            const barWidth = maxCorrectAnswers > 0 ? (correctAnswers / maxCorrectAnswers) * 100 : 0;
-            const isTop3 = rank <= 3;
-            const isGold = rank === 1;
-            const isSilver = rank === 2;
-            const isBronze = rank === 3;
+          <AnimatePresence mode="popLayout">
+            {sortedStudents.map((student, index) => {
+              const rank = index + 1;
+              const correctAnswers = student.correctAnswersCount ?? 0;
+              const barWidth = maxCorrectAnswers > 0 ? (correctAnswers / maxCorrectAnswers) * 100 : 0;
+              const isTop3 = rank <= 3;
+              const isGold = rank === 1;
+              const isSilver = rank === 2;
+              const isBronze = rank === 3;
+              const isNewStudent = newStudentIds.has(student.id);
 
-            return (
-              <div
-                key={student.id}
-                style={{
-                  padding: '16px 20px',
-                  borderBottom:
-                    index < sortedStudents.length - 1 ? '1px solid #f0f0f0' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  transition: 'background-color 0.2s ease',
-                  backgroundColor: isTop3 ? '#fffbf0' : 'transparent',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = isTop3 ? '#fff8e1' : '#f9f9f9';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = isTop3 ? '#fffbf0' : 'transparent';
-                }}
-              >
+              return (
+                <motion.div
+                  key={student.id}
+                  layout
+                  initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                  animate={{
+                    opacity: 1,
+                    x: 0,
+                    scale: 1,
+                    backgroundColor: isNewStudent
+                      ? ['#e3f2fd', '#fff9c4', '#e3f2fd', '#fff9c4', '#e3f2fd']
+                      : isTop3
+                      ? '#fffbf0'
+                      : 'transparent',
+                  }}
+                  exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                  transition={{
+                    layout: { type: 'spring', stiffness: 300, damping: 30 },
+                    backgroundColor: { duration: 1.5, times: [0, 0.25, 0.5, 0.75, 1] },
+                  }}
+                  whileHover={{
+                    backgroundColor: isTop3 ? '#fff8e1' : '#f9f9f9',
+                  }}
+                  style={{
+                    padding: '16px 20px',
+                    borderBottom:
+                      index < sortedStudents.length - 1 ? '1px solid #f0f0f0' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    position: 'relative',
+                  }}
+                >
                 {/* 排名 */}
                 <div
                   style={{
@@ -276,6 +319,35 @@ export const StudentList: React.FC<StudentListProps> = ({
                   </div>
                 )}
 
+                {/* 新學員標記 */}
+                {isNewStudent && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: 0,
+                    }}
+                    transition={{
+                      scale: { duration: 0.5, repeat: Infinity, repeatDelay: 1 },
+                      rotate: { duration: 0.3 },
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      padding: '4px 8px',
+                      backgroundColor: '#4caf50',
+                      color: '#fff',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      boxShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
+                    }}
+                  >
+                    NEW
+                  </motion.div>
+                )}
+
                 {/* 加入時間 */}
                 <div
                   style={{
@@ -289,9 +361,10 @@ export const StudentList: React.FC<StudentListProps> = ({
                     minute: '2-digit',
                   }) : '--:--'}
                 </div>
-              </div>
+              </motion.div>
             );
-          })
+          })}
+          </AnimatePresence>
         )}
       </div>
     </div>
