@@ -13,7 +13,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { OptionStatistic, ScoreDistribution, OccupationStatistic, SurveyFieldValueStatistic } from '../types';
+import type { OptionStatistic, ScoreDistribution, OccupationStatistic } from '../types';
 
 /**
  * 調查欄位值統計（簡化版，用於圖表）

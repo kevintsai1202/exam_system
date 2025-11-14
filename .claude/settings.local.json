@@ -56,7 +56,10 @@
       "Bash(Start-Sleep -Seconds 5)",
       "mcp__chrome-devtools__handle_dialog",
       "mcp__ide__getDiagnostics",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git clean:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

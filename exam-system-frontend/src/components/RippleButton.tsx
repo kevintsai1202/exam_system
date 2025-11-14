@@ -4,7 +4,7 @@
  * 實現 Material Design 風格的波紋擴散效果
  */
 
-import React, { useState, useRef, CSSProperties } from 'react';
+import React, { useState, useRef, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**

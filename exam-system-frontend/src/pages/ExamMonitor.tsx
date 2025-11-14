@@ -391,7 +391,7 @@ export const ExamMonitor: React.FC = () => {
       // 更新當前題目索引到下一題
       const nextIndex = questionIndex + 1;
       setCurrentExam({
-        ...currentExam,
+        ...currentExamRef.current!,
         currentQuestionIndex: nextIndex
       });
 
@@ -622,7 +622,7 @@ export const ExamMonitor: React.FC = () => {
                     opacity: currentExam.currentQuestionIndex >= questions.length ? 0.6 : 1
                   }}
                 >
-                  推送下一題
+                  推送題目 ({Math.min(currentExam.currentQuestionIndex + 1, questions.length)}/{questions.length})
                 </RippleButton>
                 <RippleButton
                   onClick={handleEndExam}

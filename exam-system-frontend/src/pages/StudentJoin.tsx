@@ -6,11 +6,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { studentApi, examApi, surveyFieldApi } from '../services/apiService';
+import { studentApi, examApi } from '../services/apiService';
 import { useStudentStore } from '../store';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
-import type { AvatarIcon, JoinExamRequest, SurveyField, ExamSurveyFieldConfig } from '../types';
+import type { AvatarIcon, JoinExamRequest, ExamSurveyFieldConfig } from '../types';
 
 /**
  * 學員加入頁面
@@ -27,8 +27,8 @@ export const StudentJoin: React.FC = () => {
   const [accessCode, setAccessCode] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [customOccupation, setCustomOccupation] = useState('');
+  const [occupation, _setOccupation] = useState('');
+  const [customOccupation, _setCustomOccupation] = useState('');
   const [avatarIcon, setAvatarIcon] = useState<AvatarIcon>('cat');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,25 +37,11 @@ export const StudentJoin: React.FC = () => {
   const [surveyFieldConfigs, setSurveyFieldConfigs] = useState<ExamSurveyFieldConfig[]>([]);
   const [surveyData, setSurveyData] = useState<Record<string, string>>({});
   const [customSurveyData, setCustomSurveyData] = useState<Record<string, string>>({});
-  const [isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(false);
+  const [_isLoadingSurveyFields, setIsLoadingSurveyFields] = useState(false);
 
   // 測驗狀態
   const [examStatus, setExamStatus] = useState<string | null>(null);
   const [examTitle, setExamTitle] = useState<string>('');
-
-  // 常用職業列表（保留向下兼容）
-  const commonOccupations = [
-    '學生',
-    '教師',
-    '工程師',
-    '設計師',
-    '行銷人員',
-    '業務人員',
-    '醫護人員',
-    '公務員',
-    '自由工作者',
-    '其他',
-  ];
 
   // 自動填入 URL 參數中的 Access Code
   useEffect(() => {

@@ -232,6 +232,7 @@ export const SurveyFieldManager: React.FC = () => {
       } else if (formMode === 'edit' && editingId) {
         // 更新
         await surveyFieldApi.updateSurveyField(editingId, {
+          fieldKey: formData.fieldKey.trim(),
           fieldName: formData.fieldName.trim(),
           fieldType: formData.fieldType,
           options: validOptions,

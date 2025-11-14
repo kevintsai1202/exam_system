@@ -270,8 +270,8 @@ public class ExamService {
             throw new BusinessException("QUESTION_ALREADY_PUSHED", "此題目已經推送過了");
         }
 
-        // 更新當前題目索引、最後推送索引和題目開始時間
-        exam.setCurrentQuestionIndex(questionIndex);
+        // 更新當前題目索引（指向下一題）、最後推送索引和題目開始時間
+        exam.setCurrentQuestionIndex(questionIndex + 1);
         exam.setLastPushedQuestionIndex(questionIndex);
         exam.setCurrentQuestionStartedAt(LocalDateTime.now());
         examRepository.save(exam);

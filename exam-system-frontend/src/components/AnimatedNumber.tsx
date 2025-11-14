@@ -39,7 +39,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
     bounce: 0,
   });
 
-  const display = useTransform(spring, (current) =>
+  const display = useTransform(spring, (current: number) =>
     (Math.round(current * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals)
   );
 

@@ -62,6 +62,11 @@ public class ExamDTO {
     private Integer currentQuestionIndex;
 
     /**
+     * 最後推送的題目索引（回應時使用）
+     */
+    private Integer lastPushedQuestionIndex;
+
+    /**
      * 加入碼（回應時使用）
      */
     private String accessCode;

@@ -60,6 +60,13 @@ public class Exam {
     private Integer currentQuestionIndex;
 
     /**
+     * 最後推送的題目索引（用於防止重複推送，-1 表示尚未推送任何題目）
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer lastPushedQuestionIndex = -1;
+
+    /**
      * 加入碼（用於生成 QR Code）
      */
     @Column(nullable = false, unique = true, length = 6)
