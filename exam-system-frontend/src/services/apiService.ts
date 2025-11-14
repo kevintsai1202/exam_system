@@ -255,10 +255,10 @@ export const studentApi = {
 
   /**
    * 取得學員資訊
-   * GET /api/students/session/{sessionId}
+   * GET /api/students/{sessionId}
    */
   getStudent: async (sessionId: string): Promise<JoinExamResponse> => {
-    const response = await apiClient.get<JoinExamResponse>(`/students/session/${sessionId}`);
+    const response = await apiClient.get<JoinExamResponse>(`/students/${sessionId}`);
     return response.data;
   },
 
@@ -287,10 +287,10 @@ export const answerApi = {
 
   /**
    * 取得學員答案記錄
-   * GET /api/students/session/{sessionId}/answers
+   * GET /api/answers/student/{sessionId}
    */
   getStudentAnswers: async (sessionId: string): Promise<StudentAnswersResponse> => {
-    const response = await apiClient.get<StudentAnswersResponse>(`/students/session/${sessionId}/answers`);
+    const response = await apiClient.get<StudentAnswersResponse>(`/answers/student/${sessionId}`);
     return response.data;
   },
 };

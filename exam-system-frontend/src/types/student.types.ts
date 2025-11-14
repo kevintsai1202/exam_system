@@ -4,6 +4,22 @@
 
 import { ExamStatus } from './exam.types';
 
+// 題目選項資訊介面
+export interface QuestionOptionInfo {
+  id: number;               // 選項 ID
+  optionOrder: number;      // 選項順序
+  optionText: string;       // 選項文字
+}
+
+// 當前題目資訊介面
+export interface CurrentQuestionInfo {
+  questionId: number;       // 題目 ID
+  questionIndex: number;    // 題目索引
+  questionText: string;     // 題目內容
+  options: QuestionOptionInfo[];  // 選項列表
+  expiresAt: string;        // 到期時間（ISO 格式字串）
+}
+
 // 學員介面
 export interface Student {
   id: number;               // 學員 ID
@@ -18,6 +34,7 @@ export interface Student {
   correctAnswersCount?: number;  // 答對題數
   joinedAt: string;         // 加入時間
   examStatus?: ExamStatus;  // 測驗狀態
+  currentQuestion?: CurrentQuestionInfo;  // 當前正在進行的題目（如果有的話）
 }
 
 // 學員加入請求介面
@@ -41,8 +58,10 @@ export interface JoinExamResponse {
   surveyData?: Record<string, string>;  // 調查資料（動態欄位）
   avatarIcon: string;       // 頭像圖示名稱
   totalScore: number;       // 累積總分
+  correctAnswersCount?: number;  // 答對題數
   joinedAt: string;         // 加入時間
   examStatus: ExamStatus;   // 測驗狀態
+  currentQuestion?: CurrentQuestionInfo;  // 當前正在進行的題目（如果有的話）
 }
 
 // 學員列表回應介面
