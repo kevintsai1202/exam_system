@@ -484,6 +484,115 @@
 
 ---
 
+### 1.10 匯出測驗為 Markdown 檔案
+
+**Endpoint**: `POST /api/exams/{examId}/export/markdown`
+
+**描述**: 將測驗題目匯出為 Markdown 格式檔案，支援講師版（含答案）和學員版（無答案）兩種格式
+
+**Path Parameters**:
+- `examId` (Long): 測驗 ID
+
+**Request Body** (可選):
+```json
+{
+  "includeAnswers": true,
+  "showQuestionNumbers": true,
+  "showOptionLabels": true,
+  "showExamInfo": true
+}
+```
+
+**參數說明**:
+- `includeAnswers` (Boolean, 預設: true): 是否包含答案
+  - `true`: 匯出講師版（含正確答案標註）
+  - `false`: 匯出學員版（無答案）
+- `showQuestionNumbers` (Boolean, 預設: true): 是否顯示題號（第 1 題、第 2 題...）
+- `showOptionLabels` (Boolean, 預設: true): 是否顯示選項編號（A、B、C、D...）
+- `showExamInfo` (Boolean, 預設: true): 是否顯示測驗資訊（標題、描述、題數等）
+
+**Response** (200 OK):
+- **Content-Type**: `text/markdown; charset=UTF-8`
+- **Content-Disposition**: `attachment; filename="[測驗標題]_[版本].md"`
+- **Body**: Markdown 格式的文字內容
+
+**Markdown 格式範例**（講師版）:
+```markdown
+# Java 基礎測驗
+
+**描述**: 測試 Java 基本知識
+**題數**: 2 題
+**每題時間**: 30 秒
+**測驗代碼**: ABC123
+**版本**: 講師版（含答案）
+
+---
+
+## 第 1 題
+
+Java 是什麼類型的程式語言？
+
+- [ ] A. 編譯型語言 **✓**
+- [ ] B. 直譯型語言
+- [ ] C. 混合型語言
+- [ ] D. 腳本語言
+
+**正確答案**: A
+
+---
+
+## 第 2 題
+
+JVM 的全名是什麼？
+
+- [ ] A. Java Virtual Machine **✓**
+- [ ] B. Java Variable Manager
+- [ ] C. Java Version Manager
+
+**正確答案**: A
+```
+
+**使用場景**:
+1. **講師版**（`includeAnswers: true`）: 用於製作標準答案卷、教學參考
+2. **學員版**（`includeAnswers: false`）: 用於列印紙本考卷供學員作答
+
+**錯誤回應**:
+- `404 Not Found`: 測驗不存在
+
+**前端調用範例**:
+```javascript
+// 匯出講師版（含答案）
+const response = await fetch(`/api/exams/${examId}/export/markdown`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    includeAnswers: true
+  })
+});
+
+const blob = await response.blob();
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `exam_${examId}_teacher.md`;
+a.click();
+
+// 匯出學員版（無答案）
+const response = await fetch(`/api/exams/${examId}/export/markdown`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    includeAnswers: false
+  })
+});
+```
+
+---
+
 ## 2. 學員管理 API (Student Management)
 
 ### 2.1 學員加入測驗

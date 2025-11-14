@@ -265,8 +265,14 @@ public class ExamService {
             throw new BusinessException("INVALID_QUESTION_INDEX", "無效的題目索引");
         }
 
-        // 更新當前題目索引為下一題（與前端語義保持一致）和題目開始時間
-        exam.setCurrentQuestionIndex(questionIndex + 1);
+        // 檢查是否已推送過此題目
+        if (exam.getLastPushedQuestionIndex() != null && exam.getLastPushedQuestionIndex() >= questionIndex) {
+            throw new BusinessException("QUESTION_ALREADY_PUSHED", "此題目已經推送過了");
+        }
+
+        // 更新當前題目索引、最後推送索引和題目開始時間
+        exam.setCurrentQuestionIndex(questionIndex);
+        exam.setLastPushedQuestionIndex(questionIndex);
         exam.setCurrentQuestionStartedAt(LocalDateTime.now());
         examRepository.save(exam);
 
@@ -606,6 +612,7 @@ public class ExamService {
                 .questionTimeLimit(exam.getQuestionTimeLimit())
                 .status(exam.getStatus())
                 .currentQuestionIndex(exam.getCurrentQuestionIndex())
+                .lastPushedQuestionIndex(exam.getLastPushedQuestionIndex())
                 .currentQuestionStartedAt(exam.getCurrentQuestionStartedAt())
                 .accessCode(exam.getAccessCode())
                 .createdAt(exam.getCreatedAt())
@@ -764,6 +771,122 @@ public class ExamService {
         }
 
         log.info("Options reordered successfully for question: {}", questionId);
+    }
+
+    /**
+     * 匯出測驗為 Markdown 格式
+     *
+     * @param examId 測驗 ID
+     * @param includeAnswers 是否包含答案
+     * @param showQuestionNumbers 是否顯示題號
+     * @param showOptionLabels 是否顯示選項編號
+     * @param showExamInfo 是否顯示測驗資訊
+     * @return Markdown 格式的字串
+     */
+    @Transactional(readOnly = true)
+    public String exportToMarkdown(Long examId, Boolean includeAnswers, Boolean showQuestionNumbers,
+                                   Boolean showOptionLabels, Boolean showExamInfo) {
+        log.info("Exporting exam {} to Markdown (includeAnswers: {})", examId, includeAnswers);
+
+        // 預設值處理
+        includeAnswers = includeAnswers != null ? includeAnswers : true;
+        showQuestionNumbers = showQuestionNumbers != null ? showQuestionNumbers : true;
+        showOptionLabels = showOptionLabels != null ? showOptionLabels : true;
+        showExamInfo = showExamInfo != null ? showExamInfo : true;
+
+        // 取得測驗和題目資料
+        Exam exam = findExamById(examId);
+        List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+
+        StringBuilder markdown = new StringBuilder();
+
+        // 測驗資訊標題
+        if (showExamInfo) {
+            markdown.append("# ").append(exam.getTitle()).append("\n\n");
+
+            if (exam.getDescription() != null && !exam.getDescription().isEmpty()) {
+                markdown.append("**描述**: ").append(exam.getDescription()).append("\n\n");
+            }
+
+            markdown.append("**題數**: ").append(questions.size()).append(" 題\n");
+            markdown.append("**每題時間**: ").append(exam.getQuestionTimeLimit()).append(" 秒\n");
+
+            if (exam.getAccessCode() != null && !exam.getAccessCode().isEmpty()) {
+                markdown.append("**測驗代碼**: ").append(exam.getAccessCode()).append("\n");
+            }
+
+            // 顯示匯出類型
+            if (includeAnswers) {
+                markdown.append("**版本**: 講師版（含答案）\n");
+            } else {
+                markdown.append("**版本**: 學員版\n");
+            }
+
+            markdown.append("\n---\n\n");
+        }
+
+        // 遍歷所有題目
+        for (int i = 0; i < questions.size(); i++) {
+            Question question = questions.get(i);
+            List<QuestionOption> options = questionOptionRepository
+                    .findByQuestionIdOrderByOptionOrderAsc(question.getId());
+
+            // 題目標題
+            if (showQuestionNumbers) {
+                markdown.append("## 第 ").append(i + 1).append(" 題\n\n");
+            } else {
+                markdown.append("## \n\n");
+            }
+
+            // 題目內容
+            markdown.append(question.getQuestionText()).append("\n\n");
+
+            // 選項列表
+            char optionLabel = 'A';
+            Long correctOptionId = question.getCorrectOptionId();
+
+            for (QuestionOption option : options) {
+                markdown.append("- [ ] ");
+
+                if (showOptionLabels) {
+                    markdown.append(optionLabel).append(". ");
+                }
+
+                markdown.append(option.getOptionText());
+
+                // 如果是講師版且為正確答案，標註 ✓
+                if (includeAnswers && option.getId().equals(correctOptionId)) {
+                    markdown.append(" **✓**");
+                }
+
+                markdown.append("\n");
+                optionLabel++;
+            }
+
+            markdown.append("\n");
+
+            // 如果是講師版，顯示正確答案
+            if (includeAnswers) {
+                // 找出正確答案的選項編號
+                char correctLabel = 'A';
+                for (int j = 0; j < options.size(); j++) {
+                    if (options.get(j).getId().equals(correctOptionId)) {
+                        correctLabel = (char) ('A' + j);
+                        break;
+                    }
+                }
+
+                markdown.append("**正確答案**: ").append(correctLabel).append("\n\n");
+            }
+
+            // 題目分隔線（非最後一題）
+            if (i < questions.size() - 1) {
+                markdown.append("---\n\n");
+            }
+        }
+
+        log.info("Markdown export completed for exam: {}", examId);
+        return markdown.toString();
     }
 
 }

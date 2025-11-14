@@ -22,6 +22,7 @@ export const InstructorDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [duplicatingExamId, setDuplicatingExamId] = useState<number | null>(null);
   const [clearingSessionExamId, setClearingSessionExamId] = useState<number | null>(null);
+  const [exportingExamId, setExportingExamId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /**
@@ -99,6 +100,74 @@ export const InstructorDashboard: React.FC = () => {
       setError(err.message || '複製測驗失敗');
     } finally {
       setDuplicatingExamId(null);
+    }
+  };
+
+  /**
+   * 匯出測驗為 Markdown 檔案
+   */
+  const handleExportMarkdown = async (examId: number, includeAnswers: boolean, event: React.MouseEvent) => {
+    // 阻止事件冒泡，避免觸發卡片的點擊事件
+    event.stopPropagation();
+
+    try {
+      setExportingExamId(examId);
+      setError(null);
+      setSuccessMessage(null);
+
+      // 呼叫匯出 API
+      const response = await fetch(`http://localhost:8080/api/exams/${examId}/export/markdown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          includeAnswers: includeAnswers,
+          showQuestionNumbers: true,
+          showOptionLabels: true,
+          showExamInfo: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('匯出失敗');
+      }
+
+      // 取得 blob
+      const blob = await response.blob();
+
+      // 從 Content-Disposition 標頭取得檔名
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `exam_${examId}.md`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // 建立下載連結
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // 顯示成功訊息
+      setSuccessMessage(`成功匯出 ${includeAnswers ? '講師版' : '學員版'} Markdown 檔案`);
+
+      // 3 秒後清除成功訊息
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('[InstructorDashboard] 匯出 Markdown 失敗:', err);
+      setError(err.message || '匯出 Markdown 失敗');
+    } finally {
+      setExportingExamId(null);
     }
   };
 
@@ -553,6 +622,64 @@ export const InstructorDashboard: React.FC = () => {
                     {duplicatingExamId === exam.id ? '複製中...' : '複製測驗'}
                   </button>
 
+                  {/* 匯出講師版按鈕 */}
+                  <button
+                    onClick={(e) => handleExportMarkdown(exam.id, true, e)}
+                    disabled={exportingExamId === exam.id}
+                    title="匯出含答案的講師版 Markdown"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: exportingExamId === exam.id ? '#999' : '#7c4dff',
+                      backgroundColor: '#fff',
+                      border: `1px solid ${exportingExamId === exam.id ? '#ccc' : '#7c4dff'}`,
+                      borderRadius: '6px',
+                      cursor: exportingExamId === exam.id ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (exportingExamId !== exam.id) {
+                        e.currentTarget.style.backgroundColor = '#ede7f6';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                    }}
+                  >
+                    {exportingExamId === exam.id ? '匯出中...' : '📝 匯出(答)'}
+                  </button>
+
+                  {/* 匯出學員版按鈕 */}
+                  <button
+                    onClick={(e) => handleExportMarkdown(exam.id, false, e)}
+                    disabled={exportingExamId === exam.id}
+                    title="匯出無答案的學員版 Markdown"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: exportingExamId === exam.id ? '#999' : '#9c27b0',
+                      backgroundColor: '#fff',
+                      border: `1px solid ${exportingExamId === exam.id ? '#ccc' : '#9c27b0'}`,
+                      borderRadius: '6px',
+                      cursor: exportingExamId === exam.id ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (exportingExamId !== exam.id) {
+                        e.currentTarget.style.backgroundColor = '#f3e5f5';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                    }}
+                  >
+                    {exportingExamId === exam.id ? '匯出中...' : '📄 匯出'}
+                  </button>
+
                   {/* 清除 Session 按鈕（進行中或已結束時顯示） */}
                   {(exam.status === 'STARTED' || exam.status === 'ENDED') && (
                     <button
@@ -620,6 +747,8 @@ export const InstructorDashboard: React.FC = () => {
             <li>點擊「建立新測驗」開始建立測驗題目</li>
             <li>建立完成後，可在測驗卡片中查看測驗資訊</li>
             <li>點擊「複製測驗」按鈕可快速複製現有測驗</li>
+            <li>點擊「📝 匯出(答)」匯出講師版 Markdown（含答案），適合製作標準答案卷</li>
+            <li>點擊「📄 匯出」匯出學員版 Markdown（無答案），適合列印紙本考卷</li>
             <li>點擊測驗卡片進入監控頁面</li>
             <li>在監控頁面可以啟動測驗、推送題目、查看即時統計</li>
             <li>測驗結束後可查看完整統計報表與排行榜</li>

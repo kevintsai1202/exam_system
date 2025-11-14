@@ -1,6 +1,7 @@
 package com.exam.system.controller;
 
 import com.exam.system.dto.ExamDTO;
+import com.exam.system.dto.MarkdownExportRequestDTO;
 import com.exam.system.dto.QuestionDTO;
 import com.exam.system.dto.ReorderRequestDTO;
 import com.exam.system.dto.ReorderResponseDTO;
@@ -10,7 +11,9 @@ import com.exam.system.service.StudentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -236,6 +239,63 @@ public class ExamController {
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 匯出測驗為 Markdown 檔案
+     * POST /api/exams/{examId}/export/markdown
+     */
+    @PostMapping("/{examId}/export/markdown")
+    public ResponseEntity<String> exportToMarkdown(
+            @PathVariable Long examId,
+            @RequestBody(required = false) MarkdownExportRequestDTO request) {
+        log.info("Exporting exam {} to Markdown", examId);
+
+        // 處理請求參數（提供預設值）
+        if (request == null) {
+            request = MarkdownExportRequestDTO.builder().build();
+        }
+
+        Boolean includeAnswers = request.getIncludeAnswers() != null ? request.getIncludeAnswers() : true;
+        Boolean showQuestionNumbers = request.getShowQuestionNumbers() != null ? request.getShowQuestionNumbers() : true;
+        Boolean showOptionLabels = request.getShowOptionLabels() != null ? request.getShowOptionLabels() : true;
+        Boolean showExamInfo = request.getShowExamInfo() != null ? request.getShowExamInfo() : true;
+
+        // 調用服務層生成 Markdown
+        String markdown = examService.exportToMarkdown(
+                examId,
+                includeAnswers,
+                showQuestionNumbers,
+                showOptionLabels,
+                showExamInfo
+        );
+
+        // 取得測驗資訊以生成檔名
+        ExamDTO exam = examService.getExam(examId);
+        String filename = sanitizeFilename(exam.getTitle()) +
+                          (includeAnswers ? "_講師版" : "_學員版") + ".md";
+
+        // 設定 HTTP 標頭，觸發瀏覽器下載
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/markdown; charset=UTF-8"));
+        headers.setContentDispositionFormData("attachment", filename);
+        headers.add("Content-Description", "Markdown File Transfer");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(markdown);
+    }
+
+    /**
+     * 清理檔名，移除不合法字元
+     */
+    private String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return "exam";
+        }
+        // 移除 Windows 不允許的檔名字元: \ / : * ? " < > |
+        return filename.replaceAll("[\\\\/:*?\"<>|]", "_")
+                      .trim();
     }
 
 }
