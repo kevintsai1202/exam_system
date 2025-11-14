@@ -314,12 +314,14 @@ public class ExamController {
 
     /**
      * 從 JSON 匯入測驗
-     * POST /api/exams/import
+     * POST /api/exams/import?importSurveyFields=true
      */
     @PostMapping("/import")
-    public ResponseEntity<ExamDTO> importFromJson(@Valid @RequestBody ExamExportDTO exportDTO) {
-        log.info("Importing exam from JSON: {}", exportDTO.getTitle());
-        ExamDTO createdExam = examService.importFromJson(exportDTO);
+    public ResponseEntity<ExamDTO> importFromJson(
+            @Valid @RequestBody ExamExportDTO exportDTO,
+            @RequestParam(defaultValue = "false") boolean importSurveyFields) {
+        log.info("Importing exam from JSON: {}, importSurveyFields: {}", exportDTO.getTitle(), importSurveyFields);
+        ExamDTO createdExam = examService.importFromJson(exportDTO, importSurveyFields);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdExam);
     }
 

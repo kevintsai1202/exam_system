@@ -251,8 +251,25 @@ export const InstructorDashboard: React.FC = () => {
       const fileContent = await file.text();
       const jsonData = JSON.parse(fileContent);
 
+      // 檢查是否包含問卷調查欄位配置
+      let importSurveyFields = false;
+      if (jsonData.surveyFieldConfigs && jsonData.surveyFieldConfigs.length > 0) {
+        // 建立問卷欄位列表字串
+        const surveyFieldsList = jsonData.surveyFieldConfigs
+          .map((config: any, index: number) => `${index + 1}. ${config.fieldKey}${config.isRequired ? ' (必填)' : ' (選填)'}`)
+          .join('\n');
+
+        // 顯示確認對話框
+        const confirmMessage = `此測驗包含 ${jsonData.surveyFieldConfigs.length} 個問卷調查欄位：\n\n${surveyFieldsList}\n\n是否一起匯入這些問卷調查欄位配置？\n\n（選擇「取消」將只匯入題目，不匯入問卷配置）`;
+        importSurveyFields = confirm(confirmMessage);
+      }
+
       // 呼叫匯入 API
-      const response = await fetch('http://localhost:8080/api/exams/import', {
+      const url = importSurveyFields
+        ? 'http://localhost:8080/api/exams/import?importSurveyFields=true'
+        : 'http://localhost:8080/api/exams/import?importSurveyFields=false';
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -272,7 +289,8 @@ export const InstructorDashboard: React.FC = () => {
       setExams(data);
 
       // 顯示成功訊息
-      setSuccessMessage(`成功匯入測驗：${createdExam.title}`);
+      const surveyFieldsMsg = importSurveyFields ? '（含問卷配置）' : '';
+      setSuccessMessage(`成功匯入測驗${surveyFieldsMsg}：${createdExam.title}`);
 
       // 3 秒後清除成功訊息
       setTimeout(() => {
@@ -935,12 +953,12 @@ export const InstructorDashboard: React.FC = () => {
             }}
           >
             <li>點擊「建立新測驗」開始建立測驗題目</li>
-            <li>點擊「📦 匯入測驗」可從 JSON 檔案匯入測驗</li>
+            <li>點擊「📦 匯入測驗」可從 JSON 檔案匯入測驗（若包含問卷配置會詢問是否一起匯入）</li>
             <li>建立完成後，可在測驗卡片中查看測驗資訊</li>
             <li>點擊「複製測驗」按鈕可快速複製現有測驗</li>
             <li>點擊「📝 匯出(答)」匯出講師版 Markdown（含答案），適合製作標準答案卷</li>
             <li>點擊「📄 匯出」匯出學員版 Markdown（無答案），適合列印紙本考卷</li>
-            <li>點擊「📦 JSON」匯出 JSON 格式，可用於備份或分享測驗（不含問卷調查配置）</li>
+            <li>點擊「📦 JSON」匯出 JSON 格式，包含題目和問卷調查欄位配置（若有設定）</li>
             <li>點擊測驗卡片進入監控頁面</li>
             <li>在監控頁面可以啟動測驗、推送題目、查看即時統計</li>
             <li>測驗結束後可查看完整統計報表與排行榜</li>

@@ -891,7 +891,7 @@ public class ExamService {
 
     /**
      * 匯出測驗為 JSON 格式
-     * 不包含 ID、狀態、調查欄位配置等運行時資料
+     * 包含題目、選項和問卷調查欄位配置（如果有的話）
      *
      * @param examId 測驗 ID
      * @return ExamExportDTO
@@ -907,7 +907,7 @@ public class ExamService {
         // 查詢題目和選項
         List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
 
-        // 轉換為 ExamExportDTO
+        // 轉換題目為 ExamExportDTO
         List<ExamExportDTO.QuestionExportDTO> questionExportDTOs = questions.stream()
                 .map(question -> {
                     // 轉換選項
@@ -936,10 +936,25 @@ public class ExamService {
                 })
                 .collect(Collectors.toList());
 
+        // 轉換問卷調查欄位配置（如果有的話）
+        List<ExamExportDTO.SurveyFieldConfigExportDTO> surveyFieldConfigExportDTOs = null;
+        List<ExamSurveyFieldConfig> surveyFieldConfigs = examSurveyFieldConfigRepository.findByExamIdOrderByDisplayOrderAsc(examId);
+        if (surveyFieldConfigs != null && !surveyFieldConfigs.isEmpty()) {
+            surveyFieldConfigExportDTOs = surveyFieldConfigs.stream()
+                    .map(config -> ExamExportDTO.SurveyFieldConfigExportDTO.builder()
+                            .fieldKey(config.getSurveyField().getFieldKey())
+                            .isRequired(config.getIsRequired())
+                            .displayOrder(config.getDisplayOrder())
+                            .build())
+                    .collect(Collectors.toList());
+            log.info("Exporting {} survey field configs for exam: {}", surveyFieldConfigExportDTOs.size(), examId);
+        }
+
         ExamExportDTO exportDTO = ExamExportDTO.builder()
                 .title(exam.getTitle())
                 .description(exam.getDescription())
                 .questionTimeLimit(exam.getQuestionTimeLimit())
+                .surveyFieldConfigs(surveyFieldConfigExportDTOs)
                 .questions(questionExportDTOs)
                 .build();
 
@@ -949,16 +964,17 @@ public class ExamService {
 
     /**
      * 從 JSON 匯入測驗
-     * 會建立新的測驗（不包含調查欄位配置）
+     * 會建立新的測驗，可選擇是否匯入問卷調查欄位配置
      *
      * @param exportDTO 匯出的測驗資料
+     * @param importSurveyFields 是否匯入問卷調查欄位配置
      * @return 建立的測驗 DTO
      */
     @Transactional
-    public ExamDTO importFromJson(ExamExportDTO exportDTO) {
-        log.info("Importing exam from JSON: {}", exportDTO.getTitle());
+    public ExamDTO importFromJson(ExamExportDTO exportDTO, boolean importSurveyFields) {
+        log.info("Importing exam from JSON: {}, importSurveyFields: {}", exportDTO.getTitle(), importSurveyFields);
 
-        // 轉換為 ExamDTO
+        // 轉換題目為 QuestionDTO
         List<QuestionDTO> questionDTOs = exportDTO.getQuestions().stream()
                 .map(questionExport -> {
                     // 轉換選項
@@ -980,10 +996,37 @@ public class ExamService {
                 })
                 .collect(Collectors.toList());
 
+        // 轉換問卷調查欄位配置（如果選擇匯入且有配置的話）
+        List<ExamSurveyFieldConfigDTO> surveyFieldConfigDTOs = null;
+        if (importSurveyFields && exportDTO.getSurveyFieldConfigs() != null && !exportDTO.getSurveyFieldConfigs().isEmpty()) {
+            surveyFieldConfigDTOs = exportDTO.getSurveyFieldConfigs().stream()
+                    .map(configExport -> {
+                        // 驗證 fieldKey 是否存在於系統中
+                        if (!surveyFieldRepository.existsByFieldKey(configExport.getFieldKey())) {
+                            log.warn("Survey field with key '{}' does not exist, skipping", configExport.getFieldKey());
+                            return null;
+                        }
+                        return ExamSurveyFieldConfigDTO.builder()
+                                .fieldKey(configExport.getFieldKey())
+                                .isRequired(configExport.getIsRequired())
+                                .displayOrder(configExport.getDisplayOrder())
+                                .build();
+                    })
+                    .filter(dto -> dto != null) // 過濾掉不存在的欄位
+                    .collect(Collectors.toList());
+
+            if (!surveyFieldConfigDTOs.isEmpty()) {
+                log.info("Importing {} survey field configs", surveyFieldConfigDTOs.size());
+            } else {
+                surveyFieldConfigDTOs = null;
+            }
+        }
+
         ExamDTO examDTO = ExamDTO.builder()
                 .title(exportDTO.getTitle())
                 .description(exportDTO.getDescription())
                 .questionTimeLimit(exportDTO.getQuestionTimeLimit())
+                .surveyFieldConfigs(surveyFieldConfigDTOs)
                 .questions(questionDTOs)
                 .build();
 

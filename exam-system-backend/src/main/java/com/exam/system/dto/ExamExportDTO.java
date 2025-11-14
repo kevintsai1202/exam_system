@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * 測驗匯出/匯入 DTO
- * 用於 JSON 格式的測驗匯出和匯入，不包含 ID、狀態等運行時資料
+ * 用於 JSON 格式的測驗匯出和匯入，包含題目和問卷調查欄位配置
  */
 @Data
 @Builder
@@ -45,6 +45,12 @@ public class ExamExportDTO {
     @Min(value = 10, message = "倒數時間不能少於 10 秒")
     @Max(value = 300, message = "倒數時間不能超過 300 秒")
     private Integer questionTimeLimit;
+
+    /**
+     * 問卷調查欄位配置列表（可選）
+     */
+    @Valid
+    private List<SurveyFieldConfigExportDTO> surveyFieldConfigs;
 
     /**
      * 題目列表
@@ -120,5 +126,33 @@ public class ExamExportDTO {
          */
         @NotBlank(message = "選項內容不能為空")
         private String optionText;
+    }
+
+    /**
+     * 問卷調查欄位配置匯出 DTO（內部類別）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SurveyFieldConfigExportDTO {
+
+        /**
+         * 調查欄位鍵值
+         */
+        @NotBlank(message = "調查欄位鍵值不能為空")
+        private String fieldKey;
+
+        /**
+         * 是否必填
+         */
+        @NotNull(message = "是否必填不能為空")
+        private Boolean isRequired;
+
+        /**
+         * 顯示順序
+         */
+        @NotNull(message = "顯示順序不能為空")
+        private Integer displayOrder;
     }
 }
