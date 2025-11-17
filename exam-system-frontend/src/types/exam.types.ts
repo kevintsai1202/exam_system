@@ -40,6 +40,7 @@ export interface Question {
   questionText: string;                // 題目內容
   singleStatChartType: ChartType;      // 單題統計圖表類型
   cumulativeChartType: ChartType;      // 累積統計圖表類型
+  exportable?: boolean;                // 是否匯出此題目（預設 true）
   options: QuestionOption[];           // 選項列表
   correctOptionId: number;             // 正確答案選項 ID
 }
@@ -78,6 +79,7 @@ export interface CreateQuestionRequest {
   questionText: string;                // 題目內容
   singleStatChartType: ChartType;      // 單題統計圖表類型
   cumulativeChartType: ChartType;      // 累積統計圖表類型
+  exportable?: boolean;                // 是否匯出此題目（預設 true）
   options: CreateOptionRequest[];      // 選項列表
   correctOptionOrder: number;          // 正確答案選項順序
 }

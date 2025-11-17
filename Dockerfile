@@ -25,12 +25,12 @@ COPY target/exam-system-1.0.0.jar /app/exam-system.jar
 # -Dspring.profiles.active=prod 使用生產環境配置（如需要）
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dserver.port=80", \
+    "-Dserver.port=8080", \
     "-jar", \
     "/app/exam-system.jar"]
 
 # 暴露端口
-EXPOSE 80
+EXPOSE 8080
 
 # 設定健康檢查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \

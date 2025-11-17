@@ -20,6 +20,7 @@ interface FormQuestion {
   questionText: string;
   singleStatChartType: ChartType;
   cumulativeChartType: ChartType;
+  exportable: boolean;  // 是否匯出此題目
   options: FormOption[];
   correctOptionOrder: number;
 }
@@ -59,6 +60,7 @@ export const ExamCreator: React.FC = () => {
       questionText: '',
       singleStatChartType: ChartType.BAR,
       cumulativeChartType: ChartType.BAR,
+      exportable: true,  // 預設為可匯出
       options: [
         { optionOrder: 1, optionText: '' },
         { optionOrder: 2, optionText: '' },
@@ -115,6 +117,7 @@ export const ExamCreator: React.FC = () => {
           questionText: q.questionText,
           singleStatChartType: q.singleStatChartType,
           cumulativeChartType: q.cumulativeChartType,
+          exportable: q.exportable !== undefined ? q.exportable : true,  // 預設為 true
           options: q.options.map((opt: any) => ({
             optionOrder: opt.optionOrder,
             optionText: opt.optionText,
@@ -143,6 +146,7 @@ export const ExamCreator: React.FC = () => {
       questionText: '',
       singleStatChartType: ChartType.BAR,
       cumulativeChartType: ChartType.BAR,
+      exportable: true,  // 預設為可匯出
       options: [
         { optionOrder: 1, optionText: '' },
         { optionOrder: 2, optionText: '' },
@@ -350,6 +354,7 @@ export const ExamCreator: React.FC = () => {
           questionText: q.questionText,
           singleStatChartType: q.singleStatChartType,
           cumulativeChartType: q.cumulativeChartType,
+          exportable: q.exportable,  // 包含是否匯出欄位
           options: q.options.map((opt) => ({
             optionOrder: opt.optionOrder,
             optionText: opt.optionText,
@@ -1130,6 +1135,45 @@ export const ExamCreator: React.FC = () => {
                       <option value="BAR">長條圖</option>
                       <option value="PIE">圓餅圖</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* 是否匯出此題目 */}
+                <div style={{ marginTop: '16px' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#333',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={question.exportable}
+                      onChange={(e) =>
+                        handleUpdateQuestion(qIndex, 'exportable', e.target.checked)
+                      }
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span>匯出此題目到 Markdown 檔案</span>
+                  </label>
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      marginLeft: '26px',
+                      fontSize: '12px',
+                      color: '#666',
+                    }}
+                  >
+                    取消勾選後，此題目將不會包含在匯出的 Markdown 檔案中
                   </div>
                 </div>
               </div>

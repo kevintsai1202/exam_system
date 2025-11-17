@@ -99,6 +99,12 @@ public class ExamExportDTO {
         private ChartType cumulativeChartType;
 
         /**
+         * 是否匯出此題目（預設 true）
+         */
+        @Builder.Default
+        private Boolean exportable = true;
+
+        /**
          * 題目選項列表
          */
         @Valid

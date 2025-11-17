@@ -34,7 +34,7 @@ export const ExamMonitor: React.FC = () => {
   // Store
   const { currentExam, questions, currentQuestion, setCurrentExam, setQuestions, setCurrentQuestion } = useExamStore();
   const { students, setStudents, addStudent } = useStudentStore();
-  const { currentQuestionStats, cumulativeStats, leaderboard, setCurrentQuestionStats, setCumulativeStats, setLeaderboard } = useStatisticsStore();
+  const { currentQuestionStats, leaderboard, setCurrentQuestionStats, setCumulativeStats, setLeaderboard } = useStatisticsStore();
   const { instructorSessionId, setInstructorSessionId } = useInstructorStore();
 
   // 本地狀態
@@ -417,8 +417,22 @@ export const ExamMonitor: React.FC = () => {
       // 自動切換到「當前題目」標籤,讓講師可以看到題目
       setActiveTab('question');
 
-      // 清除舊的統計數據
-      setCurrentQuestionStats(null);
+      // 初始化空的統計數據（顯示 0 人作答），等待 WebSocket 推送更新
+      setCurrentQuestionStats({
+        questionId: pushedQuestion.id,
+        questionText: pushedQuestion.questionText,
+        totalAnswers: 0,
+        correctRate: 0,
+        chartType: pushedQuestion.singleStatChartType || 'BAR',
+        timestamp: new Date().toISOString(),
+        optionStatistics: pushedQuestion.options.map(option => ({
+          optionId: option.id,
+          optionText: option.optionText,
+          count: 0,
+          percentage: 0,
+          isCorrect: option.id === pushedQuestion.correctOptionId
+        }))
+      });
 
       // 重置題目時間狀態（題目開始時不顯示正確答案）
       setIsQuestionTimeExpired(false);
@@ -814,7 +828,7 @@ export const ExamMonitor: React.FC = () => {
                         </div>
                       )}
 
-                      <QuestionCard question={currentQuestion} questionIndex={questions.findIndex(q => q.id === currentQuestion.id)} totalQuestions={questions.length} showCorrectAnswer={false} highlightCorrect={false} />
+                      <QuestionCard question={currentQuestion} questionIndex={questions.findIndex(q => q.id === currentQuestion.id)} totalQuestions={questions.length} showCorrectAnswer={isQuestionTimeExpired} highlightCorrect={isQuestionTimeExpired} />
 
                       {/* 統計區域 */}
                       {isLoadingStats && !currentQuestionStats && (

@@ -72,6 +72,15 @@ public class Question {
     private ChartType cumulativeChartType;
 
     /**
+     * 是否匯出此題目（預設 true）
+     * true: 匯出時包含此題目
+     * false: 匯出時略過此題目
+     */
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    @Builder.Default
+    private Boolean exportable = true;
+
+    /**
      * 題目的選項列表
      */
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

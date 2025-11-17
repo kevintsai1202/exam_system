@@ -416,6 +416,7 @@ public class ExamService {
                             .correctOptionId(0L)  // 使用臨時值，稍後設定
                             .singleStatChartType(originalQuestion.getSingleStatChartType())
                             .cumulativeChartType(originalQuestion.getCumulativeChartType())
+                            .exportable(originalQuestion.getExportable() != null ? originalQuestion.getExportable() : true)
                             .build();
 
                     newQuestion = questionRepository.save(newQuestion);
@@ -554,6 +555,7 @@ public class ExamService {
                 .questionText(dto.getQuestionText())
                 .singleStatChartType(dto.getSingleStatChartType())
                 .cumulativeChartType(dto.getCumulativeChartType())
+                .exportable(dto.getExportable() != null ? dto.getExportable() : true) // 預設為 true
                 .correctOptionId(0L) // 暫時設定為 0，稍後更新
                 .build();
 
@@ -645,6 +647,7 @@ public class ExamService {
                 .correctOptionId(question.getCorrectOptionId())
                 .singleStatChartType(question.getSingleStatChartType())
                 .cumulativeChartType(question.getCumulativeChartType())
+                .exportable(question.getExportable() != null ? question.getExportable() : true)
                 .options(optionDTOs)
                 .build();
     }
@@ -796,7 +799,12 @@ public class ExamService {
 
         // 取得測驗和題目資料
         Exam exam = findExamById(examId);
-        List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+        List<Question> allQuestions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
+
+        // 只匯出標記為可匯出的題目
+        List<Question> questions = allQuestions.stream()
+                .filter(q -> q.getExportable() != null && q.getExportable())
+                .collect(Collectors.toList());
 
         StringBuilder markdown = new StringBuilder();
 
@@ -824,6 +832,12 @@ public class ExamService {
 
             markdown.append("\n---\n\n");
         }
+
+        // 添加填寫資訊欄位（姓名、工號、分數）
+        markdown.append("**姓名**: __________________    ");
+        markdown.append("**工號**: __________________    ");
+        markdown.append("**分數**: __________________\n\n");
+        markdown.append("---\n\n");
 
         // 遍歷所有題目
         for (int i = 0; i < questions.size(); i++) {
@@ -931,6 +945,7 @@ public class ExamService {
                             .correctOptionOrder(correctOptionOrder)
                             .singleStatChartType(question.getSingleStatChartType())
                             .cumulativeChartType(question.getCumulativeChartType())
+                            .exportable(question.getExportable() != null ? question.getExportable() : true)
                             .options(optionExportDTOs)
                             .build();
                 })

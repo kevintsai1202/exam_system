@@ -79,7 +79,7 @@ exam:
       - "http://localhost:5173"  # 開發環境（前端開發伺服器）
       - "http://localhost:5174"  # 開發環境（前端開發伺服器 - 備用端口）
       - "http://localhost:3000"  # 開發環境（備用）
-      - "http://localhost:8080"  # 生產環境（整合部署）
+      - "http://localhost"       # 生產環境（整合部署 - 80 端口）
   access-code:
     length: 6
     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
