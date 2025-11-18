@@ -369,7 +369,7 @@ export const ExamMonitor: React.FC = () => {
     // 檢查 instructorSessionId（STARTED 狀態必須有）
     if (!instructorSessionId) {
       console.error('[handleStartQuestion] instructorSessionId 為空');
-      message.error('缺少講師 Session，請重新載入頁面');
+      message.error('Session 尚未載入完成，請重新整理頁面以建立 Session');
       return;
     }
 
@@ -506,7 +506,19 @@ export const ExamMonitor: React.FC = () => {
    * 結束測驗
    */
   const handleEndExam = async () => {
-    if (!examId || !instructorSessionId) return;
+    // 檢查必要參數
+    if (!examId) {
+      message.error('測驗 ID 不存在');
+      return;
+    }
+
+    // 檢查 instructorSessionId
+    if (!instructorSessionId) {
+      console.error('[handleEndExam] instructorSessionId 為空');
+      message.error('Session 尚未載入完成，請重新整理頁面以建立 Session');
+      return;
+    }
+
     if (!confirm('確定要結束測驗嗎？')) return;
 
     try {
