@@ -930,7 +930,7 @@ export const ExamMonitor: React.FC = () => {
                             </p>
                             {isQuestionTimeExpired && (
                               <p style={{ margin: 0, fontWeight: '500' }}>
-                                ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
+                                ✅ 正確率：<AnimatedNumber value={(currentQuestionStats.correctRate ?? 0) * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
                               </p>
                             )}
                           </div>

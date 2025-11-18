@@ -163,7 +163,7 @@ export const LeaderboardDisplay: React.FC<LeaderboardDisplayProps> = ({
                     {entry.name}
                   </div>
                   <div style={{ fontSize: compact ? '12px' : '14px', color: '#666' }}>
-                    正確率：{(entry.correctRate * 100).toFixed(1)}%
+                    正確率：{((entry.correctRate ?? 0) * 100).toFixed(1)}%
                   </div>
                 </div>
 
