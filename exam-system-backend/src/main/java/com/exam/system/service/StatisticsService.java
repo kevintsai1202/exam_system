@@ -46,9 +46,21 @@ public class StatisticsService {
      */
     @Transactional(readOnly = true)
     public void updateQuestionStatistics(Long examId, Long questionId) {
-        log.debug("Updating statistics for question: {}", questionId);
+        updateQuestionStatistics(examId, questionId, false);
+    }
 
-        StatisticsDTO.QuestionStatistics statistics = generateQuestionStatistics(questionId);
+    /**
+     * 更新題目統計並透過 WebSocket 推送
+     *
+     * @param examId 測驗 ID
+     * @param questionId 題目 ID
+     * @param includeAnswer 是否包含正確答案和正確率（時間結束後才顯示）
+     */
+    @Transactional(readOnly = true)
+    public void updateQuestionStatistics(Long examId, Long questionId, boolean includeAnswer) {
+        log.debug("Updating statistics for question: {}, includeAnswer: {}", questionId, includeAnswer);
+
+        StatisticsDTO.QuestionStatistics statistics = generateQuestionStatistics(questionId, includeAnswer);
 
         // 透過 WebSocket 推送
         webSocketService.broadcastQuestionStatistics(examId, questionId,
@@ -56,13 +68,25 @@ public class StatisticsService {
     }
 
     /**
-     * 生成題目統計資料
+     * 生成題目統計資料（預設不包含正確答案）
      *
      * @param questionId 題目 ID
      * @return 題目統計 DTO
      */
     @Transactional(readOnly = true)
     public StatisticsDTO.QuestionStatistics generateQuestionStatistics(Long questionId) {
+        return generateQuestionStatistics(questionId, false);
+    }
+
+    /**
+     * 生成題目統計資料
+     *
+     * @param questionId 題目 ID
+     * @param includeAnswer 是否包含正確答案和正確率
+     * @return 題目統計 DTO
+     */
+    @Transactional(readOnly = true)
+    public StatisticsDTO.QuestionStatistics generateQuestionStatistics(Long questionId, boolean includeAnswer) {
         // 查找題目
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
@@ -93,7 +117,7 @@ public class StatisticsService {
                             .optionText(option.getOptionText())
                             .count(count)
                             .percentage(Math.round(percentage * 100.0) / 100.0)
-                            .isCorrect(isCorrect)
+                            .isCorrect(includeAnswer ? isCorrect : null)  // 只在 includeAnswer=true 時才設定正確答案
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -108,7 +132,7 @@ public class StatisticsService {
                 .totalAnswers(totalAnswers)
                 .chartType(question.getSingleStatChartType())
                 .optionStatistics(optionStatistics)
-                .correctRate(Math.round(correctRate * 10000.0) / 10000.0)
+                .correctRate(includeAnswer ? Math.round(correctRate * 10000.0) / 10000.0 : null)  // 只在 includeAnswer=true 時才設定正確率
                 .timestamp(LocalDateTime.now())
                 .build();
     }

@@ -450,12 +450,16 @@ export const ExamMonitor: React.FC = () => {
       }, (questionTimeLimit - 1) * 1000);
 
       statisticsTimerRef.current = setTimeout(async () => {
-        console.log('[handleStartQuestion] 題目時間到,自動獲取統計');
+        console.log('[handleStartQuestion] 題目時間到,自動觸發完整統計');
         try {
           // 題目時間到，現在可以顯示正確答案了
           setIsQuestionTimeExpired(true);
 
-          // 獲取題目統計資料
+          // 調用 API 推送包含正確答案的完整統計（會透過 WebSocket 推送給所有人）
+          await examApi.completeQuestion(parseInt(examId), pushedQuestion.id);
+          console.log('[handleStartQuestion] 完整統計已推送');
+
+          // 同時主動獲取題目統計資料（確保立即更新）
           const stats = await statisticsApi.getQuestionStatistics(parseInt(examId), pushedQuestion.id);
           setCurrentQuestionStats(stats);
           setIsLoadingStats(false);

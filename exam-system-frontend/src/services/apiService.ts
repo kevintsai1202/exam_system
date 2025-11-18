@@ -170,6 +170,15 @@ export const examApi = {
   },
 
   /**
+   * 完成題目（時間到期）
+   * 推送包含正確答案的完整統計資料
+   * PUT /api/exams/{examId}/questions/{questionId}/complete
+   */
+  completeQuestion: async (examId: number, questionId: number): Promise<void> => {
+    await apiClient.put(`/exams/${examId}/questions/${questionId}/complete`);
+  },
+
+  /**
    * 結束測驗（需要講師 Session ID）
    * PUT /api/exams/{examId}/end
    */

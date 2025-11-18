@@ -8,6 +8,7 @@ import com.exam.system.dto.ReorderRequestDTO;
 import com.exam.system.dto.ReorderResponseDTO;
 import com.exam.system.dto.StudentDTO;
 import com.exam.system.service.ExamService;
+import com.exam.system.service.StatisticsService;
 import com.exam.system.service.StudentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ExamController {
 
     private final ExamService examService;
     private final StudentService studentService;
+    private final StatisticsService statisticsService;
 
     /**
      * 建立測驗
@@ -107,6 +109,27 @@ public class ExamController {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "題目已開始");
         response.put("questionIndex", questionIndex);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 完成題目（時間到期）
+     * 推送包含正確答案的完整統計資料
+     * PUT /api/exams/{examId}/questions/{questionId}/complete
+     */
+    @PutMapping("/{examId}/questions/{questionId}/complete")
+    public ResponseEntity<Map<String, Object>> completeQuestion(
+            @PathVariable Long examId,
+            @PathVariable Long questionId) {
+        log.info("Completing question {} for exam: {}, broadcasting full statistics", questionId, examId);
+
+        // 推送包含正確答案的完整統計
+        statisticsService.updateQuestionStatistics(examId, questionId, true);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "題目統計已更新");
+        response.put("questionId", questionId);
 
         return ResponseEntity.ok(response);
     }
