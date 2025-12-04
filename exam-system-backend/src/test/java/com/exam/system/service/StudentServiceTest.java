@@ -8,6 +8,7 @@ import com.exam.system.entity.Student;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.ExamRepository;
+import com.exam.system.repository.ExamSurveyFieldConfigRepository;
 import com.exam.system.repository.StudentRepository;
 import com.exam.system.websocket.WebSocketService;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,6 +44,9 @@ class StudentServiceTest {
     @Mock
     private WebSocketService webSocketService;
 
+    @Mock
+    private ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+
     @InjectMocks
     private StudentService studentService;
 
@@ -62,6 +67,10 @@ class StudentServiceTest {
     void testJoinExam_Success() {
         // Given
         when(examRepository.findByAccessCode("TEST01")).thenReturn(Optional.of(testExam));
+        when(examSurveyFieldConfigRepository.findByExamIdOrderByDisplayOrderAsc(anyLong())).thenReturn(Collections.emptyList());
+
+        when(studentRepository.findByExamIdAndEmailAndName(anyLong(), anyString(), anyString())).thenReturn(Optional.empty());
+
         when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> {
             Student s = invocation.getArgument(0);
             s.setId(1L);
@@ -84,6 +93,42 @@ class StudentServiceTest {
         verify(examRepository).findByAccessCode("TEST01");
         verify(studentRepository).save(any(Student.class));
         verify(webSocketService).broadcastStudentJoined(eq(1L), any());
+    }
+
+    @Test
+    @DisplayName("測試學員重新加入測驗 (Reconnect)")
+    void testJoinExam_Reconnect() {
+        // Given
+        when(examRepository.findByAccessCode("TEST01")).thenReturn(Optional.of(testExam));
+        when(examSurveyFieldConfigRepository.findByExamIdOrderByDisplayOrderAsc(anyLong())).thenReturn(Collections.emptyList());
+
+        // 模擬已存在的學員
+        Student existingStudent = TestDataBuilder.createStudent(testExam);
+        existingStudent.setId(1L);
+        existingStudent.setSessionId("existing-session-id");
+        existingStudent.setEmail(testStudentDTO.getEmail());
+        existingStudent.setName(testStudentDTO.getName());
+        existingStudent.setAvatarIcon("old-avatar");
+
+        testStudentDTO.setAvatarIcon("new-avatar"); // 模擬頭像變更
+
+        when(studentRepository.findByExamIdAndEmailAndName(eq(1L), eq(testStudentDTO.getEmail()), eq(testStudentDTO.getName())))
+                .thenReturn(Optional.of(existingStudent));
+
+        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        StudentDTO result = studentService.joinExam(testStudentDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getSessionId()).isEqualTo("existing-session-id");
+        assertThat(result.getAvatarIcon()).isEqualTo("new-avatar"); // 確認頭像已更新
+
+        verify(studentRepository, times(1)).save(any(Student.class)); // 應該被調用一次來更新頭像
+        // 不應該廣播 join 訊息（因為是 reconnect）- 實際上現在的邏輯只在 else 區塊廣播，所以這裡應該 verify never
+        verify(webSocketService, never()).broadcastStudentJoined(anyLong(), any());
     }
 
     @Test

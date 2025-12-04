@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -87,35 +88,61 @@ public class StudentService {
             }
         }
 
-        // 生成唯一的 sessionId
-        String sessionId = UUID.randomUUID().toString();
+        // 檢查學員是否已存在（根據 Email 和姓名）
+        // 如果存在，則返回現有學員 Session，實現重新登入功能
+        Optional<Student> existingStudent = studentRepository.findByExamIdAndEmailAndName(
+                exam.getId(), studentDTO.getEmail(), studentDTO.getName());
 
-        // 建立學員實體
-        Student student = Student.builder()
-                .exam(exam)
-                .sessionId(sessionId)
-                .name(studentDTO.getName())
-                .email(studentDTO.getEmail())
-                .occupation(studentDTO.getOccupation())
-                .surveyData(studentDTO.getSurveyData())
-                .avatarIcon(studentDTO.getAvatarIcon())
-                .totalScore(0)
-                .build();
+        Student student;
+        if (existingStudent.isPresent()) {
+            student = existingStudent.get();
+            log.info("Existing student rejoined: {} (sessionId: {})", student.getName(), student.getSessionId());
 
-        student = studentRepository.save(student);
+            // 更新學員資訊（如頭像或調查資料可能變更）
+            boolean updated = false;
+            if (!student.getAvatarIcon().equals(studentDTO.getAvatarIcon())) {
+                student.setAvatarIcon(studentDTO.getAvatarIcon());
+                updated = true;
+            }
+            if (studentDTO.getSurveyData() != null && !studentDTO.getSurveyData().equals(student.getSurveyData())) {
+                student.setSurveyData(studentDTO.getSurveyData());
+                updated = true;
+            }
 
-        log.info("Student joined successfully: {} (sessionId: {})", student.getName(), sessionId);
+            if (updated) {
+                student = studentRepository.save(student);
+            }
+        } else {
+            // 生成唯一的 sessionId
+            String sessionId = UUID.randomUUID().toString();
 
-        // 透過 WebSocket 通知講師有新學員加入
-        Map<String, Object> studentData = new HashMap<>();
-        studentData.put("id", student.getId());
-        studentData.put("name", student.getName());
-        studentData.put("avatarIcon", student.getAvatarIcon());
-        studentData.put("totalScore", student.getTotalScore());
-        studentData.put("correctAnswersCount", 0); // 新加入的學員答對題數為 0
-        studentData.put("totalStudents", studentRepository.countByExamId(exam.getId()));
+            // 建立學員實體
+            student = Student.builder()
+                    .exam(exam)
+                    .sessionId(sessionId)
+                    .name(studentDTO.getName())
+                    .email(studentDTO.getEmail())
+                    .occupation(studentDTO.getOccupation())
+                    .surveyData(studentDTO.getSurveyData())
+                    .avatarIcon(studentDTO.getAvatarIcon())
+                    .totalScore(0)
+                    .build();
 
-        webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
+            student = studentRepository.save(student);
+
+            log.info("Student joined successfully: {} (sessionId: {})", student.getName(), sessionId);
+
+            // 透過 WebSocket 通知講師有新學員加入
+            Map<String, Object> studentData = new HashMap<>();
+            studentData.put("id", student.getId());
+            studentData.put("name", student.getName());
+            studentData.put("avatarIcon", student.getAvatarIcon());
+            studentData.put("totalScore", student.getTotalScore());
+            studentData.put("correctAnswersCount", 0); // 新加入的學員答對題數為 0
+            studentData.put("totalStudents", studentRepository.countByExamId(exam.getId()));
+
+            webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
+        }
 
         // 如果當前有正在進行的題目，推送給新加入的學員
         if (exam.getCurrentQuestionStartedAt() != null && exam.getCurrentQuestionIndex() < exam.getQuestions().size()) {
