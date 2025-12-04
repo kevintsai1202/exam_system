@@ -57,6 +57,17 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     boolean existsBySessionId(String sessionId);
 
     /**
+     * 根據測驗 ID、Email 和姓名查詢學員
+     * 用於學員重新加入時找回原有 Session
+     *
+     * @param examId 測驗 ID
+     * @param email Email
+     * @param name 姓名
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findByExamIdAndEmailAndName(Long examId, String email, String name);
+
+    /**
      * 根據測驗 ID 統計各分數的學員數量
      * 用於生成累積分數分布圖
      *

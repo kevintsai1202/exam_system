@@ -185,6 +185,30 @@ export const StudentExam: React.FC = () => {
       handleQuestionStarted
     );
 
+    // 當 WebSocket 連線恢復時，重新獲取最新的學員狀態（包含當前題目）
+    // 這解決了斷線重連後可能錯過 WebSocket 推送的問題
+    console.log('[StudentExam] WebSocket 連線恢復，重新同步狀態');
+    studentApi.getStudent(sessionId)
+      .then(student => {
+        if (student.currentQuestion) {
+          console.log('[StudentExam] 重新同步獲取到當前題目:', student.currentQuestion);
+          setCurrentQuestion({
+            questionId: student.currentQuestion.questionId,
+            questionIndex: student.currentQuestion.questionIndex,
+            questionText: student.currentQuestion.questionText,
+            options: student.currentQuestion.options,
+            expiresAt: student.currentQuestion.expiresAt,
+          });
+          setExamStatus('STARTED');
+        } else {
+             // 如果後端沒回傳 currentQuestion，代表現在可能沒題目或已過期
+             // 但我們只在明確收到 null 時才清除，避免閃爍
+        }
+      })
+      .catch(err => {
+        console.error('[StudentExam] 重新同步狀態失敗:', err);
+      });
+
     // 清理函式
     return () => {
       console.log('[StudentExam] 取消訂閱個人題目主題');
