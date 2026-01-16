@@ -9,49 +9,63 @@ import ThemeToggle from './ThemeToggle';
 import { useThemeStore, themes } from '../store/themeStore';
 
 interface PageLayoutProps {
-    children: React.ReactNode;
-    variant?: 'particles' | 'waves' | 'network';
-    showThemeToggle?: boolean;
-    maxWidth?: string;
-    padding?: string;
+  children: React.ReactNode;
+  variant?: 'particles' | 'waves' | 'network';
+  showThemeToggle?: boolean;
+  maxWidth?: string;
+  padding?: string;
 }
 
 const PageLayout: React.FC<PageLayoutProps> = ({
-    children,
-    variant = 'particles',
-    showThemeToggle = true,
-    maxWidth = '1200px',
-    padding = '20px'
+  children,
+  variant = 'particles',
+  showThemeToggle = true,
+  maxWidth = '1200px',
+  padding = '20px'
 }) => {
-    const { mode } = useThemeStore();
-    const theme = themes[mode];
-    const isDark = mode === 'dark';
+  const { mode } = useThemeStore();
+  const theme = themes[mode];
+  const isDark = mode === 'dark';
 
-    return (
-        <div className="page-layout" style={{ background: theme.background }}>
-            <P5Background
-                variant={variant}
-                opacity={isDark ? 0.3 : 0.15}
-                color={isDark ? '#667eea' : '#302b63'}
-            />
+  return (
+    <div className="page-layout" style={{ position: 'relative', minHeight: '100vh' }}>
+      {/* 背景色層 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: -2,
+          background: theme.background,
+          transition: 'background 0.3s ease'
+        }}
+      />
 
-            {showThemeToggle && (
-                <div className="theme-toggle-wrapper">
-                    <ThemeToggle />
-                </div>
-            )}
+      <P5Background
+        variant={variant}
+        opacity={isDark ? 1.0 : 0.8}
+        color={isDark ? '#a5b4fc' : '#3730a3'}
+      />
 
-            <motion.div
-                className="page-content"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                style={{ maxWidth, padding }}
-            >
-                {children}
-            </motion.div>
+      {showThemeToggle && (
+        <div className="theme-toggle-wrapper">
+          <ThemeToggle />
+        </div>
+      )}
 
-            <style>{`
+      <motion.div
+        className="page-content"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        style={{ maxWidth, padding }}
+      >
+        {children}
+      </motion.div>
+
+      <style>{`
         .page-layout {
           min-height: 100vh;
           position: relative;
@@ -165,8 +179,8 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           color: ${isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)'};
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default PageLayout;

@@ -67,7 +67,19 @@ const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config) => {
-    // 未來可在此添加 Authorization token
+    // 從 localStorage 讀取認證資訊並添加 Authorization Header
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        const token = parsed?.state?.token;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse auth-storage:', e);
+    }
     return config;
   },
   (error) => {

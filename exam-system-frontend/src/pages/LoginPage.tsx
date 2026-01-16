@@ -5,7 +5,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import P5Background from '../components/P5Background';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -24,7 +23,6 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page">
-      <P5Background variant="particles" opacity={0.5} />
       <motion.div
         className="login-container"
         initial={{ opacity: 0, y: 20 }}
@@ -90,7 +88,6 @@ const LoginPage: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
           padding: 20px;
         }
 

@@ -9,8 +9,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - email
               - profile
@@ -116,4 +116,4 @@ exam:
     length: 6
     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   security:
-    admin-token: "vHJ24I8hjgW7AU8BkJIDIM7MOX3J2hOq1yis9EmIsms="
+    admin-token: "${ADMIN_TOKEN}"

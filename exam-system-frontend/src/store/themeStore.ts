@@ -47,6 +47,10 @@ export const themes = {
         textPrimary: '#ffffff',
         textSecondary: 'rgba(255, 255, 255, 0.6)',
         textMuted: 'rgba(255, 255, 255, 0.4)',
+        // 別名屬性 - 相容新頁面
+        text: '#ffffff',
+        primary: '#667eea',
+        border: 'rgba(255, 255, 255, 0.2)',
     },
     light: {
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
@@ -56,5 +60,9 @@ export const themes = {
         textPrimary: '#1a1a2e',
         textSecondary: 'rgba(0, 0, 0, 0.6)',
         textMuted: 'rgba(0, 0, 0, 0.4)',
+        // 別名屬性 - 相容新頁面
+        text: '#1a1a2e',
+        primary: '#667eea',
+        border: 'rgba(0, 0, 0, 0.15)',
     }
 };

@@ -8,12 +8,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentApi, examApi } from '../services/apiService';
 import { useStudentStore } from '../store';
+import { useAuthStore } from '../store/authStore';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
-import P5Background from '../components/P5Background';
-import ThemeToggle from '../components/ThemeToggle';
+import TaiwanMap, { TAIWAN_LOCATIONS } from '../components/TaiwanMap';
+
 import GoogleLoginButton from '../components/GoogleLoginButton';
-import { useThemeStore, themes } from '../store/themeStore';
+import { useThemeStore } from '../store/themeStore';
 import {
   getStudentSessionByGmail,
   initiateGoogleLogin,
@@ -41,6 +42,7 @@ export const StudentJoin: React.FC = () => {
   const [occupation, _setOccupation] = useState('');
   const [customOccupation, _setCustomOccupation] = useState('');
   const [avatarIcon, setAvatarIcon] = useState<AvatarIcon>('cat');
+  const [selectedLocation, setSelectedLocation] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,13 +117,30 @@ export const StudentJoin: React.FC = () => {
     return () => clearTimeout(timer);
   }, [accessCode]);
 
-  // 檢查是否有暫存的 Google 用戶資訊（從 OAuth 回調返回）
+  // 檢查是否有暫存的 Google 用戶資訊（從 OAuth 回調返回）或全域登入狀態
   useEffect(() => {
+    // 1. 先檢查特定的 Google 暫存資訊 (OAuth Flow)
     const stored = getStoredGoogleUser();
     if (stored) {
       setGoogleUser(stored);
       setName(stored.name);
       setEmail(stored.email);
+      return;
+    }
+
+    // 2. 如果沒有暫存資訊，檢查全域認證狀態 (Home Page Login)
+    const { user, isAuthenticated } = useAuthStore.getState();
+    if (isAuthenticated && user) {
+      // 構造 GoogleUserInfo 格式
+      const globalGoogleUser: GoogleUserInfo = {
+        googleId: user.id.toString(), // 注意：這裡可能需要確認 id 格式，但在前端顯示主要用 email/name
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl
+      };
+      setGoogleUser(globalGoogleUser);
+      setName(user.name);
+      setEmail(user.email);
     }
   }, []);
 
@@ -174,8 +193,14 @@ export const StudentJoin: React.FC = () => {
   /**
    * 清除 Google 登入狀態
    */
+  /**
+   * 清除 Google 登入狀態
+   */
   const handleClearGoogleLogin = () => {
     clearStoredGoogleUser();
+    // 同時登出全域狀態
+    useAuthStore.getState().logout();
+
     setGoogleUser(null);
     setName('');
     setEmail('');
@@ -258,6 +283,7 @@ export const StudentJoin: React.FC = () => {
         occupation: finalOccupation || undefined,
         surveyData: Object.keys(finalSurveyData).length > 0 ? finalSurveyData : undefined,
         avatarIcon,
+        location: selectedLocation,
       };
 
       // 呼叫 API
@@ -290,8 +316,21 @@ export const StudentJoin: React.FC = () => {
 
   // 主題狀態
   const { mode } = useThemeStore();
-  const theme = themes[mode];
+
   const isDark = mode === 'dark';
+
+  // Load saved location on mount
+  useEffect(() => {
+    const savedLocation = localStorage.getItem('student_location_preference');
+    if (savedLocation) {
+      setSelectedLocation(savedLocation);
+    }
+  }, []);
+
+  const handleLocationSelect = (code: string) => {
+    setSelectedLocation(code);
+    localStorage.setItem('student_location_preference', code);
+  };
 
   // 判斷表單是否應該被禁用（測驗未開始或已結束）
   const isFormDisabled = examStatus !== null && examStatus !== 'STARTED';
@@ -300,9 +339,6 @@ export const StudentJoin: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        background: isDark
-          ? 'linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%)'
-          : 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 50%, #f0f4f8 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -310,62 +346,6 @@ export const StudentJoin: React.FC = () => {
         position: 'relative',
       }}
     >
-      {/* P5.js 動態背景層 - 使用雙層效果 */}
-      <P5Background
-        variant="network"
-        opacity={isDark ? 0.9 : 0.5}
-        color={isDark ? '#00ff88' : '#2e7d32'}
-      />
-      <P5Background
-        variant="particles"
-        opacity={isDark ? 0.7 : 0.4}
-        color={isDark ? '#ff40ff' : '#7b1fa2'}
-      />
-
-      {/* 裝飾性光暈效果 - 加強版 */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '-15%',
-          left: '-15%',
-          width: '55%',
-          height: '55%',
-          background: isDark
-            ? 'radial-gradient(circle, rgba(0, 230, 118, 0.3) 0%, rgba(0, 230, 118, 0.1) 40%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.08) 40%, transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-          animation: 'glow-pulse 6s ease-in-out infinite',
-        }}
-      />
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '-15%',
-          right: '-15%',
-          width: '60%',
-          height: '60%',
-          background: isDark
-            ? 'radial-gradient(circle, rgba(224, 64, 251, 0.25) 0%, rgba(224, 64, 251, 0.08) 40%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(156, 39, 176, 0.15) 0%, rgba(156, 39, 176, 0.05) 40%, transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-          animation: 'glow-pulse 8s ease-in-out infinite reverse',
-        }}
-      />
-
-      {/* 光暈動畫樣式 */}
-      <style>{`
-        @keyframes glow-pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.15); opacity: 0.7; }
-        }
-      `}</style>
-
-      {/* 主題切換按鈕 */}
-      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-        <ThemeToggle />
-      </div>
       <div
         style={{
           width: '100%',
@@ -702,6 +682,78 @@ export const StudentJoin: React.FC = () => {
               </div>
             );
           })}
+
+          {/* 所在地區選擇 - 台灣地圖 */}
+          {!isFormDisabled && (
+            <div style={{ marginBottom: '32px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: isDark ? '#fff' : '#333',
+                }}
+              >
+                選擇您的所在地區
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '16px',
+                  backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: '12px',
+                  border: selectedLocation
+                    ? `2px solid ${isDark ? '#667eea' : '#1976d2'}`
+                    : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e0e0e0'}`,
+                }}
+              >
+                <TaiwanMap
+                  selectedLocation={selectedLocation}
+                  onSelect={handleLocationSelect}
+                />
+                {selectedLocation && (
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '8px 16px',
+                      backgroundColor: isDark ? 'rgba(102, 126, 234, 0.2)' : '#e3f2fd',
+                      borderRadius: '20px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: isDark ? '#a5b4fc' : '#1976d2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span>📍</span>
+                    <span>
+                      已選擇：{TAIWAN_LOCATIONS[selectedLocation as keyof typeof TAIWAN_LOCATIONS]?.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLocation(undefined)}
+                      style={{
+                        marginLeft: '8px',
+                        padding: '2px 8px',
+                        fontSize: '12px',
+                        backgroundColor: 'transparent',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.3)' : '#ccc'}`,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        color: isDark ? 'rgba(255,255,255,0.6)' : '#666',
+                      }}
+                    >
+                      清除
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 頭像選擇（測驗未開始或已結束時隱藏） */}
           {!isFormDisabled && (

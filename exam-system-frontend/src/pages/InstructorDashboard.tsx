@@ -9,8 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus } from '../types';
-import P5Background from '../components/P5Background';
-import ThemeToggle from '../components/ThemeToggle';
 import { useThemeStore, themes } from '../store/themeStore';
 
 /**
@@ -401,8 +399,7 @@ export const InstructorDashboard: React.FC = () => {
   // 載入中
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.background }}>
-        <P5Background variant="waves" opacity={isDark ? 0.3 : 0.15} color={isDark ? '#667eea' : '#302b63'} />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontSize: '18px', color: isDark ? '#fff' : '#666', zIndex: 1 }}>載入中...</div>
       </div>
     );
@@ -422,17 +419,10 @@ export const InstructorDashboard: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        background: theme.background,
         padding: '40px 20px',
         position: 'relative',
       }}
     >
-      <P5Background variant="waves" opacity={isDark ? 0.3 : 0.15} color={isDark ? '#667eea' : '#302b63'} />
-
-      {/* 主題切換按鈕 */}
-      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-        <ThemeToggle />
-      </div>
 
       <div
         style={{
@@ -556,6 +546,64 @@ export const InstructorDashboard: React.FC = () => {
             }}
           >
             📊 管理調查欄位
+          </button>
+
+          <button
+            onClick={() => navigate('/surveys')}
+            style={{
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#7c4dff',
+              backgroundColor: '#fff',
+              border: '2px solid #7c4dff',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(124, 77, 255, 0.1)',
+              transition: 'all 0.2s ease',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#ede7f6';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 77, 255, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(124, 77, 255, 0.1)';
+            }}
+          >
+            📋 問券管理
+          </button>
+
+          <button
+            onClick={() => navigate('/emails')}
+            style={{
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#00bcd4',
+              backgroundColor: '#fff',
+              border: '2px solid #00bcd4',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 188, 212, 0.1)',
+              transition: 'all 0.2s ease',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#e0f7fa';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.1)';
+            }}
+          >
+            ✉️ 郵件管理
           </button>
 
           {/* 匯入測驗按鈕 */}

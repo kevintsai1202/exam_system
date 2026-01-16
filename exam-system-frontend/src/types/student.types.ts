@@ -34,6 +34,7 @@ export interface Student {
   correctAnswersCount?: number;  // 答對題數
   joinedAt: string;         // 加入時間
   examStatus?: ExamStatus;  // 測驗狀態
+  location?: string;        // 學員所在縣市代碼
   currentQuestion?: CurrentQuestionInfo;  // 當前正在進行的題目（如果有的話）
 }
 
@@ -45,6 +46,7 @@ export interface JoinExamRequest {
   occupation?: string;      // 學員職業（保留向下兼容）
   surveyData?: Record<string, string>;  // 調查資料（動態欄位）
   avatarIcon: string;       // 頭像圖示名稱
+  location?: string;        // 學員所在縣市代碼
 }
 
 // 學員加入回應介面
@@ -61,6 +63,7 @@ export interface JoinExamResponse {
   correctAnswersCount?: number;  // 答對題數
   joinedAt: string;         // 加入時間
   examStatus: ExamStatus;   // 測驗狀態
+  location?: string;        // 學員所在縣市代碼
   currentQuestion?: CurrentQuestionInfo;  // 當前正在進行的題目（如果有的話）
 }
 

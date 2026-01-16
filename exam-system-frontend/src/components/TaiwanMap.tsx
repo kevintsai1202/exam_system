@@ -1,200 +1,216 @@
-/**
- * 台灣地圖互動元件
- * 使用 SVG 顯示台灣縣市地圖，支援點擊選擇與熱力圖顯示
- */
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { Tooltip } from 'react-tooltip';
+import { useThemeStore } from '../store/themeStore';
+import taiwanCounties from '../assets/taiwan-counties.json';
 
-// 台灣縣市資料
-export const TAIWAN_LOCATIONS = {
-    TPE: { name: '台北市', x: 280, y: 85 },
-    NTP: { name: '新北市', x: 295, y: 110 },
-    KEL: { name: '基隆市', x: 310, y: 70 },
-    TYN: { name: '桃園市', x: 250, y: 130 },
-    HSC: { name: '新竹市', x: 230, y: 160 },
-    HSH: { name: '新竹縣', x: 245, y: 180 },
-    YLN: { name: '宜蘭縣', x: 330, y: 140 },
-    TXG: { name: '台中市', x: 210, y: 230 },
-    CHW: { name: '彰化縣', x: 185, y: 270 },
-    NTO: { name: '南投縣', x: 230, y: 290 },
-    YUN: { name: '雲林縣', x: 170, y: 310 },
-    MIA: { name: '苗栗縣', x: 220, y: 200 },
-    TNN: { name: '台南市', x: 155, y: 390 },
-    KHH: { name: '高雄市', x: 180, y: 440 },
-    CYI: { name: '嘉義市', x: 160, y: 350 },
-    CYQ: { name: '嘉義縣', x: 180, y: 350 },
-    PIF: { name: '屏東縣', x: 210, y: 500 },
-    HUN: { name: '花蓮縣', x: 300, y: 280 },
-    TTT: { name: '台東縣', x: 270, y: 420 },
-    PEN: { name: '澎湖縣', x: 80, y: 320 },
-    KIN: { name: '金門縣', x: 30, y: 180 },
-    LNN: { name: '連江縣', x: 30, y: 50 },
+// System Location Codes mapped to Display Names
+export const TAIWAN_LOCATIONS: Record<string, { name: string; coordinates: [number, number] }> = {
+    TPE: { name: '台北市', coordinates: [121.5654, 25.0330] },
+    TPH: { name: '新北市', coordinates: [121.4657, 25.0125] },
+    KLU: { name: '基隆市', coordinates: [121.7419, 25.1276] },
+    TYC: { name: '桃園市', coordinates: [121.3009, 24.9936] },
+    HCH: { name: '新竹縣', coordinates: [121.1611, 24.7073] },
+    HAC: { name: '新竹市', coordinates: [120.9675, 24.8138] },
+    MAL: { name: '苗栗縣', coordinates: [120.8207, 24.5650] },
+    TXG: { name: '台中市', coordinates: [120.6736, 24.1477] },
+    CWH: { name: '彰化縣', coordinates: [120.5396, 24.0567] },
+    NTO: { name: '南投縣', coordinates: [120.9605, 23.9609] },
+    YUN: { name: '雲林縣', coordinates: [120.5332, 23.7092] },
+    CHY: { name: '嘉義縣', coordinates: [120.5746, 23.4518] },
+    CYI: { name: '嘉義市', coordinates: [120.4491, 23.4800] },
+    TNN: { name: '台南市', coordinates: [120.1973, 22.9997] },
+    KHH: { name: '高雄市', coordinates: [120.3014, 22.6273] },
+    IUH: { name: '屏東縣', coordinates: [120.4856, 22.6744] },
+    ILA: { name: '宜蘭縣', coordinates: [121.7611, 24.7021] },
+    HWA: { name: '花蓮縣', coordinates: [121.6011, 23.9871] },
+    TTT: { name: '台東縣', coordinates: [121.1456, 22.7583] },
+    PEH: { name: '澎湖縣', coordinates: [119.5793, 23.5711] },
+    KMN: { name: '金門縣', coordinates: [118.3201, 24.4400] },
+    LNN: { name: '連江縣', coordinates: [119.9288, 26.1557] },
+};
+
+// Map from TopoJSON COUNTYNAME to Location Code
+const NAME_TO_CODE: Record<string, string> = {
+    '臺北市': 'TPE', '台北市': 'TPE',
+    '新北市': 'TPH',
+    '基隆市': 'KLU',
+    '桃園市': 'TYC',
+    '新竹縣': 'HCH',
+    '新竹市': 'HAC',
+    '苗栗縣': 'MAL',
+    '臺中市': 'TXG', '台中市': 'TXG',
+    '彰化縣': 'CWH',
+    '南投縣': 'NTO',
+    '雲林縣': 'YUN',
+    '嘉義縣': 'CHY',
+    '嘉義市': 'CYI',
+    '臺南市': 'TNN', '台南市': 'TNN',
+    '高雄市': 'KHH',
+    '屏東縣': 'IUH',
+    '宜蘭縣': 'ILA',
+    '花蓮縣': 'HWA',
+    '臺東縣': 'TTT', '台東縣': 'TTT',
+    '澎湖縣': 'PEH',
+    '金門縣': 'KMN',
+    '連江縣': 'LNN',
 };
 
 interface TaiwanMapProps {
+    onSelect: (locationCode: string) => void;
     selectedLocation?: string;
-    onLocationSelect?: (locationCode: string) => void;
-    statistics?: Record<string, number>;
-    showLabels?: boolean;
-    interactive?: boolean;
-    width?: number;
-    height?: number;
 }
 
-const TaiwanMap: React.FC<TaiwanMapProps> = ({
-    selectedLocation,
-    onLocationSelect,
-    statistics,
-    showLabels = true,
-    interactive = true,
-    width = 380,
-    height = 600
-}) => {
-    const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
+const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => {
+    // Select mode directly for reactivity and derive boolean
+    const isDark = useThemeStore((state) => state.mode === 'dark');
+    const [hoveredCode, setHoveredCode] = useState<string | null>(null);
 
-    // 計算熱力圖顏色
-    const getHeatColor = (code: string) => {
-        if (!statistics || !statistics[code]) return 'rgba(102, 126, 234, 0.3)';
-        const maxCount = Math.max(...Object.values(statistics), 1);
-        const count = statistics[code];
-        const intensity = count / maxCount;
-        // 從藍色到紅色的漸層
-        const r = Math.round(102 + (234 - 102) * intensity);
-        const g = Math.round(126 - 126 * intensity);
-        const b = Math.round(234 - 234 * intensity);
-        return `rgba(${r}, ${g}, ${b}, ${0.4 + intensity * 0.5})`;
-    };
+    // Distinct color palette for counties
+    const COUNTY_COLORS = [
+        '#FFADAD', '#FFD6A5', '#FDFFB6', '#CAFFBF', '#9BF6FF',
+        '#A0C4FF', '#BDB2FF', '#FFC6FF', '#FFFFFC', '#e4c1f9',
+        '#fbf8cc', '#fde4cf', '#ffcfd2', '#f1c0e8', '#cfbaf0',
+        '#a3c4f3', '#90dbf4', '#8eecf5', '#98f5e1', '#b9fbc0'
+    ];
 
-    // 取得選中或懸停的樣式
-    const getLocationStyle = (code: string) => {
-        const isSelected = selectedLocation === code;
-        const isHovered = hoveredLocation === code;
-
-        return {
-            fill: isSelected
-                ? '#667eea'
-                : (statistics ? getHeatColor(code) : (isHovered ? 'rgba(102, 126, 234, 0.5)' : 'rgba(102, 126, 234, 0.2)')),
-            stroke: isSelected || isHovered ? '#667eea' : 'rgba(255, 255, 255, 0.5)',
-            strokeWidth: isSelected ? 3 : (isHovered ? 2 : 1),
-            cursor: interactive ? 'pointer' : 'default',
-        };
-    };
-
-    const handleLocationClick = (code: string) => {
-        if (interactive && onLocationSelect) {
-            onLocationSelect(code);
-        }
+    // Helper to get color based on code index (consistent coloring)
+    const getCountyColor = (index: number) => {
+        return COUNTY_COLORS[index % COUNTY_COLORS.length];
     };
 
     return (
-        <div className="taiwan-map-container">
-            <svg width={width} height={height} viewBox="0 0 380 600">
-                {/* 背景 */}
-                <rect x="0" y="0" width="380" height="600" fill="transparent" />
+        <div className="taiwan-map-container" style={{ width: '100%', height: '100%', maxHeight: '600px' }}>
+            <ComposableMap
+                projection="geoMercator"
+                projectionConfig={{
+                    center: [120.5, 23.8], // Adjusted center to include Kinmen/Matsu/Penghu
+                    scale: 5500, // Adjusted scale to fit all islands
+                }}
+                style={{ width: '100%', height: '100%' }}
+            >
+                <ZoomableGroup center={[120.5, 23.8]} zoom={1}>
+                    <Geographies geography={taiwanCounties}>
+                        {({ geographies }) => {
+                            // Sort geographies to put the selected one last (render on top)
+                            const sortedGeographies = [...geographies].sort((a, b) => {
+                                const codeA = NAME_TO_CODE[a.properties?.COUNTYNAME];
+                                const codeB = NAME_TO_CODE[b.properties?.COUNTYNAME];
+                                if (codeA === selectedLocation) return 1;
+                                if (codeB === selectedLocation) return -1;
+                                return 0;
+                            });
 
-                {/* 縣市圓點與標籤 */}
-                {Object.entries(TAIWAN_LOCATIONS).map(([code, loc]) => {
-                    const style = getLocationStyle(code);
-                    const count = statistics?.[code] || 0;
+                            return sortedGeographies.map((geo, index) => {
+                                // Ensure geo.properties is defined before accessing
+                                const countyName = geo.properties ? geo.properties.COUNTYNAME : '';
 
-                    return (
-                        <motion.g
-                            key={code}
-                            onClick={() => handleLocationClick(code)}
-                            onMouseEnter={() => interactive && setHoveredLocation(code)}
-                            onMouseLeave={() => setHoveredLocation(null)}
-                            whileHover={interactive ? { scale: 1.1 } : {}}
-                            style={{ cursor: style.cursor }}
-                        >
-                            {/* 縣市圓點 */}
-                            <circle
-                                cx={loc.x}
-                                cy={loc.y}
-                                r={statistics ? Math.max(15, 15 + count * 3) : 20}
-                                fill={style.fill}
-                                stroke={style.stroke}
-                                strokeWidth={style.strokeWidth}
-                            />
+                                // Lookup code using the string key
+                                const code = NAME_TO_CODE[countyName];
 
-                            {/* 縣市名稱 */}
-                            {showLabels && (
-                                <text
-                                    x={loc.x}
-                                    y={loc.y + 4}
-                                    textAnchor="middle"
-                                    fontSize="11"
-                                    fill={selectedLocation === code || hoveredLocation === code ? '#fff' : 'rgba(255, 255, 255, 0.9)'}
-                                    fontWeight={selectedLocation === code ? '600' : '400'}
-                                    style={{ pointerEvents: 'none' }}
-                                >
-                                    {loc.name.slice(0, 2)}
-                                </text>
-                            )}
+                                if (!code) return null;
 
-                            {/* 統計數字 */}
-                            {statistics && count > 0 && (
-                                <text
-                                    x={loc.x}
-                                    y={loc.y + 35}
-                                    textAnchor="middle"
-                                    fontSize="12"
-                                    fill="rgba(255, 255, 255, 0.8)"
-                                    fontWeight="600"
-                                    style={{ pointerEvents: 'none' }}
-                                >
-                                    {count}人
-                                </text>
-                            )}
-                        </motion.g>
-                    );
-                })}
+                                const isSelected = selectedLocation === code;
+                                const isHovered = hoveredCode === code;
 
-                {/* 台灣本島輪廓提示線（簡化版） */}
-                <path
-                    d="M 250 60 Q 340 100 340 180 Q 330 300 300 400 Q 270 500 200 550 Q 150 540 140 450 Q 130 350 150 280 Q 170 200 200 140 Q 230 80 250 60"
-                    fill="none"
-                    stroke="rgba(255, 255, 255, 0.1)"
-                    strokeWidth="2"
-                    strokeDasharray="5,5"
-                />
-            </svg>
+                                // Identify if this is an outlying island
+                                const isIsland = ['KMN', 'LNN', 'PEH'].includes(code);
 
-            {/* 懸停提示 */}
-            {hoveredLocation && (
-                <motion.div
-                    className="location-tooltip"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.15 }}
-                >
-                    <strong>{TAIWAN_LOCATIONS[hoveredLocation as keyof typeof TAIWAN_LOCATIONS]?.name}</strong>
-                    {statistics && statistics[hoveredLocation] !== undefined && (
-                        <span> - {statistics[hoveredLocation]} 人</span>
-                    )}
-                </motion.div>
-            )}
+                                // Determine fill color
+                                let fillColor = isDark
+                                    ? (isSelected ? '#ecc94b' : '#2D3748')
+                                    : (isSelected ? '#3182ce' : getCountyColor(index));
 
-            <style>{`
-        .taiwan-map-container {
-          position: relative;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
+                                // Island specific overrides for better visibility
+                                if (isIsland && !isSelected) {
+                                    // Use distinct, darker colors for islands to make them pop
+                                    // KMN: #e53e3e (Red), LNN: #805ad5 (Purple), PEH: #319795 (Teal)
+                                    if (code === 'KMN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
+                                    if (code === 'LNN') fillColor = isDark ? '#b794f4' : '#9f7aea';
+                                    if (code === 'PEH') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
+                                }
 
-        .location-tooltip {
-          position: absolute;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.8);
-          color: #fff;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 14px;
-          white-space: nowrap;
-        }
-      `}</style>
+                                if (isDark && !isSelected && !isIsland) {
+                                    fillColor = getCountyColor(index);
+                                }
+
+                                // Override for Light Mode Selected
+                                if (!isDark && isSelected) {
+                                    fillColor = '#3182ce'; // Strong Blue
+                                } else if (isDark && isSelected) {
+                                    fillColor = '#ecc94b'; // Strong Yellow for dark mode selected
+                                }
+
+                                // Hover overrides
+                                if (isHovered) {
+                                    fillColor = isDark ? '#d69e2e' : '#2c5282';
+                                }
+
+                                // Style calculation for stroke
+                                const strokeWidth = isIsland ? 4 : (isSelected ? 2 : 1);
+
+                                // Enhanced stroke for selected item
+                                let strokeColor = isDark ? '#1A202C' : '#FFFFFF';
+                                if (isIsland) {
+                                    strokeColor = !isDark ? fillColor : '#1A202C';
+                                }
+                                if (isSelected) {
+                                    strokeColor = '#FFFFFF'; // Always white stroke for selection to pop
+                                    if (isDark) strokeColor = '#FFFFFF'; // Even in dark mode, white stroke pops well against dark bg + yellow fill
+                                }
+
+                                return (
+                                    <Geography
+                                        key={geo.rsmKey}
+                                        geography={geo}
+                                        onMouseEnter={() => setHoveredCode(code)}
+                                        onMouseLeave={() => setHoveredCode(null)}
+                                        onClick={() => onSelect(code)}
+                                        data-tooltip-id="taiwan-map-tooltip"
+                                        data-tooltip-content={TAIWAN_LOCATIONS[code]?.name || countyName}
+                                        style={{
+                                            default: {
+                                                fill: fillColor,
+                                                stroke: strokeColor,
+                                                strokeWidth: strokeWidth,
+                                                outline: 'none',
+                                                transition: 'all 0.3s ease',
+                                                opacity: isDark && !isSelected ? 0.8 : 1,
+                                                filter: isSelected ? 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none', // Drop shadow for pop effect
+                                                zIndex: isSelected ? 10 : 1 // Logic handled by sort order, but good for intent
+                                            },
+                                            hover: {
+                                                fill: fillColor,
+                                                stroke: strokeColor,
+                                                strokeWidth: isSelected ? 2 : 2,
+                                                outline: 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s ease',
+                                                opacity: 1,
+                                                filter: isIsland || isSelected ? 'brightness(1.1) drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none'
+                                            },
+                                            pressed: {
+                                                fill: fillColor,
+                                                outline: 'none',
+                                            },
+                                        }}
+                                    />
+                                );
+                            });
+                        }}
+                    </Geographies>
+                </ZoomableGroup>
+            </ComposableMap>
+            <Tooltip
+                id="taiwan-map-tooltip"
+                style={{
+                    backgroundColor: isDark ? '#1A202C' : '#FFFFFF',
+                    color: isDark ? '#FFFFFF' : '#1A202C',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                opacity={1}
+            />
         </div>
     );
 };

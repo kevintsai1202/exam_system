@@ -45,7 +45,7 @@ const P5Background: React.FC<P5BackgroundProps> = ({
 
         const sketch = (p: p5) => {
             const particles: Particle[] = [];
-            const maxParticles = 120;  // 增加粒子數量
+            const maxParticles = 80;  // 減少粒子數量但增大尺寸
             let time = 0;
 
             p.setup = () => {
@@ -65,10 +65,10 @@ const P5Background: React.FC<P5BackgroundProps> = ({
             const createParticle = (p: p5): Particle => ({
                 x: p.random(p.width),
                 y: p.random(p.height),
-                vx: p.random(-0.8, 0.8),   // 加快移動速度
-                vy: p.random(-0.8, 0.8),
-                size: p.random(4, 10),      // 增大粒子尺寸
-                alpha: p.random(0.5, 1.0)   // 增加透明度
+                vx: p.random(-0.5, 0.5),   // 速度適中
+                vy: p.random(-0.5, 0.5),
+                size: p.random(8, 20),      // 大幅增大粒子尺寸
+                alpha: p.random(0.3, 0.8)   // 保持較高透明度
             });
 
             p.draw = () => {
@@ -104,10 +104,10 @@ const P5Background: React.FC<P5BackgroundProps> = ({
                 for (let i = 0; i < particles.length; i++) {
                     for (let j = i + 1; j < particles.length; j++) {
                         const d = p.dist(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
-                        if (d < 200) {  // 增加連線距離
-                            const alpha = p.map(d, 0, 200, 0.6, 0);  // 增加連線透明度
+                        if (d < 250) {  // 增加連線距離
+                            const alpha = p.map(d, 0, 250, 0.8, 0);  // 增加連線透明度
                             p.stroke(rgb.r, rgb.g, rgb.b, alpha * opacity * 255);
-                            p.strokeWeight(1.5);  // 加粗連線
+                            p.strokeWeight(2);  // 加粗連線
                             p.line(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
                         }
                     }

@@ -1,8 +1,9 @@
 /**
  * 問券調查 API 服務
  */
-import axios, { AxiosInstance } from 'axios';
-import {
+import axios from 'axios';
+import type { AxiosInstance } from 'axios';
+import type {
     Survey,
     CreateSurveyRequest,
     SurveyResponse,
