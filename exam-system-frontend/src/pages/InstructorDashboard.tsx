@@ -9,6 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus } from '../types';
+import P5Background from '../components/P5Background';
+import ThemeToggle from '../components/ThemeToggle';
+import { useThemeStore, themes } from '../store/themeStore';
 
 /**
  * 講師主控台頁面
@@ -16,6 +19,9 @@ import type { Exam, ExamStatus } from '../types';
 export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { setInstructorSessionId } = useInstructorStore();
+  const { mode } = useThemeStore();
+  const theme = themes[mode];
+  const isDark = mode === 'dark';
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -395,8 +401,9 @@ export const InstructorDashboard: React.FC = () => {
   // 載入中
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>載入中...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.background }}>
+        <P5Background variant="waves" opacity={isDark ? 0.3 : 0.15} color={isDark ? '#667eea' : '#302b63'} />
+        <div style={{ fontSize: '18px', color: isDark ? '#fff' : '#666', zIndex: 1 }}>載入中...</div>
       </div>
     );
   }
@@ -415,14 +422,24 @@ export const InstructorDashboard: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
+        background: theme.background,
         padding: '40px 20px',
+        position: 'relative',
       }}
     >
+      <P5Background variant="waves" opacity={isDark ? 0.3 : 0.15} color={isDark ? '#667eea' : '#302b63'} />
+
+      {/* 主題切換按鈕 */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+        <ThemeToggle />
+      </div>
+
       <div
         style={{
           maxWidth: '1200px',
           margin: '0 auto',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* 頁面標題 */}
@@ -437,7 +454,7 @@ export const InstructorDashboard: React.FC = () => {
               margin: '0 0 12px 0',
               fontSize: '36px',
               fontWeight: '700',
-              color: '#333',
+              color: isDark ? '#fff' : '#333',
             }}
           >
             講師主控台
@@ -446,7 +463,7 @@ export const InstructorDashboard: React.FC = () => {
             style={{
               margin: 0,
               fontSize: '16px',
-              color: '#666',
+              color: isDark ? 'rgba(255,255,255,0.6)' : '#666',
             }}
           >
             管理您的測驗與監控學員答題狀況

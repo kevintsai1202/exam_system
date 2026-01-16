@@ -13,3 +13,9 @@ export * from './statistics.types';
 
 // 匯出調查欄位相關型別
 export * from './surveyField.types';
+
+// 匯出問券調查相關型別
+export * from './survey.types';
+
+// 匯出郵件相關型別
+export * from './email.types';

@@ -672,6 +672,7 @@ public class ExamService {
         if (exam.getStatus() == ExamStatus.STARTED) {
             exam.setCurrentQuestionStartedAt(null);
             exam.setCurrentQuestionIndex(0);  // 重置到第一題
+            exam.setLastPushedQuestionIndex(-1);  // 重置最後推送題目索引（-1 表示尚未推送任何題目）
             examRepository.save(exam);
             log.info("Reset exam {} to initial STARTED state (no questions pushed)", examId);
         }

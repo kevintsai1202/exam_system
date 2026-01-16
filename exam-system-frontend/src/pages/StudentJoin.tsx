@@ -10,6 +10,17 @@ import { studentApi, examApi } from '../services/apiService';
 import { useStudentStore } from '../store';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
+import P5Background from '../components/P5Background';
+import ThemeToggle from '../components/ThemeToggle';
+import GoogleLoginButton from '../components/GoogleLoginButton';
+import { useThemeStore, themes } from '../store/themeStore';
+import {
+  getStudentSessionByGmail,
+  initiateGoogleLogin,
+  getStoredGoogleUser,
+  clearStoredGoogleUser,
+  type GoogleUserInfo,
+} from '../services/studentSessionService';
 import type { AvatarIcon, JoinExamRequest, ExamSurveyFieldConfig } from '../types';
 
 /**
@@ -42,6 +53,12 @@ export const StudentJoin: React.FC = () => {
   // 測驗狀態
   const [examStatus, setExamStatus] = useState<string | null>(null);
   const [examTitle, setExamTitle] = useState<string>('');
+  const [examId, setExamId] = useState<number | null>(null);
+
+  // Google 登入狀態
+  const [googleUser, setGoogleUser] = useState<GoogleUserInfo | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [hasCheckedReconnect, setHasCheckedReconnect] = useState(false);
 
   // 自動填入 URL 參數中的 Access Code
   useEffect(() => {
@@ -71,6 +88,7 @@ export const StudentJoin: React.FC = () => {
         // 儲存測驗狀態和標題
         setExamStatus(exam.status);
         setExamTitle(exam.title);
+        setExamId(exam.id);
 
         // 如果測驗有設定調查欄位配置
         if (exam.surveyFieldConfigs && exam.surveyFieldConfigs.length > 0) {
@@ -86,6 +104,7 @@ export const StudentJoin: React.FC = () => {
         // 清空狀態
         setExamStatus(null);
         setExamTitle('');
+        setExamId(null);
         setSurveyFieldConfigs([]);
         setIsLoadingSurveyFields(false);
       }
@@ -95,6 +114,72 @@ export const StudentJoin: React.FC = () => {
     const timer = setTimeout(loadSurveyFieldConfigs, 500);
     return () => clearTimeout(timer);
   }, [accessCode]);
+
+  // 檢查是否有暫存的 Google 用戶資訊（從 OAuth 回調返回）
+  useEffect(() => {
+    const stored = getStoredGoogleUser();
+    if (stored) {
+      setGoogleUser(stored);
+      setName(stored.name);
+      setEmail(stored.email);
+    }
+  }, []);
+
+  // 當有 Google 用戶和 examId 時，檢查是否可以斷線重連
+  useEffect(() => {
+    const checkReconnect = async () => {
+      if (!googleUser || !examId || hasCheckedReconnect) return;
+
+      setHasCheckedReconnect(true);
+      setIsGoogleLoading(true);
+
+      try {
+        const existingSession = await getStudentSessionByGmail(googleUser.email, examId);
+        if (existingSession && existingSession.sessionId) {
+          // 找到現有會話，設置 store 並導航到測驗頁面
+          const studentData = {
+            id: existingSession.id,
+            sessionId: existingSession.sessionId,
+            examId: existingSession.examId,
+            name: existingSession.name,
+            email: existingSession.email,
+            avatarIcon: existingSession.avatarIcon as AvatarIcon,
+            totalScore: existingSession.totalScore || 0,
+            joinedAt: new Date().toISOString(),
+          };
+          setCurrentStudent(studentData as any);
+
+          // 導航到測驗頁面
+          navigate(`/student/exam?examId=${examId}`);
+          return;
+        }
+      } catch (error) {
+        console.error('[StudentJoin] 斷線重連檢查失敗:', error);
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    };
+
+    checkReconnect();
+  }, [googleUser, examId, hasCheckedReconnect, setCurrentStudent, setJoinContext, navigate, accessCode]);
+
+  /**
+   * 處理 Google 登入
+   */
+  const handleGoogleLogin = () => {
+    const returnUrl = window.location.href;
+    initiateGoogleLogin(returnUrl);
+  };
+
+  /**
+   * 清除 Google 登入狀態
+   */
+  const handleClearGoogleLogin = () => {
+    clearStoredGoogleUser();
+    setGoogleUser(null);
+    setName('');
+    setEmail('');
+  };
 
   /**
    * 表單驗證
@@ -203,6 +288,11 @@ export const StudentJoin: React.FC = () => {
   const cardPadding = useResponsiveValue('24px', '32px', '40px');
   const maxWidth = useResponsiveValue('100%', '450px', '500px');
 
+  // 主題狀態
+  const { mode } = useThemeStore();
+  const theme = themes[mode];
+  const isDark = mode === 'dark';
+
   // 判斷表單是否應該被禁用（測驗未開始或已結束）
   const isFormDisabled = examStatus !== null && examStatus !== 'STARTED';
 
@@ -210,21 +300,84 @@ export const StudentJoin: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
+        background: isDark
+          ? 'linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%)'
+          : 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 50%, #f0f4f8 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: containerPadding,
+        position: 'relative',
       }}
     >
+      {/* P5.js 動態背景層 - 使用雙層效果 */}
+      <P5Background
+        variant="network"
+        opacity={isDark ? 0.9 : 0.5}
+        color={isDark ? '#00ff88' : '#2e7d32'}
+      />
+      <P5Background
+        variant="particles"
+        opacity={isDark ? 0.7 : 0.4}
+        color={isDark ? '#ff40ff' : '#7b1fa2'}
+      />
+
+      {/* 裝飾性光暈效果 - 加強版 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '-15%',
+          left: '-15%',
+          width: '55%',
+          height: '55%',
+          background: isDark
+            ? 'radial-gradient(circle, rgba(0, 230, 118, 0.3) 0%, rgba(0, 230, 118, 0.1) 40%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.08) 40%, transparent 70%)',
+          pointerEvents: 'none',
+          zIndex: 0,
+          animation: 'glow-pulse 6s ease-in-out infinite',
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '-15%',
+          right: '-15%',
+          width: '60%',
+          height: '60%',
+          background: isDark
+            ? 'radial-gradient(circle, rgba(224, 64, 251, 0.25) 0%, rgba(224, 64, 251, 0.08) 40%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(156, 39, 176, 0.15) 0%, rgba(156, 39, 176, 0.05) 40%, transparent 70%)',
+          pointerEvents: 'none',
+          zIndex: 0,
+          animation: 'glow-pulse 8s ease-in-out infinite reverse',
+        }}
+      />
+
+      {/* 光暈動畫樣式 */}
+      <style>{`
+        @keyframes glow-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.15); opacity: 0.7; }
+        }
+      `}</style>
+
+      {/* 主題切換按鈕 */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+        <ThemeToggle />
+      </div>
       <div
         style={{
           width: '100%',
           maxWidth,
-          backgroundColor: '#fff',
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
           borderRadius: isMobile ? '12px' : '16px',
           padding: cardPadding,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          boxShadow: isDark ? 'none' : '0 4px 16px rgba(0,0,0,0.1)',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* 標題 */}
@@ -234,12 +387,12 @@ export const StudentJoin: React.FC = () => {
               margin: '0 0 8px 0',
               fontSize: '32px',
               fontWeight: '700',
-              color: '#333',
+              color: isDark ? '#fff' : '#333',
             }}
           >
             加入測驗
           </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: isDark ? 'rgba(255,255,255,0.6)' : '#666' }}>
             請填寫以下資訊開始答題
           </p>
         </div>
@@ -330,6 +483,68 @@ export const StudentJoin: React.FC = () => {
               onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
               onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
             />
+          </div>
+
+          {/* Google 登入區塊 */}
+          <div style={{ marginBottom: '24px' }}>
+            {googleUser ? (
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#e8f5e9',
+                  border: `1px solid ${isDark ? 'rgba(76, 175, 80, 0.3)' : '#4caf50'}`,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#4caf50">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: '600', color: isDark ? '#fff' : '#333', fontSize: '14px' }}>
+                      已連結 Google 帳號
+                    </div>
+                    <div style={{ fontSize: '12px', color: isDark ? 'rgba(255,255,255,0.6)' : '#666' }}>
+                      {googleUser.email}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearGoogleLogin}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    color: isDark ? 'rgba(255,255,255,0.6)' : '#666',
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#ddd'}`,
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  解除連結
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: isDark ? '#fff' : '#333'
+                }}>
+                  使用 Google 登入（可用於斷線重連）
+                </div>
+                <GoogleLoginButton
+                  onClick={handleGoogleLogin}
+                  isLoading={isGoogleLoading}
+                  disabled={isSubmitting}
+                />
+              </div>
+            )}
           </div>
 
           {/* 姓名 */}

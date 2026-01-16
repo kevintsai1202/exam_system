@@ -15,11 +15,9 @@ import lombok.Builder;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "question_option",
-    indexes = {
+@Table(name = "question_option", indexes = {
         @Index(name = "idx_question_option_question_id", columnList = "question_id")
-    }
-)
+})
 public class QuestionOption {
 
     /**
@@ -47,5 +45,19 @@ public class QuestionOption {
      */
     @Column(nullable = false, length = 200)
     private String optionText;
+
+    /**
+     * 選項類型
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    @Builder.Default
+    private OptionType optionType = OptionType.TEXT;
+
+    /**
+     * 圖片 URL（當 optionType 為 IMAGE 或 BOTH 時使用）
+     */
+    @Column(length = 500)
+    private String imageUrl;
 
 }

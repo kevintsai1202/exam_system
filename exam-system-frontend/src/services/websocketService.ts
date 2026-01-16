@@ -56,6 +56,8 @@ class WebSocketService {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000; // 3 秒
   private statusChangeListeners: ((status: ConnectionStatus) => void)[] = [];
+  private reconnectSuccessListeners: (() => void)[] = []; // 重連成功回調
+  private hasConnectedBefore = false; // 追蹤是否曾經連線過
 
   /**
    * 初始化 WebSocket 連線
@@ -84,9 +86,18 @@ class WebSocketService {
 
         // 連線成功回調
         onConnect: () => {
-          console.log('[WebSocket] 連線成功');
+          const isReconnect = this.hasConnectedBefore;
+          console.log(`[WebSocket] 連線成功 (${isReconnect ? '重新連線' : '首次連線'})`);
+
           this.reconnectAttempts = 0;
           this.updateStatus(ConnectionStatus.CONNECTED);
+
+          // 如果是重新連線，觸發重連成功回調
+          if (isReconnect) {
+            this.notifyReconnectSuccess();
+          }
+
+          this.hasConnectedBefore = true;
           resolve();
         },
 
@@ -343,6 +354,32 @@ class WebSocketService {
   private updateStatus(status: ConnectionStatus): void {
     this.connectionStatus = status;
     this.statusChangeListeners.forEach((listener) => listener(status));
+  }
+
+  /**
+   * 監聽重連成功事件
+   * 當 WebSocket 斷線後重新連線成功時觸發
+   */
+  onReconnectSuccess(listener: () => void): void {
+    this.reconnectSuccessListeners.push(listener);
+  }
+
+  /**
+   * 移除重連成功監聽器
+   */
+  removeReconnectSuccessListener(listener: () => void): void {
+    const index = this.reconnectSuccessListeners.indexOf(listener);
+    if (index > -1) {
+      this.reconnectSuccessListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 通知所有重連成功監聽器
+   */
+  private notifyReconnectSuccess(): void {
+    console.log('[WebSocket] 觸發重連成功回調，監聽器數量:', this.reconnectSuccessListeners.length);
+    this.reconnectSuccessListeners.forEach((listener) => listener());
   }
 }
 

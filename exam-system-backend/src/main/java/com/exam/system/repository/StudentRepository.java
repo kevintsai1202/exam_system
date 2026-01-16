@@ -70,7 +70,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
      * 查詢測驗的前 N 名學員（排行榜）
      *
      * @param examId 測驗 ID
-     * @param limit 返回名次數量
+     * @param limit  返回名次數量
      * @return 學員列表
      */
     @Query(value = "SELECT * FROM student WHERE exam_id = :examId ORDER BY total_score DESC LIMIT :limit", nativeQuery = true)
@@ -85,5 +85,42 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
      */
     @Query("SELECT s.occupation as occupation, COUNT(s) as count FROM Student s WHERE s.exam.id = :examId AND s.occupation IS NOT NULL GROUP BY s.occupation ORDER BY COUNT(s) DESC")
     List<Map<String, Object>> countByExamIdGroupByOccupation(@Param("examId") Long examId);
+
+    /**
+     * 根據測驗 ID 和 Email 查詢學員
+     * 用於檢查學員是否已存在（避免重複加入）
+     *
+     * @param examId 測驗 ID
+     * @param email  Email
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findByExamIdAndEmail(Long examId, String email);
+
+    /**
+     * 根據測驗 ID 和姓名查詢學員
+     * 用於檢查學員是否已存在（當 Email 為空時）
+     *
+     * @param examId 測驗 ID
+     * @param name   姓名
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findByExamIdAndName(Long examId, String name);
+
+    /**
+     * 根據 Gmail 信箱查詢學員（用於斷線重連）
+     *
+     * @param googleEmail Gmail 信箱
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findFirstByGoogleEmailOrderByJoinedAtDesc(String googleEmail);
+
+    /**
+     * 根據 Gmail 信箱和測驗 ID 查詢學員（用於斷線重連特定測驗）
+     *
+     * @param googleEmail Gmail 信箱
+     * @param examId      測驗 ID
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findByGoogleEmailAndExamId(String googleEmail, Long examId);
 
 }

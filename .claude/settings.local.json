@@ -59,7 +59,14 @@
       "Bash(git add:*)",
       "Bash(git clean:*)",
       "Bash(npm run build:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 新增即時統計顯示與題目匯出控制功能\n\n主要功能：\n- 講師監控頁面：答題期間即時顯示統計但隱藏正確答案\n- 題目推送後立即初始化空統計（0人作答），等待WebSocket推送更新\n- 時間到後才顯示正確答案標記（綠色/紅色）與正確率\n\n次要功能：\n- 新增題目exportable欄位，控制是否在匯出時包含該題目\n- 測驗匯出功能優化，支援選擇性匯出題目\n- Dockerfile優化\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(JAVA_HOME=/d/java/jdk-21 PATH=/d/java/jdk-21/bin:$PATH mvn clean package:*)",
+      "mcp__chrome-devtools__get_console_message",
+      "Bash(cmd.exe /c \"taskkill /F /IM java.exe\")",
+      "Bash(cmd.exe /c \"taskkill /F /IM java.exe 2>&1 && echo 已終止所有 Java 程序 || echo 沒有 Java 程序在運行\")",
+      "Bash(JAVA_HOME=/d/java/jdk-21 PATH=/d/java/jdk-21/bin:$PATH mvn package:*)",
+      "Bash(cmd.exe /c \"taskkill /F /PID 39580\")"
     ],
     "deny": [],
     "ask": []

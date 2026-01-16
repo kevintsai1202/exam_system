@@ -10,7 +10,7 @@ export interface OptionStatistic {
   optionText: string;       // 選項文字
   count: number;            // 選擇人數
   percentage: number;       // 百分比
-  isCorrect: boolean;       // 是否為正確答案
+  isCorrect?: boolean;      // 是否為正確答案（答題期間為 undefined，時間到後才顯示）
 }
 
 // 題目統計介面
@@ -20,7 +20,7 @@ export interface QuestionStatistics {
   totalAnswers: number;                // 總答題人數
   chartType: ChartType;                // 圖表類型
   optionStatistics: OptionStatistic[]; // 選項統計列表
-  correctRate: number;                 // 正確率
+  correctRate?: number;                // 正確率（答題期間為 undefined，時間到後才顯示）
   timestamp: string;                   // 時間戳記
 }
 
@@ -144,7 +144,7 @@ export interface StatisticsUpdateMessage {
   totalAnswers: number;
   chartType: ChartType;
   optionStatistics: OptionStatistic[];
-  correctRate: number;
+  correctRate?: number;  // 正確率（答題期間為 undefined，時間到後才顯示）
   timestamp: string;
 }
 

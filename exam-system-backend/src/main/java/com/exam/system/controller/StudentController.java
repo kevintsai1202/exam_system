@@ -56,4 +56,52 @@ public class StudentController {
         return ResponseEntity.ok(students);
     }
 
+    /**
+     * 透過 Gmail 查詢學員（用於斷線重連）
+     * GET /api/students/by-gmail/{email}
+     */
+    @GetMapping("/by-gmail/{email}")
+    public ResponseEntity<?> getStudentByGmail(@PathVariable String email) {
+        log.info("Getting student by Gmail: {}", email);
+        return studentService.getStudentByGmail(email)
+                .map(student -> ResponseEntity.ok(student))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 綁定 Gmail 到現有學員
+     * POST /api/students/{sessionId}/bind-gmail
+     */
+    @PostMapping("/{sessionId}/bind-gmail")
+    public ResponseEntity<?> bindGmail(
+            @PathVariable String sessionId,
+            @RequestBody java.util.Map<String, String> request) {
+        String googleId = request.get("googleId");
+        String googleEmail = request.get("googleEmail");
+
+        log.info("Binding Gmail {} to student session: {}", googleEmail, sessionId);
+
+        try {
+            StudentDTO updatedStudent = studentService.bindGmail(sessionId, googleId, googleEmail);
+            return ResponseEntity.ok(updatedStudent);
+        } catch (Exception e) {
+            log.error("Failed to bind Gmail: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * 透過 Gmail 和 examId 查詢學員會話（用於斷線重連）
+     * GET /api/students/gmail-session
+     */
+    @GetMapping("/gmail-session")
+    public ResponseEntity<?> getStudentSessionByGmail(
+            @RequestParam String email,
+            @RequestParam Long examId) {
+        log.info("Getting student session by Gmail: {} for exam: {}", email, examId);
+        return studentService.getStudentByGmailAndExam(email, examId)
+                .map(student -> ResponseEntity.ok(student))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
 }

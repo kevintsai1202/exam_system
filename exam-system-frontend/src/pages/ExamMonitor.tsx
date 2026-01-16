@@ -418,11 +418,12 @@ export const ExamMonitor: React.FC = () => {
       setActiveTab('question');
 
       // 初始化空的統計數據（顯示 0 人作答），等待 WebSocket 推送更新
+      // 注意：答題期間不設定 isCorrect 和 correctRate，避免提前洩漏正確答案
       setCurrentQuestionStats({
         questionId: pushedQuestion.id,
         questionText: pushedQuestion.questionText,
         totalAnswers: 0,
-        correctRate: 0,
+        correctRate: undefined,  // 答題期間不顯示正確率
         chartType: pushedQuestion.singleStatChartType || 'BAR',
         timestamp: new Date().toISOString(),
         optionStatistics: pushedQuestion.options.map(option => ({
@@ -430,7 +431,7 @@ export const ExamMonitor: React.FC = () => {
           optionText: option.optionText,
           count: 0,
           percentage: 0,
-          isCorrect: option.id === pushedQuestion.correctOptionId
+          isCorrect: undefined  // 答題期間不設定正確答案標記
         }))
       });
 
@@ -925,12 +926,12 @@ export const ExamMonitor: React.FC = () => {
                             )}
                           </AnimatePresence>
                           <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '14px', border: '1px solid #4caf50' }}>
-                            <p style={{ margin: isQuestionTimeExpired ? '0 0 8px 0' : 0, fontWeight: '500' }}>
+                            <p style={{ margin: (isQuestionTimeExpired && currentQuestionStats.correctRate !== undefined) ? '0 0 8px 0' : 0, fontWeight: '500' }}>
                               📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color="#2e7d32" suffix=" 人" />
                             </p>
-                            {isQuestionTimeExpired && (
+                            {isQuestionTimeExpired && currentQuestionStats.correctRate !== undefined && (
                               <p style={{ margin: 0, fontWeight: '500' }}>
-                                ✅ 正確率：<AnimatedNumber value={(currentQuestionStats.correctRate ?? 0) * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
+                                ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
                               </p>
                             )}
                           </div>

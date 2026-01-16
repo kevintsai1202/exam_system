@@ -22,12 +22,10 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "student",
-    indexes = {
+@Table(name = "student", indexes = {
         @Index(name = "idx_student_session_id", columnList = "sessionId"),
         @Index(name = "idx_student_exam_id", columnList = "exam_id")
-    }
-)
+})
 public class Student {
 
     /**
@@ -76,6 +74,32 @@ public class Student {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, String> surveyData;
+
+    /**
+     * 學員所在縣市代碼
+     * 例如: "TPE"（台北市）, "KHH"（高雄市）
+     */
+    @Column(length = 20)
+    private String location;
+
+    /**
+     * Google 帳號 ID（用於 Gmail 綁定）
+     */
+    @Column(length = 100)
+    private String googleId;
+
+    /**
+     * Gmail 信箱（用於 Gmail 綁定）
+     */
+    @Column(length = 100)
+    private String googleEmail;
+
+    /**
+     * 是否已通過 Gmail 驗證
+     */
+    @Column
+    @Builder.Default
+    private Boolean isGmailVerified = false;
 
     /**
      * 頭像圖示名稱

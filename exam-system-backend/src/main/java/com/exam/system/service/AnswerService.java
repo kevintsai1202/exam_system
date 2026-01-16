@@ -95,10 +95,10 @@ public class AnswerService {
 
         // 使用 lastPushedQuestionIndex 判斷當前正在答題的題目
         Integer lastPushedIndex = exam.getLastPushedQuestionIndex();
-        if (lastPushedIndex == null) {
+        if (lastPushedIndex == null || lastPushedIndex < 0) {
             throw new BusinessException("NO_QUESTION_PUSHED", "尚未推送任何題目");
         }
-        if (lastPushedIndex < 0 || lastPushedIndex >= questions.size()) {
+        if (lastPushedIndex >= questions.size()) {
             throw new BusinessException("INVALID_CURRENT_QUESTION", "當前題目索引無效");
         }
 

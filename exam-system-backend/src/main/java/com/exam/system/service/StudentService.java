@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,226 +33,309 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StudentService {
 
-    private final StudentRepository studentRepository;
-    private final ExamRepository examRepository;
-    private final WebSocketService webSocketService;
-    private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+        private final StudentRepository studentRepository;
+        private final ExamRepository examRepository;
+        private final WebSocketService webSocketService;
+        private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
 
-    /**
-     * 學員加入測驗
-     *
-     * @param studentDTO 學員 DTO（包含 accessCode）
-     * @return 包含 sessionId 的學員 DTO
-     */
-    @Transactional
-    public StudentDTO joinExam(StudentDTO studentDTO) {
-        log.info("Student {} joining exam with accessCode: {}", studentDTO.getName(), studentDTO.getAccessCode());
+        /**
+         * 學員加入測驗
+         *
+         * @param studentDTO 學員 DTO（包含 accessCode）
+         * @return 包含 sessionId 的學員 DTO
+         */
+        @Transactional
+        public StudentDTO joinExam(StudentDTO studentDTO) {
+                log.info("Student {} joining exam with accessCode: {}", studentDTO.getName(),
+                                studentDTO.getAccessCode());
 
-        // 根據 accessCode 查找測驗
-        Exam exam = examRepository.findByAccessCode(studentDTO.getAccessCode())
-                .orElseThrow(() -> new BusinessException("INVALID_ACCESS_CODE", "無效的測驗代碼"));
+                // 根據 accessCode 查找測驗
+                Exam exam = examRepository.findByAccessCode(studentDTO.getAccessCode())
+                                .orElseThrow(() -> new BusinessException("INVALID_ACCESS_CODE", "無效的測驗代碼"));
 
-        // 驗證測驗狀態（只能在 STARTED 狀態加入）
-        if (exam.getStatus() == ExamStatus.ENDED) {
-            throw new BusinessException("EXAM_ENDED", "測驗已結束");
-        }
-        if (exam.getStatus() != ExamStatus.STARTED) {
-            throw new BusinessException("EXAM_NOT_STARTED", "測驗尚未開始");
-        }
-
-        // 驗證必填調查欄位
-        List<ExamSurveyFieldConfig> requiredConfigs = examSurveyFieldConfigRepository
-                .findByExamIdOrderByDisplayOrderAsc(exam.getId())
-                .stream()
-                .filter(ExamSurveyFieldConfig::getIsRequired)
-                .collect(Collectors.toList());
-
-        for (ExamSurveyFieldConfig config : requiredConfigs) {
-            String fieldKey = config.getSurveyField().getFieldKey();
-            String fieldName = config.getSurveyField().getFieldName();
-
-            // 檢查 occupation 欄位（向下兼容）
-            if ("occupation".equals(fieldKey)) {
-                if (studentDTO.getOccupation() == null || studentDTO.getOccupation().trim().isEmpty()) {
-                    throw new BusinessException("REQUIRED_FIELD_MISSING",
-                            String.format("必填欄位「%s」不能為空", fieldName));
+                // 驗證測驗狀態（只能在 STARTED 狀態加入）
+                if (exam.getStatus() == ExamStatus.ENDED) {
+                        throw new BusinessException("EXAM_ENDED", "測驗已結束");
                 }
-            } else {
-                // 檢查 surveyData 中的其他欄位
-                if (studentDTO.getSurveyData() == null ||
-                    studentDTO.getSurveyData().get(fieldKey) == null ||
-                    studentDTO.getSurveyData().get(fieldKey).trim().isEmpty()) {
-                    throw new BusinessException("REQUIRED_FIELD_MISSING",
-                            String.format("必填欄位「%s」不能為空", fieldName));
+                if (exam.getStatus() != ExamStatus.STARTED) {
+                        throw new BusinessException("EXAM_NOT_STARTED", "測驗尚未開始");
                 }
-            }
+
+                // 驗證必填調查欄位
+                List<ExamSurveyFieldConfig> requiredConfigs = examSurveyFieldConfigRepository
+                                .findByExamIdOrderByDisplayOrderAsc(exam.getId())
+                                .stream()
+                                .filter(ExamSurveyFieldConfig::getIsRequired)
+                                .collect(Collectors.toList());
+
+                for (ExamSurveyFieldConfig config : requiredConfigs) {
+                        String fieldKey = config.getSurveyField().getFieldKey();
+                        String fieldName = config.getSurveyField().getFieldName();
+
+                        // 檢查 occupation 欄位（向下兼容）
+                        if ("occupation".equals(fieldKey)) {
+                                if (studentDTO.getOccupation() == null || studentDTO.getOccupation().trim().isEmpty()) {
+                                        throw new BusinessException("REQUIRED_FIELD_MISSING",
+                                                        String.format("必填欄位「%s」不能為空", fieldName));
+                                }
+                        } else {
+                                // 檢查 surveyData 中的其他欄位
+                                if (studentDTO.getSurveyData() == null ||
+                                                studentDTO.getSurveyData().get(fieldKey) == null ||
+                                                studentDTO.getSurveyData().get(fieldKey).trim().isEmpty()) {
+                                        throw new BusinessException("REQUIRED_FIELD_MISSING",
+                                                        String.format("必填欄位「%s」不能為空", fieldName));
+                                }
+                        }
+                }
+
+                // 檢查學員是否已存在（重新連線處理）
+                Optional<Student> existingStudentOpt;
+                if (studentDTO.getEmail() != null && !studentDTO.getEmail().trim().isEmpty()) {
+                        existingStudentOpt = studentRepository.findByExamIdAndEmail(exam.getId(),
+                                        studentDTO.getEmail());
+                } else {
+                        existingStudentOpt = studentRepository.findByExamIdAndName(exam.getId(), studentDTO.getName());
+                }
+
+                if (existingStudentOpt.isPresent()) {
+                        Student existingStudent = existingStudentOpt.get();
+                        log.info("Student already exists, resuming session: {} (sessionId: {})",
+                                        existingStudent.getName(), existingStudent.getSessionId());
+
+                        // 如果當前有正在進行的題目，推送給重新連線的學員
+                        if (exam.getCurrentQuestionStartedAt() != null && exam.getLastPushedQuestionIndex() != null
+                                        && exam.getLastPushedQuestionIndex() >= 0) {
+                                sendCurrentQuestionToStudent(existingStudent.getSessionId(), exam);
+                        }
+
+                        return convertToDTO(existingStudent, exam);
+                }
+
+                // 生成唯一的 sessionId
+                String sessionId = UUID.randomUUID().toString();
+
+                // 建立學員實體
+                Student student = Student.builder()
+                                .exam(exam)
+                                .sessionId(sessionId)
+                                .name(studentDTO.getName())
+                                .email(studentDTO.getEmail())
+                                .occupation(studentDTO.getOccupation())
+                                .surveyData(studentDTO.getSurveyData())
+                                .avatarIcon(studentDTO.getAvatarIcon())
+                                .totalScore(0)
+                                .build();
+
+                student = studentRepository.save(student);
+
+                log.info("Student joined successfully: {} (sessionId: {})", student.getName(), sessionId);
+
+                // 透過 WebSocket 通知講師有新學員加入
+                Map<String, Object> studentData = new HashMap<>();
+                studentData.put("id", student.getId());
+                studentData.put("name", student.getName());
+                studentData.put("avatarIcon", student.getAvatarIcon());
+                studentData.put("totalScore", student.getTotalScore());
+                studentData.put("correctAnswersCount", 0); // 新加入的學員答對題數為 0
+                studentData.put("totalStudents", studentRepository.countByExamId(exam.getId()));
+
+                webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
+
+                // 如果當前有正在進行的題目，推送給新加入的學員
+                // 使用 lastPushedQuestionIndex 而不是 currentQuestionIndex，因為 currentQuestionIndex
+                // 指向下一題
+                if (exam.getCurrentQuestionStartedAt() != null && exam.getLastPushedQuestionIndex() != null
+                                && exam.getLastPushedQuestionIndex() >= 0) {
+                        sendCurrentQuestionToStudent(student.getSessionId(), exam);
+                }
+
+                return convertToDTO(student, exam);
         }
 
-        // 生成唯一的 sessionId
-        String sessionId = UUID.randomUUID().toString();
+        /**
+         * 推送當前題目給指定學員
+         *
+         * @param sessionId 學員 Session ID
+         * @param exam      測驗實體
+         */
+        private void sendCurrentQuestionToStudent(String sessionId, Exam exam) {
+                try {
+                        // 使用 lastPushedQuestionIndex 獲取當前正在答題的題目
+                        var question = exam.getQuestions().get(exam.getLastPushedQuestionIndex());
 
-        // 建立學員實體
-        Student student = Student.builder()
-                .exam(exam)
-                .sessionId(sessionId)
-                .name(studentDTO.getName())
-                .email(studentDTO.getEmail())
-                .occupation(studentDTO.getOccupation())
-                .surveyData(studentDTO.getSurveyData())
-                .avatarIcon(studentDTO.getAvatarIcon())
-                .totalScore(0)
-                .build();
+                        Map<String, Object> questionData = new HashMap<>();
+                        questionData.put("questionId", question.getId());
+                        questionData.put("questionIndex", exam.getLastPushedQuestionIndex());
+                        questionData.put("questionText", question.getQuestionText());
+                        questionData.put("expiresAt", exam.getCurrentQuestionStartedAt()
+                                        .plusSeconds(exam.getQuestionTimeLimit())
+                                        .toString());
 
-        student = studentRepository.save(student);
+                        // 選項列表（不包含正確答案）
+                        List<Map<String, Object>> optionsList = question.getOptions().stream()
+                                        .map(opt -> {
+                                                Map<String, Object> optMap = new HashMap<>();
+                                                optMap.put("id", opt.getId());
+                                                optMap.put("optionOrder", opt.getOptionOrder());
+                                                optMap.put("optionText", opt.getOptionText());
+                                                return optMap;
+                                        })
+                                        .collect(Collectors.toList());
+                        questionData.put("options", optionsList);
 
-        log.info("Student joined successfully: {} (sessionId: {})", student.getName(), sessionId);
+                        // 發送給特定學員（使用個人訂閱主題）
+                        String destination = String.format("/topic/exam/%d/question/%s",
+                                        exam.getId(), sessionId);
+                        webSocketService.broadcast(destination, WebSocketMessage.questionStarted(questionData));
 
-        // 透過 WebSocket 通知講師有新學員加入
-        Map<String, Object> studentData = new HashMap<>();
-        studentData.put("id", student.getId());
-        studentData.put("name", student.getName());
-        studentData.put("avatarIcon", student.getAvatarIcon());
-        studentData.put("totalScore", student.getTotalScore());
-        studentData.put("correctAnswersCount", 0); // 新加入的學員答對題數為 0
-        studentData.put("totalStudents", studentRepository.countByExamId(exam.getId()));
-
-        webSocketService.broadcastStudentJoined(exam.getId(), WebSocketMessage.studentJoined(studentData));
-
-        // 如果當前有正在進行的題目，推送給新加入的學員
-        if (exam.getCurrentQuestionStartedAt() != null && exam.getCurrentQuestionIndex() < exam.getQuestions().size()) {
-            sendCurrentQuestionToStudent(student.getSessionId(), exam);
+                        log.info("Sent current question to newly joined student at {}", destination);
+                } catch (Exception e) {
+                        log.error("Failed to send current question to student: {}", sessionId, e);
+                }
         }
 
-        return convertToDTO(student, exam);
-    }
-
-    /**
-     * 推送當前題目給指定學員
-     *
-     * @param sessionId 學員 Session ID
-     * @param exam 測驗實體
-     */
-    private void sendCurrentQuestionToStudent(String sessionId, Exam exam) {
-        try {
-            var question = exam.getQuestions().get(exam.getCurrentQuestionIndex());
-
-            Map<String, Object> questionData = new HashMap<>();
-            questionData.put("questionId", question.getId());
-            questionData.put("questionIndex", exam.getCurrentQuestionIndex());
-            questionData.put("questionText", question.getQuestionText());
-            questionData.put("expiresAt", exam.getCurrentQuestionStartedAt()
-                    .plusSeconds(exam.getQuestionTimeLimit())
-                    .toString());
-
-            // 選項列表（不包含正確答案）
-            List<Map<String, Object>> optionsList = question.getOptions().stream()
-                    .map(opt -> {
-                        Map<String, Object> optMap = new HashMap<>();
-                        optMap.put("id", opt.getId());
-                        optMap.put("optionOrder", opt.getOptionOrder());
-                        optMap.put("optionText", opt.getOptionText());
-                        return optMap;
-                    })
-                    .collect(Collectors.toList());
-            questionData.put("options", optionsList);
-
-            // 發送給特定學員（使用個人訂閱主題）
-            String destination = String.format("/topic/exam/%d/question/%s",
-                    exam.getId(), sessionId);
-            webSocketService.broadcast(destination, WebSocketMessage.questionStarted(questionData));
-
-            log.info("Sent current question to newly joined student at {}", destination);
-        } catch (Exception e) {
-            log.error("Failed to send current question to student: {}", sessionId, e);
-        }
-    }
-
-    /**
-     * 根據 sessionId 取得學員資訊
-     *
-     * @param sessionId Session ID
-     * @return 學員 DTO
-     */
-    @Transactional(readOnly = true)
-    public StudentDTO getStudentBySessionId(String sessionId) {
-        Student student = findStudentBySessionId(sessionId);
-        return convertToDTO(student, student.getExam());
-    }
-
-    /**
-     * 取得測驗的所有學員
-     *
-     * @param examId 測驗 ID
-     * @return 學員列表
-     */
-    @Transactional(readOnly = true)
-    public List<StudentDTO> getExamStudents(Long examId) {
-        List<Student> students = studentRepository.findByExamId(examId);
-        return students.stream()
-                .map(student -> convertToDTO(student, student.getExam()))
-                .collect(Collectors.toList());
-    }
-
-    // ==================== 私有輔助方法 ====================
-
-    /**
-     * 根據 sessionId 查找學員，不存在則拋出異常
-     */
-    Student findStudentBySessionId(String sessionId) {
-        return studentRepository.findBySessionId(sessionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student", "sessionId", sessionId));
-    }
-
-    /**
-     * 將 Student 實體轉換為 DTO
-     */
-    private StudentDTO convertToDTO(Student student, Exam exam) {
-        // 計算答對題數
-        long correctAnswersCount = student.getAnswers().stream()
-                .filter(answer -> answer.getIsCorrect() != null && answer.getIsCorrect())
-                .count();
-
-        StudentDTO.StudentDTOBuilder builder = StudentDTO.builder()
-                .id(student.getId())
-                .sessionId(student.getSessionId())
-                .examId(exam.getId())
-                .name(student.getName())
-                .email(student.getEmail())
-                .occupation(student.getOccupation())
-                .surveyData(student.getSurveyData())
-                .avatarIcon(student.getAvatarIcon())
-                .totalScore(student.getTotalScore())
-                .correctAnswersCount((int) correctAnswersCount)
-                .joinedAt(student.getJoinedAt())
-                .examStatus(exam.getStatus().name());
-
-        // 如果有正在進行的題目，包含當前題目資訊
-        if (exam.getCurrentQuestionStartedAt() != null && exam.getCurrentQuestionIndex() < exam.getQuestions().size()) {
-            var question = exam.getQuestions().get(exam.getCurrentQuestionIndex());
-            var expiresAt = exam.getCurrentQuestionStartedAt().plusSeconds(exam.getQuestionTimeLimit());
-
-            // 建立選項列表（不包含正確答案）
-            List<StudentDTO.QuestionOptionInfo> optionsList = question.getOptions().stream()
-                    .map(opt -> StudentDTO.QuestionOptionInfo.builder()
-                            .id(opt.getId())
-                            .optionOrder(opt.getOptionOrder())
-                            .optionText(opt.getOptionText())
-                            .build())
-                    .collect(Collectors.toList());
-
-            // 建立當前題目資訊
-            StudentDTO.CurrentQuestionInfo currentQuestion = StudentDTO.CurrentQuestionInfo.builder()
-                    .questionId(question.getId())
-                    .questionIndex(exam.getCurrentQuestionIndex())
-                    .questionText(question.getQuestionText())
-                    .options(optionsList)
-                    .expiresAt(expiresAt)
-                    .build();
-
-            builder.currentQuestion(currentQuestion);
+        /**
+         * 根據 sessionId 取得學員資訊
+         *
+         * @param sessionId Session ID
+         * @return 學員 DTO
+         */
+        @Transactional(readOnly = true)
+        public StudentDTO getStudentBySessionId(String sessionId) {
+                Student student = findStudentBySessionId(sessionId);
+                return convertToDTO(student, student.getExam());
         }
 
-        return builder.build();
-    }
+        /**
+         * 取得測驗的所有學員
+         *
+         * @param examId 測驗 ID
+         * @return 學員列表
+         */
+        @Transactional(readOnly = true)
+        public List<StudentDTO> getExamStudents(Long examId) {
+                List<Student> students = studentRepository.findByExamId(examId);
+                return students.stream()
+                                .map(student -> convertToDTO(student, student.getExam()))
+                                .collect(Collectors.toList());
+        }
+
+        // ==================== 私有輔助方法 ====================
+
+        /**
+         * 根據 sessionId 查找學員，不存在則拋出異常
+         */
+        Student findStudentBySessionId(String sessionId) {
+                return studentRepository.findBySessionId(sessionId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Student", "sessionId", sessionId));
+        }
+
+        /**
+         * 將 Student 實體轉換為 DTO
+         */
+        private StudentDTO convertToDTO(Student student, Exam exam) {
+                // 計算答對題數
+                long correctAnswersCount = student.getAnswers().stream()
+                                .filter(answer -> answer.getIsCorrect() != null && answer.getIsCorrect())
+                                .count();
+
+                StudentDTO.StudentDTOBuilder builder = StudentDTO.builder()
+                                .id(student.getId())
+                                .sessionId(student.getSessionId())
+                                .examId(exam.getId())
+                                .name(student.getName())
+                                .email(student.getEmail())
+                                .occupation(student.getOccupation())
+                                .surveyData(student.getSurveyData())
+                                .avatarIcon(student.getAvatarIcon())
+                                .totalScore(student.getTotalScore())
+                                .correctAnswersCount((int) correctAnswersCount)
+                                .joinedAt(student.getJoinedAt())
+                                .examStatus(exam.getStatus().name());
+
+                // 如果有正在進行的題目，包含當前題目資訊
+                // 使用 lastPushedQuestionIndex 而不是 currentQuestionIndex，因為 currentQuestionIndex
+                // 指向下一題
+                if (exam.getCurrentQuestionStartedAt() != null && exam.getLastPushedQuestionIndex() != null
+                                && exam.getLastPushedQuestionIndex() >= 0
+                                && exam.getLastPushedQuestionIndex() < exam.getQuestions().size()) {
+                        var question = exam.getQuestions().get(exam.getLastPushedQuestionIndex());
+                        var expiresAt = exam.getCurrentQuestionStartedAt().plusSeconds(exam.getQuestionTimeLimit());
+
+                        // 建立選項列表（不包含正確答案）
+                        List<StudentDTO.QuestionOptionInfo> optionsList = question.getOptions().stream()
+                                        .map(opt -> StudentDTO.QuestionOptionInfo.builder()
+                                                        .id(opt.getId())
+                                                        .optionOrder(opt.getOptionOrder())
+                                                        .optionText(opt.getOptionText())
+                                                        .build())
+                                        .collect(Collectors.toList());
+
+                        // 建立當前題目資訊
+                        StudentDTO.CurrentQuestionInfo currentQuestion = StudentDTO.CurrentQuestionInfo.builder()
+                                        .questionId(question.getId())
+                                        .questionIndex(exam.getLastPushedQuestionIndex())
+                                        .questionText(question.getQuestionText())
+                                        .options(optionsList)
+                                        .expiresAt(expiresAt)
+                                        .build();
+
+                        builder.currentQuestion(currentQuestion);
+                }
+
+                return builder.build();
+        }
+
+        // ==================== Gmail 相關方法 ====================
+
+        /**
+         * 根據 Gmail 查詢學員（返回最近的一筆）
+         *
+         * @param googleEmail Gmail 信箱
+         * @return 學員 DTO（Optional）
+         */
+        @Transactional(readOnly = true)
+        public Optional<StudentDTO> getStudentByGmail(String googleEmail) {
+                return studentRepository.findFirstByGoogleEmailOrderByJoinedAtDesc(googleEmail)
+                                .map(student -> convertToDTO(student, student.getExam()));
+        }
+
+        /**
+         * 根據 Gmail 和測驗 ID 查詢學員（用於斷線重連特定測驗）
+         *
+         * @param googleEmail Gmail 信箱
+         * @param examId      測驗 ID
+         * @return 學員 DTO（Optional）
+         */
+        @Transactional(readOnly = true)
+        public Optional<StudentDTO> getStudentByGmailAndExam(String googleEmail, Long examId) {
+                return studentRepository.findByGoogleEmailAndExamId(googleEmail, examId)
+                                .map(student -> convertToDTO(student, student.getExam()));
+        }
+
+        /**
+         * 綁定 Gmail 到現有學員
+         *
+         * @param sessionId   學員 Session ID
+         * @param googleId    Google 帳號 ID
+         * @param googleEmail Gmail 信箱
+         * @return 更新後的學員 DTO
+         */
+        @Transactional
+        public StudentDTO bindGmail(String sessionId, String googleId, String googleEmail) {
+                Student student = findStudentBySessionId(sessionId);
+
+                student.setGoogleId(googleId);
+                student.setGoogleEmail(googleEmail);
+                student.setIsGmailVerified(true);
+
+                student = studentRepository.save(student);
+
+                log.info("Gmail {} bound to student {} (sessionId: {})",
+                                googleEmail, student.getName(), sessionId);
+
+                return convertToDTO(student, student.getExam());
+        }
 
 }

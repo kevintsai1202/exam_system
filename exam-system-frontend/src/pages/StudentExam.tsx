@@ -312,6 +312,58 @@ export const StudentExam: React.FC = () => {
     error,
   ]);
 
+  /**
+   * 監聽 WebSocket 重連成功事件
+   * 當學生中途斷線（例如手機休眠）後重新連線時，自動獲取當前題目狀態
+   */
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const handleReconnectSuccess = async () => {
+      console.log('[StudentExam] WebSocket 重新連線成功，獲取當前題目狀態');
+      try {
+        const student = await studentApi.getStudent(sessionId);
+
+        // 更新學員資訊
+        setCurrentStudent(student);
+
+        // 如果有當前題目，更新題目狀態
+        if (student.currentQuestion) {
+          console.log('[StudentExam] 重連後載入當前題目:', student.currentQuestion);
+
+          setCurrentQuestion({
+            questionId: student.currentQuestion.questionId,
+            questionIndex: student.currentQuestion.questionIndex,
+            questionText: student.currentQuestion.questionText,
+            options: student.currentQuestion.options,
+            expiresAt: student.currentQuestion.expiresAt,
+          });
+
+          // 重置答題狀態（如果是新題目）
+          if (currentQuestion?.questionId !== student.currentQuestion.questionId) {
+            setSelectedOptionId(null);
+            setHasSubmitted(false);
+            setIsTimerExpired(false);
+          }
+
+          setExamStatus('STARTED');
+          success('已重新連線，顯示當前題目');
+        }
+      } catch (err: any) {
+        console.error('[StudentExam] 重連後獲取題目失敗:', err);
+        error(err?.message || '重新連線後無法載入題目');
+      }
+    };
+
+    // 註冊重連成功監聽器
+    websocketService.onReconnectSuccess(handleReconnectSuccess);
+
+    // 清理函式：移除監聽器
+    return () => {
+      websocketService.removeReconnectSuccessListener(handleReconnectSuccess);
+    };
+  }, [sessionId, currentQuestion, setCurrentStudent, success, error]);
+
   // 響應式設計
   const { isMobile } = useMediaQuery();
   const containerPadding = useResponsiveValue('12px', '16px', '20px');
