@@ -30,19 +30,7 @@
 
 ---
 
-### 3. `build-and-run.bat` - 編譯並執行 ⭐ 一鍵執行
-**功能**: 先編譯，編譯成功後自動執行
-**特點**:
-- 確保使用最新的程式碼
-- 編譯失敗會停止，不會執行
-
-```cmd
-雙擊執行 build-and-run.bat
-```
-
----
-
-### 4. `package.bat` - 打包成 JAR
+### 3. `package.bat` - 打包成 JAR
 **功能**: 將專案打包成可執行的 JAR 檔案
 **使用時機**: 準備部署到生產環境
 
@@ -54,24 +42,7 @@
 
 ---
 
-### 5. `run-jar.bat` - 執行 JAR 檔案
-**功能**: 執行已打包的 JAR 檔案
-**使用時機**: 測試打包後的應用程式
-
-**前置條件**: 必須先執行 `package.bat` 建立 JAR
-
-```cmd
-雙擊執行 run-jar.bat
-```
-
----
-
 ## 快速開始 🚀
-
-### 首次執行（推薦）
-1. 雙擊 `build-and-run.bat`
-2. 等待編譯完成並啟動
-3. 開啟瀏覽器訪問 http://localhost:8080
 
 ### 日常開發
 1. 雙擊 `run.bat`
@@ -165,6 +136,4 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 |--------|------|----------|----------|
 | compile.bat | 編譯 | ~10秒 | 檢查語法 |
 | run.bat | 執行 | ~20秒啟動 | 日常開發 ⭐ |
-| build-and-run.bat | 編譯+執行 | ~30秒 | 首次執行 ⭐ |
 | package.bat | 打包JAR | ~30秒 | 準備部署 |
-| run-jar.bat | 執行JAR | ~10秒啟動 | 測試打包 |

@@ -10,131 +10,131 @@ import { motion } from 'framer-motion';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 interface LocationStatisticsProps {
-    examId: number;
-    refreshInterval?: number; // 自動刷新間隔（毫秒）
+  examId: number;
+  refreshInterval?: number; // 自動刷新間隔（毫秒）
 }
 
 interface StatisticsData {
-    totalCount: number;
-    locationCounts: Record<string, number>;
-    locationNames: Record<string, string>;
+  totalCount: number;
+  locationCounts: Record<string, number>;
+  locationNames: Record<string, string>;
 }
 
 const LocationStatistics: React.FC<LocationStatisticsProps> = ({
-    examId,
-    refreshInterval = 5000
+  examId,
+  refreshInterval = 5000
 }) => {
-    const [statistics, setStatistics] = useState<StatisticsData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<StatisticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const fetchStatistics = async () => {
-        try {
-            const response = await axios.get<StatisticsData>(
-                `${API_BASE_URL}/api/locations/statistics/${examId}`
-            );
-            setStatistics(response.data);
-            setError(null);
-        } catch (err) {
-            setError('無法載入位置統計');
-            console.error('Failed to fetch location statistics:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchStatistics();
-
-        // 設定自動刷新
-        if (refreshInterval > 0) {
-            const interval = setInterval(fetchStatistics, refreshInterval);
-            return () => clearInterval(interval);
-        }
-    }, [examId, refreshInterval]);
-
-    // 計算排行榜
-    const getTopLocations = () => {
-        if (!statistics?.locationCounts) return [];
-
-        return Object.entries(statistics.locationCounts)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([code, count]) => ({
-                code,
-                name: TAIWAN_LOCATIONS[code as keyof typeof TAIWAN_LOCATIONS]?.name || code,
-                count
-            }));
-    };
-
-    if (loading) {
-        return (
-            <div className="location-stats-loading">
-                <div className="spinner"></div>
-                <p>載入統計資料中...</p>
-            </div>
-        );
+  const fetchStatistics = async () => {
+    try {
+      const response = await axios.get<StatisticsData>(
+        `${API_BASE_URL}/api/locations/statistics/${examId}`
+      );
+      setStatistics(response.data);
+      setError(null);
+    } catch (err) {
+      setError('無法載入位置統計');
+      console.error('Failed to fetch location statistics:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (error) {
-        return (
-            <div className="location-stats-error">
-                <p>⚠️ {error}</p>
-                <button onClick={fetchStatistics}>重試</button>
-            </div>
-        );
+  useEffect(() => {
+    fetchStatistics();
+
+    // 設定自動刷新
+    if (refreshInterval > 0) {
+      const interval = setInterval(fetchStatistics, refreshInterval);
+      return () => clearInterval(interval);
     }
+  }, [examId, refreshInterval]);
 
-    const topLocations = getTopLocations();
+  // 計算排行榜
+  const getTopLocations = () => {
+    if (!statistics?.locationCounts) return [];
 
+    return Object.entries(statistics.locationCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([code, count]) => ({
+        code,
+        name: TAIWAN_LOCATIONS[code as keyof typeof TAIWAN_LOCATIONS]?.name || code,
+        count
+      }));
+  };
+
+  if (loading) {
     return (
-        <motion.div
-            className="location-statistics"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-        >
-            <h3 className="stats-title">學員分布地圖</h3>
+      <div className="location-stats-loading">
+        <div className="spinner"></div>
+        <p>載入統計資料中...</p>
+      </div>
+    );
+  }
 
-            <div className="stats-content">
-                <div className="map-section">
-                    <TaiwanMap
-                        statistics={statistics?.locationCounts}
-                        interactive={false}
-                        showLabels={true}
-                        width={320}
-                        height={500}
-                    />
-                </div>
+  if (error) {
+    return (
+      <div className="location-stats-error">
+        <p>⚠️ {error}</p>
+        <button onClick={fetchStatistics}>重試</button>
+      </div>
+    );
+  }
 
-                <div className="ranking-section">
-                    <h4>地區排行</h4>
-                    <div className="total-count">
-                        總計: <strong>{statistics?.totalCount || 0}</strong> 人
-                    </div>
+  const topLocations = getTopLocations();
 
-                    {topLocations.length > 0 ? (
-                        <ul className="location-ranking">
-                            {topLocations.map(({ code, name, count }, index) => (
-                                <motion.li
-                                    key={code}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                >
-                                    <span className="rank">{index + 1}</span>
-                                    <span className="name">{name}</span>
-                                    <span className="count">{count} 人</span>
-                                </motion.li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="no-data">尚無位置資料</p>
-                    )}
-                </div>
-            </div>
+  return (
+    <motion.div
+      className="location-statistics"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3 className="stats-title">學員分布地圖</h3>
 
-            <style>{`
+      <div className="stats-content">
+        <div className="map-section">
+          <TaiwanMap
+            statistics={statistics?.locationCounts || {}}
+            interactive={false}
+            showLabels={true}
+            width={320}
+            height={500}
+          />
+        </div>
+
+        <div className="ranking-section">
+          <h4>地區排行</h4>
+          <div className="total-count">
+            總計: <strong>{statistics?.totalCount || 0}</strong> 人
+          </div>
+
+          {topLocations.length > 0 ? (
+            <ul className="location-ranking">
+              {topLocations.map(({ code, name, count }, index) => (
+                <motion.li
+                  key={code}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <span className="rank">{index + 1}</span>
+                  <span className="name">{name}</span>
+                  <span className="count">{count} 人</span>
+                </motion.li>
+              ))}
+            </ul>
+          ) : (
+            <p className="no-data">尚無位置資料</p>
+          )}
+        </div>
+      </div>
+
+      <style>{`
         .location-statistics {
           background: rgba(255, 255, 255, 0.05);
           border-radius: 16px;
@@ -266,8 +266,8 @@ const LocationStatistics: React.FC<LocationStatisticsProps> = ({
           cursor: pointer;
         }
       `}</style>
-        </motion.div>
-    );
+    </motion.div>
+  );
 };
 
 export default LocationStatistics;

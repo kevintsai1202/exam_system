@@ -5,6 +5,7 @@
  */
 
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import type { Exam, Question, ExamStatus } from '../types';
 
 /**
@@ -47,119 +48,120 @@ const initialState = {
 /**
  * 測驗 Store
  */
-export const useExamStore = create<ExamState>((set, get) => ({
-  ...initialState,
+export const useExamStore = create<ExamState>()(
+  devtools((set, get) => ({
+    ...initialState,
 
-  /**
-   * 設定當前測驗
-   */
-  setCurrentExam: (exam) => {
-    set({
-      currentExam: exam,
-      error: null,
-    });
-  },
-
-  /**
-   * 設定題目列表
-   */
-  setQuestions: (questions) => {
-    set({
-      questions,
-      error: null,
-    });
-  },
-
-  /**
-   * 設定當前題目
-   */
-  setCurrentQuestion: (question) => {
-    set({
-      currentQuestion: question,
-      error: null,
-    });
-  },
-
-  /**
-   * 設定當前題目索引
-   */
-  setCurrentQuestionIndex: (index) => {
-    const { questions } = get();
-    const question = questions[index] || null;
-
-    set({
-      currentQuestionIndex: index,
-      currentQuestion: question,
-    });
-  },
-
-  /**
-   * 更新測驗狀態
-   */
-  updateExamStatus: (status) => {
-    const { currentExam } = get();
-    if (!currentExam) return;
-
-    set({
-      currentExam: {
-        ...currentExam,
-        status,
-      },
-    });
-  },
-
-  /**
-   * 設定載入狀態
-   */
-  setLoading: (isLoading) => {
-    set({ isLoading });
-  },
-
-  /**
-   * 設定錯誤訊息
-   */
-  setError: (error) => {
-    set({ error });
-  },
-
-  /**
-   * 下一題
-   */
-  nextQuestion: () => {
-    const { currentQuestionIndex, questions } = get();
-    const nextIndex = currentQuestionIndex + 1;
-
-    if (nextIndex < questions.length) {
-      const nextQuestion = questions[nextIndex];
+    /**
+     * 設定當前測驗
+     */
+    setCurrentExam: (exam) => {
       set({
-        currentQuestionIndex: nextIndex,
-        currentQuestion: nextQuestion,
+        currentExam: exam,
+        error: null,
       });
-    }
-  },
+    },
 
-  /**
-   * 上一題
-   */
-  previousQuestion: () => {
-    const { currentQuestionIndex, questions } = get();
-    const prevIndex = currentQuestionIndex - 1;
-
-    if (prevIndex >= 0) {
-      const prevQuestion = questions[prevIndex];
+    /**
+     * 設定題目列表
+     */
+    setQuestions: (questions) => {
       set({
-        currentQuestionIndex: prevIndex,
-        currentQuestion: prevQuestion,
+        questions,
+        error: null,
       });
-    }
-  },
+    },
 
-  /**
-   * 重置狀態
-   */
-  reset: () => {
-    set(initialState);
-  },
-}));
+    /**
+     * 設定當前題目
+     */
+    setCurrentQuestion: (question) => {
+      set({
+        currentQuestion: question,
+        error: null,
+      });
+    },
+
+    /**
+     * 設定當前題目索引
+     */
+    setCurrentQuestionIndex: (index) => {
+      const { questions } = get();
+      const question = questions[index] || null;
+
+      set({
+        currentQuestionIndex: index,
+        currentQuestion: question,
+      });
+    },
+
+    /**
+     * 更新測驗狀態
+     */
+    updateExamStatus: (status) => {
+      const { currentExam } = get();
+      if (!currentExam) return;
+
+      set({
+        currentExam: {
+          ...currentExam,
+          status,
+        },
+      });
+    },
+
+    /**
+     * 設定載入狀態
+     */
+    setLoading: (isLoading) => {
+      set({ isLoading });
+    },
+
+    /**
+     * 設定錯誤訊息
+     */
+    setError: (error) => {
+      set({ error });
+    },
+
+    /**
+     * 下一題
+     */
+    nextQuestion: () => {
+      const { currentQuestionIndex, questions } = get();
+      const nextIndex = currentQuestionIndex + 1;
+
+      if (nextIndex < questions.length) {
+        const nextQuestion = questions[nextIndex];
+        set({
+          currentQuestionIndex: nextIndex,
+          currentQuestion: nextQuestion,
+        });
+      }
+    },
+
+    /**
+     * 上一題
+     */
+    previousQuestion: () => {
+      const { currentQuestionIndex, questions } = get();
+      const prevIndex = currentQuestionIndex - 1;
+
+      if (prevIndex >= 0) {
+        const prevQuestion = questions[prevIndex];
+        set({
+          currentQuestionIndex: prevIndex,
+          currentQuestion: prevQuestion,
+        });
+      }
+    },
+
+    /**
+     * 重置狀態
+     */
+    reset: () => {
+      set(initialState);
+    },
+  }), { name: 'ExamStore' }));
 
 export default useExamStore;

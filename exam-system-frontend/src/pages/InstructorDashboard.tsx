@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus } from '../types';
-import { useThemeStore, themes } from '../store/themeStore';
+import { useThemeStore } from '../store/themeStore';
 
 /**
  * 講師主控台頁面
@@ -18,7 +18,7 @@ export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { setInstructorSessionId } = useInstructorStore();
   const { mode } = useThemeStore();
-  const theme = themes[mode];
+
   const isDark = mode === 'dark';
 
   const [exams, setExams] = useState<Exam[]>([]);

@@ -52,6 +52,14 @@ public class SecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // 公開 API - 無需認證
+                                                .requestMatchers("/", "/login", "/error", "/favicon.ico", "/index.html",
+                                                                "/assets/**", "/*.svg", "/*.css", "/*.js", "/*.png",
+                                                                "/*.jpg")
+                                                .permitAll()
+                                                // 前端路由 - 交由前端處理認證
+                                                .requestMatchers("/instructor/**", "/student/**", "/surveys/**",
+                                                                "/emails/**", "/leaderboard/**")
+                                                .permitAll()
                                                 .requestMatchers("/api/auth/**").permitAll()
                                                 .requestMatchers("/api/exams/join/**").permitAll()
                                                 .requestMatchers("/api/exams/*/join").permitAll()

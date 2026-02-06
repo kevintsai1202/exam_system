@@ -2,7 +2,7 @@
  * 認證狀態管理 (Zustand)
  */
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, devtools } from 'zustand/middleware';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -37,123 +37,126 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
+  devtools(
+    persist(
+      (set, get) => ({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
 
-      setToken: (token: string) => {
-        set({ token, isAuthenticated: true });
-        // 設定 axios 預設標頭
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      },
+        setToken: (token: string) => {
+          set({ token, isAuthenticated: true });
+          // 設定 axios 預設標頭
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        },
 
-      setUser: (user: User) => {
-        set({ user });
-      },
+        setUser: (user: User) => {
+          set({ user });
+        },
 
-      login: async (token: string) => {
-        set({ isLoading: true, error: null });
-        try {
-          // 設定 token
-          get().setToken(token);
+        login: async (token: string) => {
+          set({ isLoading: true, error: null });
+          try {
+            // 設定 token
+            get().setToken(token);
 
-          // 取得用戶資訊
-          const response = await axios.get(`${API_BASE_URL}/api/auth/user`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          if (response.data.authenticated && response.data.user) {
-            set({
-              user: response.data.user,
-              isAuthenticated: true,
-              isLoading: false
+            // 取得用戶資訊
+            const response = await axios.get(`${API_BASE_URL}/api/auth/user`, {
+              headers: { Authorization: `Bearer ${token}` }
             });
-          } else {
-            throw new Error('Failed to get user info');
+
+            if (response.data.authenticated && response.data.user) {
+              set({
+                user: response.data.user,
+                isAuthenticated: true,
+                isLoading: false
+              });
+            } else {
+              throw new Error('Failed to get user info');
+            }
+          } catch (error) {
+            set({
+              error: error instanceof Error ? error.message : 'Login failed',
+              isLoading: false,
+              isAuthenticated: false,
+              token: null,
+              user: null
+            });
+            delete axios.defaults.headers.common['Authorization'];
           }
-        } catch (error) {
+        },
+
+        logout: () => {
           set({
-            error: error instanceof Error ? error.message : 'Login failed',
-            isLoading: false,
-            isAuthenticated: false,
+            user: null,
             token: null,
-            user: null
+            isAuthenticated: false,
+            error: null
           });
           delete axios.defaults.headers.common['Authorization'];
-        }
-      },
 
-      logout: () => {
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: null
-        });
-        delete axios.defaults.headers.common['Authorization'];
+          // 呼叫後端登出 API
+          axios.post(`${API_BASE_URL}/api/auth/logout`).catch(() => { });
+        },
 
-        // 呼叫後端登出 API
-        axios.post(`${API_BASE_URL}/api/auth/logout`).catch(() => { });
-      },
+        fetchUser: async () => {
+          const token = get().token;
+          if (!token) return;
 
-      fetchUser: async () => {
-        const token = get().token;
-        if (!token) return;
-
-        set({ isLoading: true });
-        try {
-          const response = await axios.get(`${API_BASE_URL}/api/auth/user`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          if (response.data.authenticated && response.data.user) {
-            set({
-              user: response.data.user,
-              isAuthenticated: true,
-              isLoading: false
+          set({ isLoading: true });
+          try {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/user`, {
+              headers: { Authorization: `Bearer ${token}` }
             });
-          } else {
+
+            if (response.data.authenticated && response.data.user) {
+              set({
+                user: response.data.user,
+                isAuthenticated: true,
+                isLoading: false
+              });
+            } else {
+              get().logout();
+            }
+          } catch {
             get().logout();
+          } finally {
+            set({ isLoading: false });
           }
-        } catch {
-          get().logout();
-        } finally {
-          set({ isLoading: false });
+        },
+
+        clearError: () => {
+          set({ error: null });
+        },
+
+        // Role checks
+        isInstructor: () => {
+          const user = get().user;
+          return user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
+        },
+
+        isStudent: () => {
+          const user = get().user;
+          return user?.role === 'STUDENT';
+        },
+
+        isAdmin: () => {
+          const user = get().user;
+          return user?.role === 'ADMIN';
         }
-      },
-
-      clearError: () => {
-        set({ error: null });
-      },
-
-      // Role checks
-      isInstructor: () => {
-        const user = get().user;
-        return user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
-      },
-
-      isStudent: () => {
-        const user = get().user;
-        return user?.role === 'STUDENT';
-      },
-
-      isAdmin: () => {
-        const user = get().user;
-        return user?.role === 'ADMIN';
-      }
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        token: state.token,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated
       }),
-    }
+      {
+        name: 'auth-storage',
+        partialize: (state) => ({
+          token: state.token,
+          user: state.user,
+          isAuthenticated: state.isAuthenticated
+        }),
+      }
+    ),
+    { name: 'AuthStore' }
   )
 );
 

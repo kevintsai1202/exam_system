@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { Tooltip } from 'react-tooltip';
 import { useThemeStore } from '../store/themeStore';
 import taiwanCounties from '../assets/taiwan-counties.json';
@@ -57,11 +57,24 @@ const NAME_TO_CODE: Record<string, string> = {
 };
 
 interface TaiwanMapProps {
-    onSelect: (locationCode: string) => void;
+    onSelect?: (locationCode: string) => void;
     selectedLocation?: string;
+    statistics?: Record<string, number>;
+    interactive?: boolean;
+    showLabels?: boolean;
+    width?: number | string;
+    height?: number | string;
 }
 
-const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => {
+const TaiwanMap: React.FC<TaiwanMapProps> = ({
+    onSelect,
+    selectedLocation,
+    statistics,
+    interactive = true,
+    showLabels = false,
+    width = '100%',
+    height = '100%'
+}) => {
     // Select mode directly for reactivity and derive boolean
     const isDark = useThemeStore((state) => state.mode === 'dark');
     const [hoveredCode, setHoveredCode] = useState<string | null>(null);
@@ -79,8 +92,11 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
         return COUNTY_COLORS[index % COUNTY_COLORS.length];
     };
 
+    // Calculate max value for heatmap
+    const maxCount = statistics ? Math.max(1, ...Object.values(statistics)) : 1;
+
     return (
-        <div className="taiwan-map-container" style={{ width: '100%', height: '100%', maxHeight: '600px' }}>
+        <div className="taiwan-map-container" style={{ width, height, maxHeight: typeof height === 'number' ? `${height}px` : '600px' }}>
             <ComposableMap
                 projection="geoMercator"
                 projectionConfig={{
@@ -89,7 +105,7 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
                 }}
                 style={{ width: '100%', height: '100%' }}
             >
-                <ZoomableGroup center={[120.5, 23.8]} zoom={1}>
+                <ZoomableGroup center={[120.5, 23.8]} zoom={1} maxZoom={interactive ? 4 : 1} minZoom={1}>
                     <Geographies geography={taiwanCounties}>
                         {({ geographies }) => {
                             // Sort geographies to put the selected one last (render on top)
@@ -111,34 +127,49 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
                                 if (!code) return null;
 
                                 const isSelected = selectedLocation === code;
-                                const isHovered = hoveredCode === code;
+                                const isHovered = interactive && hoveredCode === code;
+
+                                // Statistics specific logic
+                                const count = statistics ? (statistics[code] || 0) : 0;
 
                                 // Identify if this is an outlying island
                                 const isIsland = ['KMN', 'LNN', 'PEH'].includes(code);
 
                                 // Determine fill color
-                                let fillColor = isDark
-                                    ? (isSelected ? '#ecc94b' : '#2D3748')
-                                    : (isSelected ? '#3182ce' : getCountyColor(index));
+                                let fillColor;
 
-                                // Island specific overrides for better visibility
-                                if (isIsland && !isSelected) {
-                                    // Use distinct, darker colors for islands to make them pop
-                                    // KMN: #e53e3e (Red), LNN: #805ad5 (Purple), PEH: #319795 (Teal)
-                                    if (code === 'KMN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
-                                    if (code === 'LNN') fillColor = isDark ? '#b794f4' : '#9f7aea';
-                                    if (code === 'PEH') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
-                                }
+                                if (statistics) {
+                                    // Heatmap mode
+                                    if (count === 0) {
+                                        fillColor = isDark ? '#2D3748' : '#EDF2F7';
+                                    } else {
+                                        // Simple blue heatmap
+                                        const intensity = 0.3 + (count / maxCount) * 0.7;
+                                        fillColor = `rgba(102, 126, 234, ${intensity})`;
+                                    }
+                                } else {
+                                    // Selection mode
+                                    fillColor = isDark
+                                        ? (isSelected ? '#ecc94b' : '#2D3748')
+                                        : (isSelected ? '#3182ce' : getCountyColor(index));
 
-                                if (isDark && !isSelected && !isIsland) {
-                                    fillColor = getCountyColor(index);
-                                }
+                                    // Island specific overrides for better visibility
+                                    if (isIsland && !isSelected) {
+                                        if (code === 'KMN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
+                                        if (code === 'LNN') fillColor = isDark ? '#b794f4' : '#9f7aea';
+                                        if (code === 'PEH') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
+                                    }
 
-                                // Override for Light Mode Selected
-                                if (!isDark && isSelected) {
-                                    fillColor = '#3182ce'; // Strong Blue
-                                } else if (isDark && isSelected) {
-                                    fillColor = '#ecc94b'; // Strong Yellow for dark mode selected
+                                    if (isDark && !isSelected && !isIsland) {
+                                        fillColor = getCountyColor(index);
+                                    }
+
+                                    // Override for Light Mode Selected
+                                    if (!isDark && isSelected) {
+                                        fillColor = '#3182ce'; // Strong Blue
+                                    } else if (isDark && isSelected) {
+                                        fillColor = '#ecc94b'; // Strong Yellow for dark mode selected
+                                    }
                                 }
 
                                 // Hover overrides
@@ -151,23 +182,30 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
 
                                 // Enhanced stroke for selected item
                                 let strokeColor = isDark ? '#1A202C' : '#FFFFFF';
-                                if (isIsland) {
+                                if (isIsland && !statistics) {
                                     strokeColor = !isDark ? fillColor : '#1A202C';
                                 }
                                 if (isSelected) {
                                     strokeColor = '#FFFFFF'; // Always white stroke for selection to pop
                                     if (isDark) strokeColor = '#FFFFFF'; // Even in dark mode, white stroke pops well against dark bg + yellow fill
                                 }
+                                if (statistics) {
+                                    strokeColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)';
+                                }
 
                                 return (
                                     <Geography
                                         key={geo.rsmKey}
                                         geography={geo}
-                                        onMouseEnter={() => setHoveredCode(code)}
-                                        onMouseLeave={() => setHoveredCode(null)}
-                                        onClick={() => onSelect(code)}
+                                        onMouseEnter={() => interactive && setHoveredCode(code)}
+                                        onMouseLeave={() => interactive && setHoveredCode(null)}
+                                        onClick={() => interactive && onSelect && onSelect(code)}
                                         data-tooltip-id="taiwan-map-tooltip"
-                                        data-tooltip-content={TAIWAN_LOCATIONS[code]?.name || countyName}
+                                        data-tooltip-content={
+                                            statistics
+                                                ? `${TAIWAN_LOCATIONS[code]?.name || countyName}: ${count}人`
+                                                : (TAIWAN_LOCATIONS[code]?.name || countyName)
+                                        }
                                         style={{
                                             default: {
                                                 fill: fillColor,
@@ -175,19 +213,19 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
                                                 strokeWidth: strokeWidth,
                                                 outline: 'none',
                                                 transition: 'all 0.3s ease',
-                                                opacity: isDark && !isSelected ? 0.8 : 1,
-                                                filter: isSelected ? 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none', // Drop shadow for pop effect
-                                                zIndex: isSelected ? 10 : 1 // Logic handled by sort order, but good for intent
+                                                opacity: isDark && !isSelected && !statistics ? 0.8 : 1,
+                                                filter: isSelected ? 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none',
+                                                zIndex: isSelected ? 10 : 1
                                             },
                                             hover: {
                                                 fill: fillColor,
                                                 stroke: strokeColor,
                                                 strokeWidth: isSelected ? 2 : 2,
                                                 outline: 'none',
-                                                cursor: 'pointer',
+                                                cursor: interactive ? 'pointer' : 'default',
                                                 transition: 'all 0.3s ease',
                                                 opacity: 1,
-                                                filter: isIsland || isSelected ? 'brightness(1.1) drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none'
+                                                filter: (interactive && (isIsland || isSelected)) ? 'brightness(1.1) drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5))' : 'none'
                                             },
                                             pressed: {
                                                 fill: fillColor,
@@ -199,6 +237,45 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({ onSelect, selectedLocation }) => 
                             });
                         }}
                     </Geographies>
+
+                    {/* Show Labels if enabled */}
+                    {showLabels && Object.entries(TAIWAN_LOCATIONS).map(([code, { name, coordinates }]) => {
+                        const count = statistics ? (statistics[code] || 0) : 0;
+                        if (statistics && count === 0) return null;
+
+                        return (
+                            <Marker key={code} coordinates={coordinates}>
+                                <text
+                                    textAnchor="middle"
+                                    y={-5}
+                                    style={{
+                                        fontFamily: 'system-ui',
+                                        fill: isDark ? '#fff' : '#333',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        pointerEvents: 'none',
+                                        textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)'
+                                    }}
+                                >
+                                    {name}
+                                </text>
+                                {statistics && (
+                                    <text
+                                        textAnchor="middle"
+                                        y={8}
+                                        style={{
+                                            fontFamily: 'system-ui',
+                                            fill: isDark ? '#ddd' : '#555',
+                                            fontSize: '8px',
+                                            pointerEvents: 'none'
+                                        }}
+                                    >
+                                        {count}
+                                    </text>
+                                )}
+                            </Marker>
+                        );
+                    })}
                 </ZoomableGroup>
             </ComposableMap>
             <Tooltip

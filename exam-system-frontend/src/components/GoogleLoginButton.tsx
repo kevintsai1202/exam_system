@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useThemeStore, themes } from '../store/themeStore';
+import { useThemeStore } from '../store/themeStore';
 
 interface GoogleLoginButtonProps {
     onClick: () => void;
@@ -21,7 +21,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
     className = '',
 }) => {
     const { mode } = useThemeStore();
-    const theme = themes[mode];
+
     const isDark = mode === 'dark';
 
     return (
