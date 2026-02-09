@@ -72,6 +72,34 @@ http://localhost:8080/api/exams
 
 應該返回空陣列 `[]`（因為還沒有資料）
 
+### 2.1 認證與角色測試（本機開發）
+
+**注意**：以下為本機 H2（`./data/examdb`）的測試資料與流程，請勿用於正式環境。
+
+**預設管理員帳號（Admin）**
+- Email: `admin@example.com`
+- Password: `Admin@12345`
+
+**角色說明**
+- `STUDENT`：一般使用者（預設註冊角色）
+- `INSTRUCTOR`：講師（可操作講師功能）
+- `ADMIN`：管理員（可升級其他使用者為講師）
+
+**PowerShell 7+ 測試指令**
+```powershell
+# Admin 登入取得 JWT
+$login = @{ email = 'admin@example.com'; password = 'Admin@12345' } | ConvertTo-Json
+$admin = Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/auth/login' -ContentType 'application/json' -Body $login
+$token = $admin.token
+
+# 取得目前使用者資訊
+Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/auth/user' -Headers @{ Authorization = "Bearer $token" }
+
+# 註冊一個新使用者（預設 STUDENT）
+$register = @{ name = 'Demo User'; email = 'demo@example.com'; password = 'Passw0rd123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/auth/register' -ContentType 'application/json' -Body $register
+```
+
 ### 3. 訪問 H2 控制台
 ```
 http://localhost:8080/h2-console

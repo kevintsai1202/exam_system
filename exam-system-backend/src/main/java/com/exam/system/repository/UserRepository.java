@@ -18,6 +18,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     /**
+     * 根據 Email（忽略大小寫）查找用戶
+     */
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    /**
      * 根據 Google ID 查找用戶
      */
     Optional<User> findByGoogleId(String googleId);
@@ -26,6 +31,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 檢查 Email 是否已存在
      */
     boolean existsByEmail(String email);
+
+    /**
+     * 檢查 Email 是否已存在（忽略大小寫）
+     */
+    boolean existsByEmailIgnoreCase(String email);
 
     /**
      * 檢查 Google ID 是否已存在

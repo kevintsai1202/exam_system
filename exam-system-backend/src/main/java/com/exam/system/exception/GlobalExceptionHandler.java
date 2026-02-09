@@ -36,6 +36,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 處理認證流程異常
+     */
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ErrorResponse> handleAuthException(AuthException ex) {
+        log.warn("Auth exception: {} - {}", ex.getCode(), ex.getMessage());
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(ex.getStatus().value())
+                .error(ex.getStatus().getReasonPhrase())
+                .message(ex.getMessage())
+                .code(ex.getCode())
+                .build();
+        return ResponseEntity.status(ex.getStatus()).body(error);
+    }
+
+    /**
      * 處理業務邏輯異常
      */
     @ExceptionHandler(BusinessException.class)

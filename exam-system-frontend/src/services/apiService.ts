@@ -95,6 +95,28 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const responseStatus = error.response?.status;
+    const requestUrl = error.config?.url || '';
+
+    // 401 全域處理：清除本地認證並導回登入頁（登入/註冊 API 除外）
+    if (
+      responseStatus === 401 &&
+      !requestUrl.includes('/auth/login') &&
+      !requestUrl.includes('/auth/register')
+    ) {
+      try {
+        localStorage.removeItem('auth-storage');
+      } catch (storageError) {
+        console.error('Failed to clear auth-storage:', storageError);
+      }
+
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        sessionStorage.setItem('returnTo', returnTo);
+        window.location.href = '/login';
+      }
+    }
+
     // 優先使用後端返回的錯誤訊息
     let errorMessage = error.message;
     if (error.response?.data) {

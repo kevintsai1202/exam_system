@@ -6,6 +6,7 @@
 - **Content-Type**: `application/json`
 - **字元編碼**: `UTF-8`
 - **WebSocket Endpoint**: `ws://localhost:8080/ws`
+- **Docker/Compose**: 建議使用 `8080:8080` 對外映射，因此對外 Base URL 與 WebSocket 端點維持 `8080`。
 
 ## 狀態碼規範
 
@@ -1467,5 +1468,120 @@ curl -X POST http://localhost:8080/api/answers \
 
 ---
 
-**文件版本**：v1.0
-**最後更新**：2025-09-30
+## 11. 認證 API (Authentication)
+
+### 11.1 Email 註冊
+
+**Endpoint**: `POST /api/auth/register`  
+**描述**: 以 Email 建立帳號並直接取得 JWT。
+
+**Request Body**:
+```json
+{
+  "name": "王小明",
+  "email": "ming@example.com",
+  "password": "Passw0rd123"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "authenticated": true,
+  "user": {
+    "id": 12,
+    "email": "ming@example.com",
+    "name": "王小明",
+    "avatarUrl": null,
+    "role": "STUDENT",
+    "googleLinked": false,
+    "passwordSet": true
+  }
+}
+```
+
+**Error**:
+- `409 Conflict`: Email 已存在  
+- `400 Bad Request`: 欄位驗證失敗
+
+### 11.2 Email 登入
+
+**Endpoint**: `POST /api/auth/login`  
+**描述**: 以 Email + Password 登入並取得 JWT。
+
+**Request Body**:
+```json
+{
+  "email": "ming@example.com",
+  "password": "Passw0rd123"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "authenticated": true,
+  "user": {
+    "id": 12,
+    "email": "ming@example.com",
+    "name": "王小明",
+    "avatarUrl": null,
+    "role": "STUDENT",
+    "googleLinked": true,
+    "passwordSet": true
+  }
+}
+```
+
+**Error**:
+- `401 Unauthorized`: 帳號或密碼錯誤  
+- `400 Bad Request`: 帳號未設定密碼（Google-only 帳號）
+
+### 11.3 Google OAuth2 登入與綁定
+
+**Endpoint**: `GET /oauth2/authorization/google`  
+**描述**: 導向 Google OAuth2，回呼後由後端發 JWT 並轉導前端 `/auth/callback`。
+
+**綁定規則**:
+1. 若 `googleId` 已存在，直接登入對應帳號。  
+2. 若 `googleId` 不存在但 `email` 已存在，將 Google 帳號綁定至該 Email 帳號。  
+3. 若兩者皆不存在，建立 Google-only 帳號。
+
+### 11.4 取得目前登入使用者
+
+**Endpoint**: `GET /api/auth/user`  
+**描述**: 依 Bearer Token 取得當前使用者資訊。
+
+**Response** (200 OK):
+```json
+{
+  "authenticated": true,
+  "user": {
+    "id": 12,
+    "email": "ming@example.com",
+    "name": "王小明",
+    "avatarUrl": "https://lh3.googleusercontent.com/...",
+    "role": "STUDENT",
+    "googleLinked": true,
+    "passwordSet": true
+  }
+}
+```
+
+### 11.5 驗證規則（認證）
+- `name`: 必填，1-100 字元
+- `email`: 必填，合法 Email 格式
+- `password`: 必填，8-72 字元
+
+### 11.6 401 行為規範
+- 當受保護 API 因 token 無效或過期回傳 `401 Unauthorized` 時，前端應：
+  1. 清除本地 `auth-storage` 與 Authorization 狀態。
+  2. 保留當前路徑於 `sessionStorage.returnTo`。
+  3. 導向 `/login`，完成登入後再返回原頁。
+
+---
+
+**文件版本**：v1.1
+**最後更新**：2026-02-06

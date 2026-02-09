@@ -240,6 +240,34 @@ mvn test -Dtest=ExamServiceTest
 mvn test jacoco:report
 ```
 
+### 認證與角色測試（本機開發）
+
+**注意**：以下為本機 H2（`exam-system-backend/data/examdb`）的測試資料與流程，請勿用於正式環境。
+
+**預設管理員帳號（Admin）**
+- Email: `admin@example.com`
+- Password: `Admin@12345`
+
+**角色如何區分**
+- 角色欄位：`users.role`（`STUDENT / INSTRUCTOR / ADMIN`）
+- 新註冊（Email 或 Google）預設：`STUDENT`
+- `ADMIN` 才能升級其他使用者為講師（`INSTRUCTOR`）
+
+**驗證步驟（PowerShell 7+ 範例）**
+```powershell
+# 1) Admin 登入取得 token
+$login = @{ email = 'admin@example.com'; password = 'Admin@12345' } | ConvertTo-Json
+$admin = Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/auth/login' -ContentType 'application/json' -Body $login
+$token = $admin.token
+
+# 2) 查看目前登入者資訊
+Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/auth/user' -Headers @{ Authorization = "Bearer $token" }
+
+# 3) 註冊一個新使用者（預設 STUDENT）
+$register = @{ name = 'Demo User'; email = 'demo@example.com'; password = 'Passw0rd123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/auth/register' -ContentType 'application/json' -Body $register
+```
+
 **測試統計**：
 - ✅ 單元測試：29/29 通過
 - ✅ 測試覆蓋率：核心功能 100%

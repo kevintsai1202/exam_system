@@ -13,6 +13,8 @@ export interface User {
   name: string;
   avatarUrl?: string;
   role: string;
+  googleLinked?: boolean;
+  passwordSet?: boolean;
 }
 
 interface AuthState {
@@ -162,9 +164,20 @@ export const useAuthStore = create<AuthState>()(
 
 // 初始化時恢復 axios 標頭
 const initAuth = () => {
-  const token = useAuthStore.getState().token;
+  const { token, isAuthenticated } = useAuthStore.getState();
+
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    return;
+  }
+
+  // 防止本地狀態殘留：沒有 token 時強制回到未登入狀態
+  if (isAuthenticated) {
+    useAuthStore.setState({
+      isAuthenticated: false,
+      user: null,
+      token: null
+    });
   }
 };
 

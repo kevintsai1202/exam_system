@@ -2,7 +2,7 @@
  * 受保護路由元件
  * 未登入時導向登入頁
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
@@ -15,8 +15,42 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
     requireAuth = true
 }) => {
-    const { isAuthenticated, isLoading } = useAuthStore();
+    const { isAuthenticated, isLoading, token, user, fetchUser } = useAuthStore();
     const location = useLocation();
+    const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+    useEffect(() => {
+        let isCancelled = false;
+
+        const checkSession = async () => {
+            if (!requireAuth) {
+                if (!isCancelled) setIsCheckingSession(false);
+                return;
+            }
+
+            // 沒有 Token 代表未登入，不需要額外請求
+            if (!token) {
+                if (!isCancelled) setIsCheckingSession(false);
+                return;
+            }
+
+            // 有 token 且已有使用者資訊，直接通過
+            if (user) {
+                if (!isCancelled) setIsCheckingSession(false);
+                return;
+            }
+
+            // 有 token 但缺少 user 時，主動向後端同步一次登入狀態
+            await fetchUser();
+            if (!isCancelled) setIsCheckingSession(false);
+        };
+
+        checkSession();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [requireAuth, token, user, fetchUser]);
 
     // 如果不需要認證，直接渲染子元件
     if (!requireAuth) {
@@ -24,7 +58,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
 
     // 正在載入中
-    if (isLoading) {
+    if (isLoading || isCheckingSession) {
         return (
             <div className="loading-auth">
                 <div className="spinner"></div>
@@ -53,8 +87,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
 
     // 未登入，儲存目標路徑並導向登入頁
-    if (!isAuthenticated) {
-        sessionStorage.setItem('returnTo', location.pathname);
+    if (!isAuthenticated || !token) {
+        sessionStorage.setItem('returnTo', `${location.pathname}${location.search}`);
         return <Navigate to="/login" replace />;
     }
 

@@ -36,7 +36,40 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **學生狀態持久化與 API 路徑同步** _(完成，修正 API 路徑並於刷新時自動載入學生)_  
   - 將 `studentApi.getStudent`、`answerApi.getStudentAnswers` 等路徑改成與後端一致，並在頁面刷新時利用持久化 `sessionId` 自動回填學生資料。  
-  - 規畫測試（含 E2E）驗證重新整理與答題流程可正常運作。
+  - 規畫測試（含 E2E）驗證重新整理與答題流程可正常運作。  
+
+- [x] **登入擴充：Email 註冊/登入 + Google OAuth2 綁定 - 文件更新**  
+  - 先更新 `spec.md`、`api.md`，補上帳號模型、綁定規則、流程圖與 API 規格。  
+
+- [x] **登入擴充：後端認證實作**  
+  - 新增 Email 註冊/登入 API、密碼雜湊機制，並調整 Google OAuth2 成功流程支援同 Email 自動綁定。  
+
+- [x] **登入擴充：前端登入頁與認證串接**  
+  - 新增 Email 註冊/登入 UI，串接新 API 並保留既有 Google OAuth2 登入流程。  
+
+- [x] **登入擴充：測試驗證**  
+  - 已執行 `mvn test -Dtest=AuthServiceTest`、`npm run build`。  
+  - `mvn test` 全量測試仍有既有失敗案例（含 `ExamFlowIntegrationTest`、`ExamServiceTest`、`StatisticsServiceTest`、`StudentServiceTest`）。  
+
+- [x] **講師頁 401 導流修正 - 文件更新**
+  - 更新 `spec.md`、`api.md`，補充 token 過期/無效時前端導回登入頁的規則。
+
+- [x] **講師頁 401 導流修正 - 前端實作**
+  - `ProtectedRoute` 增加 token/user 驗證流程，`apiService` 於 401 時自動清理登入狀態並導向 `/login`。
+
+- [x] **講師頁 401 導流修正 - 測試驗證**
+  - 執行前端建置並驗證 `/instructor` 未認證與過期 token 導流行為。
 
 
 
+- [x] **Docker 部署一致性修正 - 文件更新**
+  - 更新 `spec.md`、`api.md`，補充 Docker 版埠號、健康檢查與建置前置需求。
+
+- [x] **Docker 部署一致性修正 - 根目錄 Dockerfile**
+  - 修正 `COPY` JAR 路徑、`HEALTHCHECK` 端口與路徑，統一使用 8080。
+
+- [x] **Docker 部署一致性修正 - Compose/腳本/文件**
+  - `docker-compose.yml`、`docker-build.bat`、`DOCKER_DEPLOYMENT.md` 同步根目錄 `Dockerfile` 與 8080 設定。
+
+- [ ] **Docker 部署一致性修正 - 驗證**
+  - 以 `docker build` / `docker compose`（或等效流程）驗證容器可啟動且健康檢查可通過（目前環境 Docker daemon 未啟動，待補跑）。

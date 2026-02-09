@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * 用戶實體
- * 儲存 Google OAuth2 登入的用戶資訊
+ * 儲存 Email 與 Google OAuth2 的用戶資訊
  */
 @Data
 @NoArgsConstructor
@@ -31,7 +31,7 @@ public class User {
     private Long id;
 
     /**
-     * Google Email
+     * 帳號 Email（唯一識別）
      */
     @Column(nullable = false, unique = true, length = 100)
     private String email;
@@ -43,9 +43,15 @@ public class User {
     private String name;
 
     /**
-     * Google 唯一識別碼
+     * 密碼雜湊值（Email 登入使用）
      */
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(length = 100)
+    private String passwordHash;
+
+    /**
+     * Google 唯一識別碼（可為空，代表尚未綁定）
+     */
+    @Column(unique = true, length = 100)
     private String googleId;
 
     /**

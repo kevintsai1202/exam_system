@@ -1,9 +1,14 @@
 package com.exam.system.controller;
 
 import com.exam.system.dto.UserDTO;
+import com.exam.system.dto.AuthTokenResponseDTO;
+import com.exam.system.dto.EmailLoginRequestDTO;
+import com.exam.system.dto.EmailRegisterRequestDTO;
 import com.exam.system.entity.User;
 import com.exam.system.repository.UserRepository;
+import com.exam.system.service.AuthService;
 import com.exam.system.service.JwtService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +27,7 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final AuthService authService;
 
     /**
      * 取得當前登入用戶資訊
@@ -32,17 +38,27 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("authenticated", false));
         }
 
-        UserDTO userDTO = UserDTO.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .avatarUrl(user.getAvatarUrl())
-                .role(user.getRole().name())
-                .build();
+        UserDTO userDTO = authService.toUserDTO(user);
 
         return ResponseEntity.ok(Map.of(
                 "authenticated", true,
                 "user", userDTO));
+    }
+
+    /**
+     * Email 註冊
+     */
+    @PostMapping("/register")
+    public ResponseEntity<AuthTokenResponseDTO> register(@Valid @RequestBody EmailRegisterRequestDTO request) {
+        return ResponseEntity.ok(authService.registerWithEmail(request));
+    }
+
+    /**
+     * Email 登入
+     */
+    @PostMapping("/login")
+    public ResponseEntity<AuthTokenResponseDTO> login(@Valid @RequestBody EmailLoginRequestDTO request) {
+        return ResponseEntity.ok(authService.loginWithEmail(request));
     }
 
     /**
@@ -59,7 +75,7 @@ public class AuthController {
             String email = jwtService.extractEmail(token);
             boolean expired = jwtService.isTokenExpired(token);
 
-            if (!expired && userRepository.findByEmail(email).isPresent()) {
+            if (!expired && userRepository.findByEmailIgnoreCase(email).isPresent()) {
                 return ResponseEntity.ok(Map.of("valid", true, "email", email));
             }
         } catch (Exception e) {

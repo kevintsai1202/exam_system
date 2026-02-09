@@ -2,6 +2,7 @@ package com.exam.system.config;
 
 import com.exam.system.entity.User;
 import com.exam.system.repository.UserRepository;
+import com.exam.system.service.AuthService;
 import com.exam.system.service.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class SecurityConfig {
 
         private final UserRepository userRepository;
         private final JwtService jwtService;
+        private final AuthService authService;
 
         @Value("${app.frontend.url:http://localhost:5173}")
         private String frontendUrl;
@@ -85,36 +87,35 @@ public class SecurityConfig {
                                 .oauth2Login(oauth2 -> oauth2
                                                 .userInfoEndpoint(userInfo -> userInfo.userService(oauth2UserService()))
                                                 .successHandler((request, response, authentication) -> {
-                                                        OAuth2User oauth2User = (OAuth2User) authentication
-                                                                        .getPrincipal();
-                                                        String email = oauth2User.getAttribute("email");
+                                                        try {
+                                                                OAuth2User oauth2User = (OAuth2User) authentication
+                                                                                .getPrincipal();
+                                                                String email = oauth2User.getAttribute("email");
+                                                                String googleId = oauth2User.getAttribute("sub");
+                                                                String name = oauth2User.getAttribute("name");
+                                                                String avatarUrl = oauth2User.getAttribute("picture");
 
-                                                        // 從資料庫取得或建立用戶
-                                                        User user = userRepository.findByEmail(email)
-                                                                        .orElseGet(() -> {
-                                                                                User newUser = User.builder()
-                                                                                                .email(email)
-                                                                                                .name(oauth2User.getAttribute(
-                                                                                                                "name"))
-                                                                                                .googleId(oauth2User
-                                                                                                                .getAttribute("sub"))
-                                                                                                .avatarUrl(oauth2User
-                                                                                                                .getAttribute("picture"))
-                                                                                                .build();
-                                                                                return userRepository.save(newUser);
-                                                                        });
+                                                                User user = authService.resolveOrBindGoogleUser(
+                                                                                email,
+                                                                                name,
+                                                                                googleId,
+                                                                                avatarUrl);
 
-                                                        user.updateLastLogin();
-                                                        userRepository.save(user);
+                                                                // 產生 JWT Token
+                                                                String token = jwtService.generateToken(user);
 
-                                                        // 產生 JWT Token
-                                                        String token = jwtService.generateToken(user);
-
-                                                        // 重導向至前端並帶上 token
-                                                        String redirectUrl = frontendUrl + "/auth/callback?token=" +
-                                                                        URLEncoder.encode(token,
-                                                                                        StandardCharsets.UTF_8);
-                                                        response.sendRedirect(redirectUrl);
+                                                                // 重導向至前端並帶上 token
+                                                                String redirectUrl = frontendUrl + "/auth/callback?token="
+                                                                                +
+                                                                                URLEncoder.encode(token,
+                                                                                                StandardCharsets.UTF_8);
+                                                                response.sendRedirect(redirectUrl);
+                                                        } catch (Exception ex) {
+                                                                String redirectUrl = frontendUrl + "/login?error="
+                                                                                + URLEncoder.encode(ex.getMessage(),
+                                                                                                StandardCharsets.UTF_8);
+                                                                response.sendRedirect(redirectUrl);
+                                                        }
                                                 })
                                                 .failureHandler((request, response, exception) -> {
                                                         String redirectUrl = frontendUrl + "/login?error=" +

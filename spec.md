@@ -4,7 +4,7 @@
 
 ### 1.1 技術棧
 - **前端**：React 18+ + TypeScript + Vite
-- **後端**：Spring Boot 3.x + Java 17
+- **後端**：Spring Boot 3.x + Java 21
 - **資料庫**：H2 Database (File-based mode)
 - **即時通訊**：WebSocket (STOMP over WebSocket)
 - **圖表庫**：Chart.js / Recharts
@@ -455,6 +455,20 @@ public void reorderOptions(Long questionId, List<Long> optionIds) {
 │  └──────────────────────────────────────────────────────────┘    │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
+```
+
+### 6.1 Docker 部署約定
+
+- **Dockerfile 來源**：以專案根目錄 `Dockerfile` 為主（避免多份 Dockerfile 行為不一致）。
+- **容器內服務埠號**：Spring Boot 固定使用 `8080`（對應 `server.port=8080`）。
+- **對外映射埠號**：建議採 `8080:8080`（宿主機:容器），避免使用容器內 privileged port。
+- **健康檢查**：以 `GET http://localhost:8080/` 為主（確認服務可回應即可；不依賴 actuator）。
+- **資料持久化**：H2 檔案路徑為 `./data/examdb`，容器內對應掛載目錄 `VOLUME /app/data`。
+- **建置前置需求**：Docker build 前需先產生後端 JAR：
+
+```bash
+cd exam-system-backend
+mvn clean package -DskipTests
 ```
 
 ## 7. 模組關係圖
@@ -1269,7 +1283,128 @@ public void reorderOptions(Long questionId, List<Long> optionIds) {
 - **壓力測試**：JMeter 模擬 300 並發連線
 - **UI 測試**：手機/平板/電腦多裝置測試
 
+## 16. 認證系統擴充（Email + Google OAuth2 綁定）
+
+### 16.1 架構與選型補充
+- 後端沿用 Spring Security + JWT。
+- 新增 Email/Password 認證流程，密碼以 BCrypt 雜湊儲存。
+- 保留 Google OAuth2 登入，並加入「同 Email 自動綁定」規則。
+- 綁定完成後仍以 JWT 統一前端會話。
+
+### 16.2 資料模型補充
+- `User.email`：唯一，帳號主識別。
+- `User.passwordHash`：可為空。純 Google 帳號可無密碼。
+- `User.googleId`：可為空且唯一。Email 帳號可後續綁定 Google。
+- `User.avatarUrl`：Google 登入時可更新頭像資訊。
+
+### 16.3 關鍵流程
+1. Email 註冊  
+   - 使用者輸入姓名、Email、密碼。  
+   - 後端驗證 Email 是否重複，成功後建立 `passwordHash`。  
+   - 回傳 JWT 供前端直接登入。
+2. Email 登入  
+   - 後端依 Email 找到使用者並比對 BCrypt 密碼。  
+   - 驗證成功後回傳 JWT。
+3. Google OAuth2 登入/綁定  
+   - 若 `googleId` 已存在：直接登入該帳號。  
+   - 若 `googleId` 不存在但 Email 已存在：將該 Google 帳號綁定到既有 Email 帳號。  
+   - 若 Email 不存在：建立新帳號（Google-only）。
+4. 受保護路由驗證與 401 導流  
+   - 進入講師頁等受保護路由時，前端需先確認本地 token 與使用者資訊狀態。  
+   - 若 token 遺失、過期或後端回應 401，前端需清除本地認證並導回 `/login`。
+
+### 16.4 虛擬碼
+```java
+// OAuth2 成功後綁定邏輯
+User resolveOrBindGoogleUser(String email, String googleId, String name, String avatarUrl) {
+    Optional<User> byGoogleId = userRepository.findByGoogleId(googleId);
+    if (byGoogleId.isPresent()) {
+        return byGoogleId.get(); // 已綁定，直接登入
+    }
+
+    Optional<User> byEmail = userRepository.findByEmail(email);
+    if (byEmail.isPresent()) {
+        User user = byEmail.get();
+        user.setGoogleId(googleId); // 同 Email 自動綁定
+        user.setAvatarUrl(avatarUrl);
+        return userRepository.save(user);
+    }
+
+    User newUser = new User(email, name, null, googleId, avatarUrl);
+    return userRepository.save(newUser); // 新 Google-only 帳號
+}
+```
+
+### 16.5 模組關係圖（Backend/Frontend）
+```mermaid
+graph TD
+    A[LoginPage] --> B[Auth API]
+    A --> C[/oauth2/authorization/google]
+    B --> D[AuthController]
+    D --> E[AuthService]
+    E --> F[UserRepository]
+    D --> G[JwtService]
+    C --> H[SecurityConfig OAuth2 SuccessHandler]
+    H --> E
+    H --> G
+```
+
+### 16.6 序列圖（Google 同 Email 自動綁定）
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant FE as Frontend
+    participant GO as Google OAuth2
+    participant BE as Backend
+    participant DB as Database
+
+    U->>FE: 點擊 Google 登入
+    FE->>GO: 轉導 OAuth2 授權
+    GO-->>BE: callback + userinfo(email, sub)
+    BE->>DB: 以 googleId 查詢
+    alt googleId 已存在
+        DB-->>BE: 回傳既有帳號
+    else googleId 不存在
+        BE->>DB: 以 email 查詢
+        alt email 已存在
+            BE->>DB: 更新該帳號 googleId (完成綁定)
+        else email 不存在
+            BE->>DB: 建立新帳號(google-only)
+        end
+    end
+    BE-->>FE: redirect /auth/callback?token=JWT
+    FE-->>U: 登入成功
+```
+
+### 16.7 流程圖（Email 註冊/登入）
+```mermaid
+flowchart TD
+    A[開始] --> B{選擇模式}
+    B -->|註冊| C[輸入姓名/Email/密碼]
+    C --> D[POST /api/auth/register]
+    D --> E{Email 是否重複}
+    E -->|是| F[回傳 409]
+    E -->|否| G[建立 user + passwordHash]
+    G --> H[回傳 JWT]
+
+    B -->|登入| I[輸入 Email/密碼]
+    I --> J[POST /api/auth/login]
+    J --> K{密碼驗證}
+    K -->|失敗| L[回傳 401]
+    K -->|成功| H
+```
+
+### 16.8 狀態圖（帳號綁定狀態）
+```mermaid
+stateDiagram-v2
+    [*] --> EMAIL_ONLY
+    [*] --> GOOGLE_ONLY
+    EMAIL_ONLY --> LINKED: Google 同 Email 登入成功
+    GOOGLE_ONLY --> LINKED: 補設密碼(未來擴充)
+    LINKED --> LINKED: Email 登入 / Google 登入
+```
+
 ---
 
-**文件版本**：v1.0
-**最後更新**：2025-09-30
+**文件版本**：v1.1
+**最後更新**：2026-02-06

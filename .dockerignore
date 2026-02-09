@@ -1,0 +1,21 @@
+# Git / IDE
+.git/
+.idea/
+.vscode/
+
+# Node / frontend
+**/node_modules/
+**/dist/
+
+# Maven build outputs (keep runnable JAR)
+**/target/*
+!exam-system-backend/target/*.jar
+
+# Local data / logs
+data/
+logs/
+
+# Packaging / exports
+package/
+exam-system.tar
+
