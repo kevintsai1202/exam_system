@@ -7,9 +7,8 @@
 **/node_modules/
 **/dist/
 
-# Maven build outputs (keep runnable JAR)
-**/target/*
-!exam-system-backend/target/*.jar
+# Maven build outputs（multi-stage build 在容器內建置，不需要本地產物）
+**/target/
 
 # Local data / logs
 data/
@@ -18,4 +17,14 @@ logs/
 # Packaging / exports
 package/
 exam-system.tar
+
+# Documentation（建置不需要）
+Documentation/
+*.md
+!exam-system-frontend/README.md
+!exam-system-backend/README.md
+
+# Scripts（Windows 開發用）
+*.ps1
+*.bat
 
