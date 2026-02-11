@@ -11,6 +11,10 @@ import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus } from '../types';
 import { useThemeStore } from '../store/themeStore';
 
+const API_BASE_URL = import.meta.env.PROD
+  ? ''  // 生產環境：相對路徑
+  : 'http://localhost:8080'; // 開發環境：完整 URL
+
 /**
  * 講師主控台頁面
  */
@@ -121,7 +125,7 @@ export const InstructorDashboard: React.FC = () => {
       setSuccessMessage(null);
 
       // 呼叫匯出 API
-      const response = await fetch(`http://localhost:8080/api/exams/${examId}/export/markdown`, {
+      const response = await fetch(`${API_BASE_URL}/api/exams/${examId}/export/markdown`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +193,7 @@ export const InstructorDashboard: React.FC = () => {
       setSuccessMessage(null);
 
       // 呼叫匯出 API
-      const response = await fetch(`http://localhost:8080/api/exams/${examId}/export/json`, {
+      const response = await fetch(`${API_BASE_URL}/api/exams/${examId}/export/json`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -270,8 +274,8 @@ export const InstructorDashboard: React.FC = () => {
 
       // 呼叫匯入 API
       const url = importSurveyFields
-        ? 'http://localhost:8080/api/exams/import?importSurveyFields=true'
-        : 'http://localhost:8080/api/exams/import?importSurveyFields=false';
+        ? `${API_BASE_URL}/api/exams/import?importSurveyFields=true`
+        : `${API_BASE_URL}/api/exams/import?importSurveyFields=false`;
 
       const response = await fetch(url, {
         method: 'POST',

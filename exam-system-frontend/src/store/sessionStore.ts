@@ -5,7 +5,9 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.PROD
+  ? ''  // 生產環境：相對路徑
+  : 'http://localhost:8080'; // 開發環境：完整 URL
 
 export interface Session {
     id: number;

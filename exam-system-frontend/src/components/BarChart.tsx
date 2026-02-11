@@ -24,7 +24,7 @@ import type { OptionStatistic, ScoreDistribution } from '../types';
 interface BarChartProps {
   data: OptionStatistic[] | ScoreDistribution[];
   dataType: 'option' | 'score';           // 資料類型
-  width?: string | number;                 // 寬度
+  width?: number | `${number}%`;           // 寬度
   height?: number;                         // 高度
   showLegend?: boolean;                    // 是否顯示圖例
   colors?: string[];                       // 自訂顏色

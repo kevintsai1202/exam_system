@@ -30,7 +30,7 @@ interface SurveyFieldChartData {
 interface PieChartProps {
   data: OptionStatistic[] | ScoreDistribution[] | OccupationStatistic[] | SurveyFieldChartData[];
   dataType: 'option' | 'score' | 'occupation' | 'surveyField';  // 資料類型
-  width?: string | number;                       // 寬度
+  width?: number | `${number}%`;                 // 寬度
   height?: number;                               // 高度
   showLegend?: boolean;                          // 是否顯示圖例
   showLabel?: boolean;                           // 是否顯示標籤
