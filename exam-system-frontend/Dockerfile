@@ -5,12 +5,11 @@ LABEL "framework"="react"
 
 WORKDIR /build
 
-# Zeabur 多資料夾建置時，它會把 Context 送進整包程式碼
-# 我們把所有程式碼拷貝進來
+# 由於在 Zeabur 內已指定 Source Directory 為 /exam-system-frontend
+# COPY . . 會把 frontend 目錄下的所有檔案放到 /build
 COPY . .
 
-# 切換到 frontend 資料夾下開始安裝與編譯
-WORKDIR /build/exam-system-frontend
+# 直接在 /build 目錄執行安裝與編譯
 RUN npm install --legacy-peer-deps && npm install --legacy-peer-deps --save prop-types
 RUN npm run build
 
@@ -18,6 +17,6 @@ RUN npm run build
 FROM zeabur/caddy-static
 
 # 從 builder 複製編譯完成的 dist 資料夾
-COPY --from=builder /build/exam-system-frontend/dist /usr/share/caddy
+COPY --from=builder /build/dist /usr/share/caddy
 
 EXPOSE 8080
