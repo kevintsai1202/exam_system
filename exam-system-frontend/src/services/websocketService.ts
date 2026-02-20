@@ -12,9 +12,9 @@ import type { WebSocketMessage } from '../types';
 
 // WebSocket Endpoint
 // 開發環境使用完整 URL，生產環境使用動態 URL
-const WS_ENDPOINT = import.meta.env.PROD
+const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || (import.meta.env.PROD
   ? `${window.location.protocol}//${window.location.host}/ws` // 生產環境：動態 URL
-  : 'http://localhost:8080/ws'; // 開發環境：完整 URL
+  : 'http://localhost:8080/ws'); // 開發環境：完整 URL
 
 /**
  * 訂閱主題類型

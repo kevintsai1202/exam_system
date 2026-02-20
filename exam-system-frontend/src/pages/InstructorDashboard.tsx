@@ -11,9 +11,9 @@ import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus } from '../types';
 import { useThemeStore } from '../store/themeStore';
 
-const API_BASE_URL = import.meta.env.PROD
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD
   ? ''  // 生產環境：相對路徑
-  : 'http://localhost:8080'; // 開發環境：完整 URL
+  : 'http://localhost:8080'); // 開發環境：完整 URL
 
 /**
  * 講師主控台頁面

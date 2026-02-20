@@ -37,10 +37,11 @@ import type {
 } from '../types';
 
 // API Base URL
-// 開發環境使用完整 URL，生產環境使用相對路徑
-const API_BASE_URL = import.meta.env.PROD
-  ? '/api'  // 生產環境：相對路徑
-  : 'http://localhost:8080/api'; // 開發環境：完整 URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : (import.meta.env.PROD
+    ? '/api'  // 生產環境：相對路徑
+    : 'http://localhost:8080/api'); // 開發環境：完整 URL
 
 /**
  * API 錯誤介面
