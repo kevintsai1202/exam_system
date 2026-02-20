@@ -9,7 +9,7 @@ WORKDIR /build
 COPY package*.json ./
 
 # 安裝相依套件 (加入 legacy-peer-deps 以解決 react 19 與舊版套件的衝突)
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps --save prop-types
+RUN npm install --legacy-peer-deps && npm install --legacy-peer-deps prop-types
 
 # 複製原始碼
 COPY . .
