@@ -5,22 +5,19 @@ LABEL "framework"="react"
 
 WORKDIR /build
 
-# 複製 package.json 和 package-lock.json (如果有)
-COPY package*.json ./
-
-# 安裝相依套件 (加入 legacy-peer-deps 以解決 react 19 與舊版套件的衝突)
-RUN npm install --legacy-peer-deps && npm install --legacy-peer-deps prop-types
-
-# 複製原始碼
+# Zeabur 多資料夾建置時，它會把 Context 送進整包程式碼
+# 我們把所有程式碼拷貝進來
 COPY . .
 
-# 執行生產環境建置 (會產生 /dist 資料夾)
+# 切換到 frontend 資料夾下開始安裝與編譯
+WORKDIR /build/exam-system-frontend
+RUN npm install --legacy-peer-deps && npm install --legacy-peer-deps --save prop-types
 RUN npm run build
 
 # 階段二：使用 Caddy 提供靜態網頁服務 (Zeabur 環境推薦)
 FROM zeabur/caddy-static
 
-# 從第一階段複製編譯後的檔案到 Caddy 的靜態目錄
-COPY --from=builder /build/dist /usr/share/caddy
+# 從 builder 複製編譯完成的 dist 資料夾
+COPY --from=builder /build/exam-system-frontend/dist /usr/share/caddy
 
 EXPOSE 8080
