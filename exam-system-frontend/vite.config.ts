@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/', // 確保資源使用相對路徑
   build: {
-    outDir: '../exam-system-backend/src/main/resources/static', // 直接 build 到後端
+    outDir: 'dist', // 標準輸出至 dist 給 Nginx 使用
     emptyOutDir: true, // build 前清空目錄
     rollupOptions: {
       output: {

@@ -4,9 +4,11 @@
  */
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 import P5Background from './P5Background';
 import ThemeToggle from './ThemeToggle';
 import { useThemeStore, themes } from '../store/themeStore';
+import { useAuthStore } from '../store/authStore';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -26,6 +28,14 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const { mode } = useThemeStore();
   const theme = themes[mode];
   const isDark = mode === 'dark';
+  const { user, isAdmin, isInstructor, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <div className="page-layout" style={{ position: 'relative', minHeight: '100vh' }}>
@@ -55,6 +65,31 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
       )}
 
+      {/* 浮動導覽列 */}
+      <div className="global-nav">
+        <button onClick={() => navigate('/')} className="nav-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="nav-text">首頁</span>
+        </button>
+        {isAdmin && isAdmin() && location.pathname !== '/admin/users' && (
+          <button onClick={() => navigate('/admin/users')} className="nav-btn admin-btn">
+            <span className="nav-text">系統管理</span>
+          </button>
+        )}
+        {(isInstructor() || isAdmin()) && !location.pathname.startsWith('/instructor') && (
+          <button onClick={() => navigate('/instructor')} className="nav-btn instructor-btn">
+            <span className="nav-text">講師入口</span>
+          </button>
+        )}
+        {user && (
+          <button onClick={handleLogout} className="nav-btn logout-btn">
+            <span className="nav-text">登出</span>
+          </button>
+        )}
+      </div>
+
       <motion.div
         className="page-content"
         initial={{ opacity: 0, y: 20 }}
@@ -78,6 +113,62 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           top: 20px;
           right: 20px;
           z-index: 1000;
+        }
+
+        .global-nav {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 1000;
+          display: flex;
+          gap: 12px;
+          background: ${isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)'};
+          backdrop-filter: blur(10px);
+          padding: 8px 16px;
+          border-radius: 100px;
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: ${isDark ? '#e0e0e0' : '#4a4a4a'};
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          padding: 6px 10px;
+          border-radius: 20px;
+          transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+          color: ${isDark ? '#fff' : '#000'};
+          background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
+        }
+
+        .nav-btn.admin-btn:hover {
+           color: #f44336;
+        }
+
+        .nav-btn.instructor-btn:hover {
+           color: #667eea;
+        }
+
+        .nav-btn.logout-btn:hover {
+           color: #ff9800;
+        }
+
+        @media (max-width: 600px) {
+          .nav-text {
+             display: none;
+          }
+          .global-nav {
+             padding: 8px;
+          }
         }
 
         .page-content {

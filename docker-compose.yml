@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: exam_system_db
+    restart: always
+    environment:
+      POSTGRES_DB: exam_system
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+      TZ: Asia/Taipei
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - exam_network
+
+  backend:
+    build:
+      context: ./exam-system-backend
+      dockerfile: Dockerfile
+    container_name: exam_system_backend
+    restart: always
+    environment:
+      EXAM_SYSTEM_HOST: ${EXAM_SYSTEM_HOST:-http://localhost}
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Taipei
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - exam_network
+
+  frontend:
+    build:
+      context: ./exam-system-frontend
+      dockerfile: Dockerfile
+    container_name: exam_system_frontend
+    restart: always
+    # Caddy 在 Zeabur image 中預設跑 8080 port，內部網路連通不需對外開放 port
+    ports:
+      - "5173:8080" # 給非透過 nginx 直接測試前端用，可留可刪
+    depends_on:
+      - backend
+    networks:
+      - exam_network
+
+  gateway:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: exam_system_gateway
+    restart: always
+    environment:
+      EXAM_SYSTEM_HOST: ${EXAM_SYSTEM_HOST:-localhost}
+      FRONTEND_URL: http://frontend:8080
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - exam_network
+
+volumes:
+  pgdata:
+
+
+networks:
+  exam_network:
+    driver: bridge

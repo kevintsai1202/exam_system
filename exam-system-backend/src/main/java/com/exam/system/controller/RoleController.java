@@ -18,73 +18,103 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class RoleController {
 
-    private final UserRepository userRepository;
+        private final UserRepository userRepository;
 
-    /**
-     * 取得當前用戶角色
-     */
-    @GetMapping("/check")
-    public ResponseEntity<?> checkRole(@AuthenticationPrincipal User user) {
-        if (user == null) {
-            return ResponseEntity.ok(Map.of(
-                    "authenticated", false));
+        /**
+         * 取得當前用戶角色
+         */
+        @GetMapping("/check")
+        public ResponseEntity<?> checkRole(@AuthenticationPrincipal User user) {
+                if (user == null) {
+                        return ResponseEntity.ok(Map.of(
+                                        "authenticated", false));
+                }
+
+                return ResponseEntity.ok(Map.of(
+                                "authenticated", true,
+                                "role", user.getRole().name(),
+                                "isInstructor",
+                                user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.ADMIN,
+                                "isAdmin", user.getRole() == UserRole.ADMIN));
         }
 
-        return ResponseEntity.ok(Map.of(
-                "authenticated", true,
-                "role", user.getRole().name(),
-                "isInstructor", user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.ADMIN,
-                "isAdmin", user.getRole() == UserRole.ADMIN));
-    }
+        /**
+         * 升級用戶為講師（需 ADMIN 權限）
+         */
+        @PostMapping("/upgrade/{userId}")
+        public ResponseEntity<?> upgradeToInstructor(
+                        @PathVariable Long userId,
+                        @AuthenticationPrincipal User admin) {
 
-    /**
-     * 升級用戶為講師（需 ADMIN 權限）
-     */
-    @PostMapping("/upgrade/{userId}")
-    public ResponseEntity<?> upgradeToInstructor(
-            @PathVariable Long userId,
-            @AuthenticationPrincipal User admin) {
+                if (admin == null || admin.getRole() != UserRole.ADMIN) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "只有管理員可以升級用戶權限"));
+                }
 
-        if (admin == null || admin.getRole() != UserRole.ADMIN) {
-            return ResponseEntity.status(403).body(Map.of(
-                    "success", false,
-                    "message", "只有管理員可以升級用戶權限"));
+                return userRepository.findById(userId)
+                                .map(user -> {
+                                        user.setRole(UserRole.INSTRUCTOR);
+                                        userRepository.save(user);
+                                        return ResponseEntity.ok(Map.of(
+                                                        "success", true,
+                                                        "message", "用戶已升級為講師",
+                                                        "user", Map.of(
+                                                                        "id", user.getId(),
+                                                                        "email", user.getEmail(),
+                                                                        "role", user.getRole().name())));
+                                })
+                                .orElse(ResponseEntity.notFound().build());
         }
 
-        return userRepository.findById(userId)
-                .map(user -> {
-                    user.setRole(UserRole.INSTRUCTOR);
-                    userRepository.save(user);
-                    return ResponseEntity.ok(Map.of(
-                            "success", true,
-                            "message", "用戶已升級為講師",
-                            "user", Map.of(
-                                    "id", user.getId(),
-                                    "email", user.getEmail(),
-                                    "role", user.getRole().name())));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
+        /**
+         * 升級用戶為系統管理員（需 ADMIN 權限）
+         */
+        @PostMapping("/upgrade-admin/{userId}")
+        public ResponseEntity<?> upgradeToAdmin(
+                        @PathVariable Long userId,
+                        @AuthenticationPrincipal User admin) {
 
-    /**
-     * 取得所有用戶（需 ADMIN 權限）
-     */
-    @GetMapping("/users")
-    public ResponseEntity<?> getAllUsers(@AuthenticationPrincipal User admin) {
-        if (admin == null || admin.getRole() != UserRole.ADMIN) {
-            return ResponseEntity.status(403).body(Map.of(
-                    "success", false,
-                    "message", "沒有權限"));
+                if (admin == null || admin.getRole() != UserRole.ADMIN) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "只有管理員可以升級用戶權限"));
+                }
+
+                return userRepository.findById(userId)
+                                .map(user -> {
+                                        user.setRole(UserRole.ADMIN);
+                                        userRepository.save(user);
+                                        return ResponseEntity.ok(Map.of(
+                                                        "success", true,
+                                                        "message", "用戶已升級為系統管理員",
+                                                        "user", Map.of(
+                                                                        "id", user.getId(),
+                                                                        "email", user.getEmail(),
+                                                                        "role", user.getRole().name())));
+                                })
+                                .orElse(ResponseEntity.notFound().build());
         }
 
-        var users = userRepository.findAll().stream()
-                .map(user -> Map.of(
-                        "id", user.getId(),
-                        "email", user.getEmail(),
-                        "name", user.getName(),
-                        "role", user.getRole().name()))
-                .toList();
+        /**
+         * 取得所有用戶（需 ADMIN 權限）
+         */
+        @GetMapping("/users")
+        public ResponseEntity<?> getAllUsers(@AuthenticationPrincipal User admin) {
+                if (admin == null || admin.getRole() != UserRole.ADMIN) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "沒有權限"));
+                }
 
-        return ResponseEntity.ok(users);
-    }
+                var users = userRepository.findAll().stream()
+                                .map(user -> Map.of(
+                                                "id", user.getId(),
+                                                "email", user.getEmail(),
+                                                "name", user.getName(),
+                                                "role", user.getRole().name()))
+                                .toList();
+
+                return ResponseEntity.ok(users);
+        }
 }

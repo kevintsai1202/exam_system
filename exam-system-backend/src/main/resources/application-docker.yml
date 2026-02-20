@@ -1,0 +1,33 @@
+server:
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/exam_system
+    username: exam_user
+    password: exam_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  # 在 Docker 內，我們通常只關注從 Nginx 打過來的網址，
+  # 或為了 OAuth2 跳轉回真正的外部 Host。
+  # 若有註冊完整的 Domain，這裡可修改為實際網域。
+  # 預設透過環境變數注入：
+  frontend:
+    url: ${EXAM_SYSTEM_HOST:http://localhost}
+
+logging:
+  file:
+    name: logs/backend-docker.log
+  level:
+    root: INFO
+    com.exam.system: DEBUG

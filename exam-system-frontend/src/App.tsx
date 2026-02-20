@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useMediaQuery } from './hooks';
 
@@ -21,6 +21,7 @@ import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import AdminDashboard from './pages/AdminDashboard';
 
 // 問券調查頁面
 import SurveyManager from './pages/SurveyManager';
@@ -52,7 +53,7 @@ const HomePage: React.FC = () => {
   const { mode } = useThemeStore();
 
   const isDark = mode === 'dark';
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, isAdmin, isInstructor } = useAuthStore();
 
   const handleOpenLoginPage = () => {
     window.location.href = '/login';
@@ -150,40 +151,75 @@ const HomePage: React.FC = () => {
 
         {/* 角色選擇卡片 */}
         <div className={`role-grid ${isMobile ? 'mobile' : ''}`}>
-          {/* 講師入口 */}
-          <motion.a
-            href="/instructor"
-            className="role-card instructor"
-            whileHover={{ scale: 1.03, y: -8 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="card-icon">
-              <svg viewBox="0 0 64 64" width="48" height="48">
-                <defs>
-                  <linearGradient id="instructorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#667eea" />
-                    <stop offset="100%" stopColor="#764ba2" />
-                  </linearGradient>
-                </defs>
-                <circle cx="32" cy="20" r="12" fill="url(#instructorGrad)" />
-                <path d="M12 52 Q12 36 32 36 Q52 36 52 52" fill="url(#instructorGrad)" />
-                <rect x="42" y="8" width="16" height="12" rx="2" fill="#667eea" />
-                <path d="M45 11 L55 11 M45 14 L52 14 M45 17 L55 17" stroke="#fff" strokeWidth="1.5" />
-              </svg>
-            </div>
-            <div className="card-content">
-              <h2>講師入口</h2>
-              <p>建立測驗、監控進度、查看統計</p>
-            </div>
-            <div className="card-arrow">
-              <svg viewBox="0 0 24 24" width="24" height="24">
-                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          </motion.a>
+          {/* 講師入口 - 僅 INSTRUCTOR 與 ADMIN 可見 */}
+          {isAuthenticated && user && (isInstructor() || isAdmin()) ? (
+            <motion.a
+              href="/instructor"
+              className="role-card instructor"
+              whileHover={{ scale: 1.03, y: -8 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <div className="card-icon">
+                <svg viewBox="0 0 64 64" width="48" height="48">
+                  <defs>
+                    <linearGradient id="instructorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#667eea" />
+                      <stop offset="100%" stopColor="#764ba2" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="32" cy="20" r="12" fill="url(#instructorGrad)" />
+                  <path d="M12 52 Q12 36 32 36 Q52 36 52 52" fill="url(#instructorGrad)" />
+                  <rect x="42" y="8" width="16" height="12" rx="2" fill="#667eea" />
+                  <path d="M45 11 L55 11 M45 14 L52 14 M45 17 L55 17" stroke="#fff" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div className="card-content">
+                <h2>講師入口</h2>
+                <p>建立測驗、監控進度、查看統計</p>
+              </div>
+              <div className="card-arrow">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </motion.a>
+          ) : (
+            <motion.div
+              className="role-card instructor"
+              style={{ opacity: 0.6, cursor: 'not-allowed', filter: 'grayscale(0.8)' }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 0.6, x: 0 }}
+              transition={{ delay: 0.3 }}
+              title="僅限具有講師權限的帳號進入"
+            >
+              <div className="card-icon">
+                <svg viewBox="0 0 64 64" width="48" height="48">
+                  <defs>
+                    <linearGradient id="instructorGradLocked" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#9e9e9e" />
+                      <stop offset="100%" stopColor="#616161" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="32" cy="20" r="12" fill="url(#instructorGradLocked)" />
+                  <path d="M12 52 Q12 36 32 36 Q52 36 52 52" fill="url(#instructorGradLocked)" />
+                  <rect x="42" y="8" width="16" height="12" rx="2" fill="#9e9e9e" />
+                  <path d="M45 11 L55 11 M45 14 L52 14 M45 17 L55 17" stroke="#fff" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div className="card-content">
+                <h2>講師入口</h2>
+                <p style={{ color: '#d32f2f', fontWeight: 500 }}>需要講師或管理員權限</p>
+              </div>
+              <div className="card-arrow">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M12 15V17M12 7H12.01M10 21H14C15.1046 21 16 20.1046 16 19V11C16 9.89543 15.1046 9 14 9H10C8.89543 9 8 9.89543 8 11V19C8 20.1046 8.89543 21 10 21ZM16 9V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V9H16Z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </motion.div>
+          )}
 
           {/* 學員入口 */}
           <motion.a
@@ -219,6 +255,44 @@ const HomePage: React.FC = () => {
               </svg>
             </div>
           </motion.a>
+
+          {/* Admin 入口 - 僅管理員可見 */}
+          {isAuthenticated && user && isAdmin && isAdmin() && (
+            <motion.a
+              href="/admin/users"
+              className="role-card admin"
+              whileHover={{ scale: 1.03, y: -8 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0, x: 0, y: 30 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{ delay: 0.5 }}
+              style={{
+                background: 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)',
+                color: '#fff',
+                gridColumn: '1 / -1',
+                maxWidth: '400px',
+                margin: '0 auto',
+                marginTop: '16px',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '24px',
+                borderRadius: '16px',
+                textDecoration: 'none'
+              }}
+            >
+              <div className="card-icon" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <svg viewBox="0 0 64 64" width="36" height="36">
+                  <path d="M32 10 A12 12 0 1 0 32 34 A12 12 0 1 0 32 10 Z M14 54 Q14 40 32 40 Q50 40 50 54" fill="#fff" />
+                  <path d="M48 22 L60 22 M54 16 L54 28" stroke="#fff" strokeWidth="4" />
+                </svg>
+              </div>
+              <div className="card-content" style={{ marginLeft: '20px', flex: 1 }}>
+                <h2 style={{ color: '#fff', fontSize: '20px', margin: '0 0 4px 0' }}>系統管理中心</h2>
+                <p style={{ color: 'rgba(255,255,255,0.9)', margin: 0, fontSize: '14px' }}>設定帳戶升級與系統管理</p>
+              </div>
+            </motion.a>
+          )}
         </div>
 
         {/* 功能特色 */}
@@ -562,6 +636,19 @@ const NotFoundPage: React.FC = () => {
 };
 
 /**
+ * 講師權限護衛
+ */
+const InstructorGuard: React.FC<{ component?: React.ReactNode }> = ({ component }) => {
+  const { isInstructor, isAdmin } = useAuthStore();
+
+  if (!isInstructor() && !isAdmin()) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{component || <InstructorDashboard />}</>;
+};
+
+/**
  * 主應用程式元件
  */
 const App: React.FC = () => {
@@ -577,30 +664,37 @@ const App: React.FC = () => {
         {/* 首頁 */}
         <Route path="/" element={<HomePage />} />
 
-        {/* 講師路由 - 需要登入 */}
+        {/* 講師路由 - 需要登入與負責權限 */}
         <Route path="/instructor" element={
           <ProtectedRoute>
-            <InstructorDashboard />
+            <InstructorGuard />
           </ProtectedRoute>
         } />
         <Route path="/instructor/exam/create" element={
           <ProtectedRoute>
-            <ExamCreator />
+            <InstructorGuard component={<ExamCreator />} />
           </ProtectedRoute>
         } />
         <Route path="/instructor/exam/:examId/edit" element={
           <ProtectedRoute>
-            <ExamCreator />
+            <InstructorGuard component={<ExamCreator />} />
           </ProtectedRoute>
         } />
         <Route path="/instructor/exam/:examId/monitor" element={
           <ProtectedRoute>
-            <ExamMonitor />
+            <InstructorGuard component={<ExamMonitor />} />
           </ProtectedRoute>
         } />
         <Route path="/instructor/survey-fields" element={
           <ProtectedRoute>
-            <SurveyFieldManager />
+            <InstructorGuard component={<SurveyFieldManager />} />
+          </ProtectedRoute>
+        } />
+
+        {/* 管理員路由 - 需要登入且在內部驗證權限 */}
+        <Route path="/admin/users" element={
+          <ProtectedRoute>
+            <AdminDashboard />
           </ProtectedRoute>
         } />
 
