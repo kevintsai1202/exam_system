@@ -19,6 +19,8 @@ import Leaderboard from './pages/Leaderboard';
 import SurveyFieldManager from './pages/SurveyFieldManager';
 import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 // 問券調查頁面
 import SurveyManager from './pages/SurveyManager';
@@ -569,6 +571,8 @@ const App: React.FC = () => {
         {/* 認證路由 */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
 
         {/* 首頁 */}
         <Route path="/" element={<HomePage />} />
