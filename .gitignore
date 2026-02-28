@@ -65,3 +65,6 @@ package/
 
 # Claude local settings
 .claude/settings.local.json
+
+# MCP 本機設定（含伺服器路徑等環境相依設定）
+.mcp.json
