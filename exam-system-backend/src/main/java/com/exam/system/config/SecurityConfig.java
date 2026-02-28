@@ -41,6 +41,8 @@ public class SecurityConfig {
         private final UserRepository userRepository;
         private final JwtService jwtService;
         private final AuthService authService;
+        /** WebSocket 與 HTTP CORS 允許的來源清單（由 ExamProperties 統一管理） */
+        private final ExamProperties examProperties;
 
         @Value("${app.frontend.url:http://localhost:5173}")
         private String frontendUrl;
@@ -150,10 +152,13 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of(
-                                "http://localhost:5173",
-                                "http://localhost:3000",
-                                frontendUrl));
+                // 合併 ExamProperties 中的允許來源（含 EXAM_WEBSOCKET_ALLOWED_ORIGINS_0 注入的生產域名）
+                // 與前端 URL（APP_FRONTEND_URL），確保 Security CORS 與 WebSocketConfig/CorsConfig 行為一致
+                List<String> origins = new java.util.ArrayList<>(examProperties.getWebsocket().getAllowedOrigins());
+                if (!origins.contains(frontendUrl)) {
+                        origins.add(frontendUrl);
+                }
+                configuration.setAllowedOrigins(origins);
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("*"));
                 configuration.setExposedHeaders(List.of("Authorization"));

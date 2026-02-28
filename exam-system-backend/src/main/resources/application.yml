@@ -9,8 +9,9 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            # 使用空字串作為預設值，未設定時 Spring Security 自動跳過 Google OAuth2 註冊
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope:
               - email
               - profile
@@ -117,3 +118,14 @@ exam:
     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   security:
     admin-token: "${ADMIN_TOKEN}"
+
+# 應用程式 URL 與 JWT 配置
+app:
+  # 前端 URL（對應 SecurityConfig @Value、OAuth2 redirect）
+  # Zeabur 部署時設定環境變數 APP_FRONTEND_URL=https://your-domain.zeabur.app
+  frontend:
+    url: ${APP_FRONTEND_URL:http://localhost:5173}
+  # JWT 密鑰（生產環境請務必透過 APP_JWT_SECRET 環境變數覆蓋預設值）
+  jwt:
+    secret: ${APP_JWT_SECRET:exam-system-default-jwt-secret-key-for-development-only-please-change-in-production}
+    expiration: ${APP_JWT_EXPIRATION:86400000}
