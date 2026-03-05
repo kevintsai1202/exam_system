@@ -23,28 +23,36 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
-  # H2 資料庫配置
+  # PostgreSQL 資料庫配置（主要環境）
   datasource:
-    url: jdbc:h2:file:./data/examdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://${DB_HOST:postgresql}:${DB_PORT:5432}/${DB_NAME:exam_system}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:exam_user}
+    password: ${DB_PASSWORD:exam_password}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
 
-  # H2 控制台配置（開發用）
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: false
+  # 舊 H2 資料庫配置（保留註解）
+  # datasource:
+  #   url: jdbc:h2:file:./data/examdb
+  #   driver-class-name: org.h2.Driver
+  #   username: sa
+  #   password:
+
+  # 舊 H2 控制台配置（保留註解）
+  # h2:
+  #   console:
+  #     enabled: true
+  #     path: /h2-console
+  #     settings:
+  #       web-allow-others: false
 
   # JPA 配置
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # database-platform: org.hibernate.dialect.H2Dialect  # 舊設定（保留註解）
     hibernate:
       ddl-auto: update
     show-sql: true

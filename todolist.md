@@ -73,3 +73,18 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [ ] **Docker 部署一致性修正 - 驗證**
   - 以 `docker build` / `docker compose`（或等效流程）驗證容器可啟動且健康檢查可通過（目前環境 Docker daemon 未啟動，待補跑）。
+
+- [x] **主要環境資料庫切換為 PostgreSQL（完成）**
+  - 更新 `spec.md`、`api.md` 記錄主環境資料庫由 H2 切換為 PostgreSQL，並以註解保留舊 H2 設定。
+  - 調整 `application.yml` 使用 PostgreSQL 連線（含環境變數）並驗證後端可建置。
+  - 已執行 `mvn -DskipTests compile`（`exam-system-backend`）確認建置成功。
+
+- [x] **Nginx WebSocket 反向代理修正（完成）**
+  - 更新 `spec.md`、`api.md` 記錄 `/ws` 需由 gateway 轉發至 backend，避免 SockJS 回傳 HTML。
+  - 調整 `nginx/nginx.conf`，將 `/ws` 一併代理到 backend 並保留 Upgrade/Connection 標頭。
+  - 已驗證 `docker compose config`、`nginx -t`、`http://localhost/ws/info`（SockJS JSON 正常回應）。
+
+- [x] **前端 WebSocket Endpoint fallback 修正（完成）**
+  - 更新 `spec.md`、`api.md`，明確定義 `VITE_WS_ENDPOINT` 缺失時應改用 `VITE_API_BASE_URL + /ws`，避免 fallback 到錯誤網域。
+  - 調整 `websocketService.ts` 的 endpoint 解析邏輯（新增 `resolveWebSocketEndpoint` 優先序）。
+  - 已執行 `npx tsc -b` 成功；`npm run build` 失敗（既有依賴缺失：`prop-types` 無法解析）。

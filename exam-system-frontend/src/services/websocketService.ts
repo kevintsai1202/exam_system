@@ -10,11 +10,34 @@ import type { StompSubscription, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import type { WebSocketMessage } from '../types';
 
+/**
+ * 解析 WebSocket 端點
+ * 優先順序：
+ * 1. VITE_WS_ENDPOINT
+ * 2. VITE_API_BASE_URL + /ws
+ * 3. 生產環境 fallback: window.location.host + /ws
+ * 4. 開發環境 fallback: http://localhost:8080/ws
+ */
+function resolveWebSocketEndpoint(): string {
+  const wsEndpoint = import.meta.env.VITE_WS_ENDPOINT as string | undefined;
+  if (wsEndpoint && wsEndpoint.trim().length > 0) {
+    return wsEndpoint;
+  }
+
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (apiBaseUrl && apiBaseUrl.trim().length > 0) {
+    return `${apiBaseUrl.replace(/\/+$/, '')}/ws`;
+  }
+
+  if (import.meta.env.PROD) {
+    return `${window.location.protocol}//${window.location.host}/ws`;
+  }
+
+  return 'http://localhost:8080/ws';
+}
+
 // WebSocket Endpoint
-// 開發環境使用完整 URL，生產環境使用動態 URL
-const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || (import.meta.env.PROD
-  ? `${window.location.protocol}//${window.location.host}/ws` // 生產環境：動態 URL
-  : 'http://localhost:8080/ws'); // 開發環境：完整 URL
+const WS_ENDPOINT = resolveWebSocketEndpoint();
 
 /**
  * 訂閱主題類型

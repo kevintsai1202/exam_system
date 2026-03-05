@@ -1581,7 +1581,28 @@ curl -X POST http://localhost:8080/api/answers \
   2. 保留當前路徑於 `sessionStorage.returnTo`。
   3. 導向 `/login`，完成登入後再返回原頁。
 
+## 12. 主環境資料庫設定（2026-03-05）
+- 本次僅調整後端主環境資料庫連線設定，API Endpoint 與 Request/Response 格式無變更。
+- `application.yml` 主環境改為 PostgreSQL，連線資訊由環境變數提供：
+  - `DB_HOST`（預設 `postgresql`）
+  - `DB_PORT`（預設 `5432`）
+  - `DB_NAME`（預設 `exam_system`）
+  - `DB_USERNAME`（預設 `exam_user`）
+  - `DB_PASSWORD`（預設 `exam_password`）
+
+## 13. Gateway WebSocket 路由要求（2026-03-05）
+- `/ws` 為 SockJS/STOMP 端點，部署於 gateway 時必須與 `/api` 同樣轉發到 backend。
+- 若 `/ws` 被前端靜態服務攔截，瀏覽器會收到 `text/html`，並在 console 出現 `eventsource/websocket` 連線錯誤。
+- 此調整僅影響反向代理路由，不改動任何 API endpoint 規格。
+
+## 14. Frontend WebSocket Endpoint 解析規則（2026-03-05）
+- 前端 WebSocket 連線端點採以下優先序：
+  1. `VITE_WS_ENDPOINT`
+  2. `VITE_API_BASE_URL + /ws`
+  3. `window.location.host + /ws`（最終 fallback）
+- 此規則僅影響前端連線策略，不影響既有 REST/WebSocket API 路徑。
+
 ---
 
 **文件版本**：v1.1
-**最後更新**：2026-02-06
+**最後更新**：2026-03-05

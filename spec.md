@@ -5,7 +5,7 @@
 ### 1.1 技術棧
 - **前端**：React 18+ + TypeScript + Vite
 - **後端**：Spring Boot 3.x + Java 21
-- **資料庫**：H2 Database (File-based mode)
+- **資料庫**：PostgreSQL（主要環境）/ H2（註解保留）
 - **即時通訊**：WebSocket (STOMP over WebSocket)
 - **圖表庫**：Chart.js / Recharts
 - **QR Code**：qrcode.react (前端) / ZXing (後端)
@@ -51,7 +51,7 @@
                         │
 ┌───────────────────────┴───────────────────────────────────────┐
 │                        資料層                                  │
-│                  H2 Database (File-based)                     │
+│                  PostgreSQL Database（主要環境）               │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
 │  │  Exam    │  │ Question │  │ Student  │  │  Answer  │    │
 │  │  測驗表   │  │  題目表   │  │  學員表   │  │  答案表   │    │
@@ -1404,7 +1404,52 @@ stateDiagram-v2
     LINKED --> LINKED: Email 登入 / Google 登入
 ```
 
+### 17. 主要環境資料庫設定更新（2026-03-05）
+- `application.yml` 主環境資料庫由 H2 切換為 PostgreSQL。
+- 舊 H2 datasource、H2 console 與 H2 dialect 設定以註解保留，便於後續回溯。
+- PostgreSQL 連線改為環境變數驅動，預設值如下：
+  - `DB_HOST=postgresql`
+  - `DB_PORT=5432`
+  - `DB_NAME=exam_system`
+  - `DB_USERNAME=exam_user`
+  - `DB_PASSWORD=exam_password`
+
+```mermaid
+flowchart TD
+    A[啟動主環境 application.yml] --> B[讀取 DB_HOST/DB_PORT/DB_NAME]
+    B --> C[建立 PostgreSQL 連線]
+    C --> D[Hibernate 使用 PostgreSQLDialect]
+    D --> E[系統啟動完成]
+```
+
+### 18. Gateway WebSocket 轉發修正（2026-03-05）
+- `nginx` gateway 需將 `/ws` 與 `/api`、`/oauth2` 同樣轉發到 backend。
+- 若 `/ws` 未轉發，前端 SockJS 會收到 HTML（`text/html`）而非事件流，導致 `websocket/eventsource` 連線失敗。
+
+```mermaid
+flowchart LR
+    FE[Frontend Browser] -->|/ws/*| GW[Nginx Gateway]
+    GW -->|proxy_pass| BE[Spring Boot /ws]
+    BE --> FE
+```
+
+### 19. Frontend WebSocket Endpoint 解析規則（2026-03-05）
+- 生產環境優先順序：
+  1. `VITE_WS_ENDPOINT`
+  2. `VITE_API_BASE_URL + /ws`
+  3. `window.location.host + /ws`（最後 fallback）
+- 目的：避免部署平台未正確注入 `VITE_WS_ENDPOINT` 時，前端誤連到前端網域 `/ws`。
+
+```mermaid
+flowchart TD
+    A[Frontend 啟動] --> B{VITE_WS_ENDPOINT 是否存在}
+    B -->|是| C[使用 VITE_WS_ENDPOINT]
+    B -->|否| D{VITE_API_BASE_URL 是否存在}
+    D -->|是| E[使用 VITE_API_BASE_URL + /ws]
+    D -->|否| F[使用 window.location.host + /ws]
+```
+
 ---
 
 **文件版本**：v1.1
-**最後更新**：2026-02-06
+**最後更新**：2026-03-05
