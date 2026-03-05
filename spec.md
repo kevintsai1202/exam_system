@@ -1449,6 +1449,14 @@ flowchart TD
     D -->|否| F[使用 window.location.host + /ws]
 ```
 
+### 20. Frontend WS 部署診斷輸出（2026-03-05）
+- 前端啟動時需輸出以下診斷資訊：
+  - `VITE_WS_ENDPOINT`
+  - `VITE_API_BASE_URL`
+  - 最終採用的 `WS_ENDPOINT`
+  - endpoint 來源（`VITE_WS_ENDPOINT` / `VITE_API_BASE_URL` / `WINDOW_HOST` / `DEV_DEFAULT`）
+- 用途：確認 Zeabur 已部署新 build，避免誤判為程式邏輯問題。
+
 ---
 
 **文件版本**：v1.1

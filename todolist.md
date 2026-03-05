@@ -88,3 +88,7 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
   - 更新 `spec.md`、`api.md`，明確定義 `VITE_WS_ENDPOINT` 缺失時應改用 `VITE_API_BASE_URL + /ws`，避免 fallback 到錯誤網域。
   - 調整 `websocketService.ts` 的 endpoint 解析邏輯（新增 `resolveWebSocketEndpoint` 優先序）。
   - 已執行 `npx tsc -b` 成功；`npm run build` 失敗（既有依賴缺失：`prop-types` 無法解析）。
+
+- [x] **WebSocket Endpoint 部署診斷輸出（完成）**
+  - 更新 `spec.md`、`api.md` 補充前端啟動時需輸出 WS endpoint 解析來源與結果，便於 Zeabur 追查是否吃到新 build。
+  - 調整 `websocketService.ts` 新增診斷 log（含來源與最終 URL）並執行 `npx tsc -b` 驗證成功。

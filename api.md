@@ -1602,6 +1602,10 @@ curl -X POST http://localhost:8080/api/answers \
   3. `window.location.host + /ws`（最終 fallback）
 - 此規則僅影響前端連線策略，不影響既有 REST/WebSocket API 路徑。
 
+## 15. Frontend WS 部署診斷（2026-03-05）
+- 前端在初始化 WebSocket 服務時會輸出 endpoint 解析資訊（來源 + 最終 URL）。
+- 此輸出僅為部署診斷用途，不影響 API 合約與後端行為。
+
 ---
 
 **文件版本**：v1.1

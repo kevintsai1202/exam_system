@@ -18,26 +18,57 @@ import type { WebSocketMessage } from '../types';
  * 3. 生產環境 fallback: window.location.host + /ws
  * 4. 開發環境 fallback: http://localhost:8080/ws
  */
-function resolveWebSocketEndpoint(): string {
+type WebSocketEndpointSource =
+  | 'VITE_WS_ENDPOINT'
+  | 'VITE_API_BASE_URL'
+  | 'WINDOW_HOST'
+  | 'DEV_DEFAULT';
+
+interface ResolvedWebSocketEndpoint {
+  endpoint: string;
+  source: WebSocketEndpointSource;
+}
+
+function resolveWebSocketEndpoint(): ResolvedWebSocketEndpoint {
   const wsEndpoint = import.meta.env.VITE_WS_ENDPOINT as string | undefined;
   if (wsEndpoint && wsEndpoint.trim().length > 0) {
-    return wsEndpoint;
+    return {
+      endpoint: wsEndpoint,
+      source: 'VITE_WS_ENDPOINT',
+    };
   }
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (apiBaseUrl && apiBaseUrl.trim().length > 0) {
-    return `${apiBaseUrl.replace(/\/+$/, '')}/ws`;
+    return {
+      endpoint: `${apiBaseUrl.replace(/\/+$/, '')}/ws`,
+      source: 'VITE_API_BASE_URL',
+    };
   }
 
   if (import.meta.env.PROD) {
-    return `${window.location.protocol}//${window.location.host}/ws`;
+    return {
+      endpoint: `${window.location.protocol}//${window.location.host}/ws`,
+      source: 'WINDOW_HOST',
+    };
   }
 
-  return 'http://localhost:8080/ws';
+  return {
+    endpoint: 'http://localhost:8080/ws',
+    source: 'DEV_DEFAULT',
+  };
 }
 
 // WebSocket Endpoint
-const WS_ENDPOINT = resolveWebSocketEndpoint();
+const WS_RESOLVED = resolveWebSocketEndpoint();
+const WS_ENDPOINT = WS_RESOLVED.endpoint;
+
+console.info('[WebSocket Config]', {
+  source: WS_RESOLVED.source,
+  endpoint: WS_ENDPOINT,
+  VITE_WS_ENDPOINT: import.meta.env.VITE_WS_ENDPOINT,
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+});
 
 /**
  * 訂閱主題類型
