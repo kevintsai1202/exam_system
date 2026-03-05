@@ -1476,6 +1476,27 @@ sequenceDiagram
     S-->>S: 套用 isCorrect + correctRate，顯示正確答案
 ```
 
+### 22. 講師端開測前統計展示（含地點統計）（2026-03-06）
+- 講師頁 `ExamMonitor` 在「學員資訊」頁籤，不論測驗是否已推送題目，都需顯示統計面板。
+- 統計面板至少包含：
+  - 基本統計：總學員數、總題目數、每題時限
+  - 調查欄位統計：各欄位填寫人數
+  - 地點統計：縣市分布（人數與比例）
+- 地點統計資料來源為 `GET /api/locations/statistics/{examId}`，前端在以下時機更新：
+  - 頁面初次載入
+  - 收到學員加入 WebSocket 事件後
+
+```mermaid
+flowchart TD
+    A[講師進入 ExamMonitor] --> B[載入學員資訊分頁]
+    B --> C[GET /api/statistics/exams/{examId}/survey-fields]
+    B --> D[GET /api/locations/statistics/{examId}]
+    C --> E[渲染調查統計]
+    D --> F[渲染地點統計]
+    G[WebSocket: STUDENT_JOINED] --> C
+    G --> D
+```
+
 ---
 
 **文件版本**：v1.1

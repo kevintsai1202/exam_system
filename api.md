@@ -1637,6 +1637,28 @@ curl -X POST http://localhost:8080/api/answers \
 }
 ```
 
+## 17. 講師端開測前地點統計（2026-03-06）
+- 講師端「學員資訊」頁籤會呼叫地點統計 API，即使尚未推送題目也可先查看目前報名分布。
+- Endpoint：`GET /api/locations/statistics/{examId}`
+- 用途：顯示縣市人數與比例（搭配既有學員/調查欄位統計）
+
+**Response** (200 OK):
+```json
+{
+  "totalCount": 12,
+  "locationCounts": {
+    "TPE": 5,
+    "NTP": 4,
+    "KHH": 3
+  },
+  "locationNames": {
+    "TPE": "台北市",
+    "NTP": "新北市",
+    "KHH": "高雄市"
+  }
+}
+```
+
 ---
 
 **文件版本**：v1.1

@@ -31,6 +31,7 @@ import type {
   Leaderboard,
   OccupationDistribution,
   SurveyFieldDistribution,
+  LocationStatistics,
 
   // 調查欄位相關型別
   SurveyField
@@ -406,6 +407,17 @@ export const statisticsApi = {
   getAllSurveyFieldDistributions: async (examId: number): Promise<SurveyFieldDistribution[]> => {
     const response = await apiClient.get<SurveyFieldDistribution[]>(
       `/statistics/exams/${examId}/survey-fields`
+    );
+    return response.data;
+  },
+
+  /**
+   * 取得測驗地點統計
+   * GET /api/locations/statistics/{examId}
+   */
+  getLocationStatistics: async (examId: number): Promise<LocationStatistics> => {
+    const response = await apiClient.get<LocationStatistics>(
+      `/locations/statistics/${examId}`
     );
     return response.data;
   },

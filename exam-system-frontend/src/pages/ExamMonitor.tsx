@@ -21,7 +21,7 @@ import Confetti from '../components/Confetti';
 import RippleButton from '../components/RippleButton';
 import LeaderboardDisplay from '../components/LeaderboardDisplay';
 import { Message } from '../components/Message';
-import type { WebSocketMessage, SurveyFieldDistribution } from '../types';
+import type { WebSocketMessage, SurveyFieldDistribution, LocationStatistics } from '../types';
 
 /**
  * 測驗監控頁面
@@ -47,6 +47,8 @@ export const ExamMonitor: React.FC = () => {
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
   const [surveyDistributions, setSurveyDistributions] = useState<SurveyFieldDistribution[]>([]); // 調查欄位統計
   const [isLoadingSurveyStats, setIsLoadingSurveyStats] = useState(false); // 調查統計載入狀態
+  const [locationStatistics, setLocationStatistics] = useState<LocationStatistics | null>(null); // 地點統計
+  const [isLoadingLocationStats, setIsLoadingLocationStats] = useState(false); // 地點統計載入狀態
   const [currentQuestionExpiresAt, setCurrentQuestionExpiresAt] = useState<string | null>(null); // 當前題目到期時間
   const [currentQuestionChartType, setCurrentQuestionChartType] = useState<'BAR' | 'PIE'>('BAR'); // 當前題目統計圖表類型
   const [showConfetti, setShowConfetti] = useState(false); // 顯示慶祝彩帶
@@ -61,6 +63,50 @@ export const ExamMonitor: React.FC = () => {
   useEffect(() => {
     currentExamRef.current = currentExam;
   }, [currentExam]);
+
+  /**
+   * 載入調查欄位統計
+   * @param targetExamId 測驗 ID
+   * @param showLoading 是否顯示載入狀態
+   */
+  const loadSurveyStatistics = useCallback(async (targetExamId: number, showLoading = true) => {
+    if (showLoading) {
+      setIsLoadingSurveyStats(true);
+    }
+
+    try {
+      const surveyData = await statisticsApi.getAllSurveyFieldDistributions(targetExamId);
+      setSurveyDistributions(surveyData);
+    } catch (err) {
+      console.error('[ExamMonitor] 載入調查欄位統計失敗:', err);
+    } finally {
+      if (showLoading) {
+        setIsLoadingSurveyStats(false);
+      }
+    }
+  }, []);
+
+  /**
+   * 載入地點統計
+   * @param targetExamId 測驗 ID
+   * @param showLoading 是否顯示載入狀態
+   */
+  const loadLocationStatistics = useCallback(async (targetExamId: number, showLoading = true) => {
+    if (showLoading) {
+      setIsLoadingLocationStats(true);
+    }
+
+    try {
+      const locationData = await statisticsApi.getLocationStatistics(targetExamId);
+      setLocationStatistics(locationData);
+    } catch (err) {
+      console.error('[ExamMonitor] 載入地點統計失敗:', err);
+    } finally {
+      if (showLoading) {
+        setIsLoadingLocationStats(false);
+      }
+    }
+  }, []);
 
   /**
    * WebSocket 訊息處理
@@ -81,17 +127,16 @@ export const ExamMonitor: React.FC = () => {
     if (msg.data) {
       addStudent(msg.data);
 
-      // 重新獲取調查欄位統計
+      // 重新獲取統計（調查欄位 + 地點）
       if (examId) {
-        try {
-          const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
-          setSurveyDistributions(surveyData);
-        } catch (err) {
-          console.error('[ExamMonitor] 更新調查欄位統計失敗:', err);
-        }
+        const examIdNum = parseInt(examId);
+        await Promise.all([
+          loadSurveyStatistics(examIdNum, false),
+          loadLocationStatistics(examIdNum, false),
+        ]);
       }
     }
-  }, [addStudent, examId]);
+  }, [addStudent, examId, loadSurveyStatistics, loadLocationStatistics]);
 
   const handleQuestionStarted = useCallback((message: WebSocketMessage) => {
     console.log('[ExamMonitor] 題目開始:', message);
@@ -242,16 +287,11 @@ export const ExamMonitor: React.FC = () => {
         const studentsData = await studentApi.getStudents(parseInt(examId));
         setStudents(studentsData.students);
 
-        // 載入調查欄位統計
-        try {
-          setIsLoadingSurveyStats(true);
-          const surveyData = await statisticsApi.getAllSurveyFieldDistributions(parseInt(examId));
-          setSurveyDistributions(surveyData);
-          setIsLoadingSurveyStats(false);
-        } catch (err) {
-          console.error('[ExamMonitor] 載入調查欄位統計失敗:', err);
-          setIsLoadingSurveyStats(false);
-        }
+        // 載入開測前統計（調查欄位 + 地點）
+        await Promise.all([
+          loadSurveyStatistics(parseInt(examId), true),
+          loadLocationStatistics(parseInt(examId), true),
+        ]);
 
         // 如果測驗已結束，載入排行榜
         if (currentExam?.status === 'ENDED') {
@@ -275,7 +315,7 @@ export const ExamMonitor: React.FC = () => {
     };
 
     loadExamData();
-  }, [examId, currentExam, setQuestions, setStudents, setLeaderboard]);
+  }, [examId, currentExam, setQuestions, setStudents, setLeaderboard, loadSurveyStatistics, loadLocationStatistics]);
 
   /**
    * 監聽測驗狀態，結束時自動切換到排行榜頁籤並觸發慶祝動畫
@@ -583,6 +623,9 @@ export const ExamMonitor: React.FC = () => {
   const isCreated = currentExam.status === 'CREATED';
   const isStarted = currentExam.status === 'STARTED';
   const isEnded = currentExam.status === 'ENDED';
+  const locationRanking = Object.entries(locationStatistics?.locationCounts ?? {})
+    .sort(([, countA], [, countB]) => countB - countA);
+  const totalLocationCount = locationStatistics?.totalCount ?? 0;
 
   return (
     <>
@@ -821,6 +864,85 @@ export const ExamMonitor: React.FC = () => {
                             {dist.respondentCount} 人填寫 / 共 {dist.totalStudents} 人
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 地點統計 */}
+                  {isLoadingLocationStats && !locationStatistics && (
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '16px', color: '#1976d2', marginBottom: '12px' }}>⏳ 正在載入地點統計...</div>
+                    </div>
+                  )}
+
+                  {!isLoadingLocationStats && totalLocationCount === 0 && (
+                    <div style={{ marginTop: '24px', padding: '24px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                      <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
+                        🗺️ 地點統計
+                      </h3>
+                      <div style={{ fontSize: '14px', color: '#999' }}>
+                        目前尚無地點資料（已填寫地點 0 / 學員總數 {students.length}）。
+                      </div>
+                    </div>
+                  )}
+
+                  {totalLocationCount > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
+                        🗺️ 地點統計
+                      </h3>
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#fff3e0', borderRadius: '8px', border: '1px solid #ffcc80' }}>
+                        <div style={{ fontSize: '14px', color: '#ef6c00', fontWeight: '600', marginBottom: '12px' }}>
+                          已填寫地點：{totalLocationCount} / {students.length} 人
+                          {students.length > 0 ? `（${((totalLocationCount / students.length) * 100).toFixed(1)}%）` : ''}
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          {locationRanking.map(([locationCode, count], index) => {
+                            const locationName = locationStatistics?.locationNames?.[locationCode] || locationCode;
+                            const percentage = totalLocationCount > 0 ? (count / totalLocationCount) * 100 : 0;
+
+                            return (
+                              <div
+                                key={locationCode}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '32px 1fr auto auto',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '10px 12px',
+                                  backgroundColor: '#ffffff',
+                                  borderRadius: '6px',
+                                  border: '1px solid #ffe0b2',
+                                }}
+                              >
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '12px',
+                                  backgroundColor: '#ffb74d',
+                                  color: '#fff',
+                                  fontSize: '12px',
+                                  fontWeight: '700',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}>
+                                  {index + 1}
+                                </div>
+                                <div style={{ fontSize: '14px', color: '#5d4037', fontWeight: '500' }}>
+                                  {locationName}
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#8d6e63' }}>
+                                  {percentage.toFixed(1)}%
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6d4c41', fontWeight: '600' }}>
+                                  {count} 人
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
