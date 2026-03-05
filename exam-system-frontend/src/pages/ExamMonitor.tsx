@@ -9,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { examApi, studentApi, statisticsApi } from '../services/apiService';
 import { useExamStore, useStudentStore, useStatisticsStore, useInstructorStore } from '../store';
+import { useThemeStore } from '../store/themeStore';
 import { useExamWebSocket, useQuestionWebSocket, useMessage } from '../hooks';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import StudentList from '../components/StudentList';
@@ -21,6 +22,7 @@ import Confetti from '../components/Confetti';
 import RippleButton from '../components/RippleButton';
 import LeaderboardDisplay from '../components/LeaderboardDisplay';
 import { Message } from '../components/Message';
+import ThemeToggle from '../components/ThemeToggle';
 import type { WebSocketMessage, SurveyFieldDistribution, LocationStatistics } from '../types';
 
 /**
@@ -30,6 +32,8 @@ export const ExamMonitor: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const message = useMessage();
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
 
   // Store
   const { currentExam, questions, currentQuestion, setCurrentExam, setQuestions, setCurrentQuestion } = useExamStore();
@@ -42,7 +46,7 @@ export const ExamMonitor: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'students' | 'question' | 'leaderboard'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'preExamStats' | 'question' | 'leaderboard'>('students');
   const [isLoadingStats, setIsLoadingStats] = useState(false); // 統計載入狀態
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false); // 排行榜載入狀態
   const [surveyDistributions, setSurveyDistributions] = useState<SurveyFieldDistribution[]>([]); // 調查欄位統計
@@ -54,6 +58,7 @@ export const ExamMonitor: React.FC = () => {
   const [showConfetti, setShowConfetti] = useState(false); // 顯示慶祝彩帶
   const [isQuestionTimeExpired, setIsQuestionTimeExpired] = useState(false); // 當前題目時間是否已結束
   const [enableStudentNewAnimation, setEnableStudentNewAnimation] = useState(true); // 是否啟用學員列表 NEW 動畫
+  const [hasReviewedPreExamStats, setHasReviewedPreExamStats] = useState(false); // 是否已完成開測前統計展示確認
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -336,6 +341,28 @@ export const ExamMonitor: React.FC = () => {
   }, [currentExam?.status]);
 
   /**
+   * 控制開測前統計展示狀態
+   * 若測驗已開始但尚未推送第一題，需先停留在統計畫面並等待講師確認
+   */
+  useEffect(() => {
+    if (!currentExam) return;
+
+    if (currentExam.status !== 'STARTED') {
+      setHasReviewedPreExamStats(false);
+      return;
+    }
+
+    const isBeforeFirstQuestion = (currentExam.currentQuestionIndex ?? 0) === 0 && !currentExam.currentQuestionStartedAt;
+    if (isBeforeFirstQuestion) {
+      setHasReviewedPreExamStats(false);
+      setActiveTab('preExamStats');
+      return;
+    }
+
+    setHasReviewedPreExamStats(true);
+  }, [currentExam]);
+
+  /**
    * 清理定時器
    */
   useEffect(() => {
@@ -377,6 +404,8 @@ export const ExamMonitor: React.FC = () => {
 
       // 清空 currentQuestion（還沒推送題目）
       setCurrentQuestion(null);
+      setHasReviewedPreExamStats(false);
+      setActiveTab('preExamStats');
 
       message.success('測驗已啟動！學生可隨時掃描 QR Code 加入');
     } catch (err: any) {
@@ -416,6 +445,14 @@ export const ExamMonitor: React.FC = () => {
     // 使用當前題目索引，如果沒有則使用 0
     const questionIndex = currentExam.currentQuestionIndex ?? 0;
     console.log('[handleStartQuestion] questionIndex:', questionIndex);
+
+    // 推送第一題前，需先完成開測前統計展示確認
+    const isBeforeFirstQuestion = questionIndex === 0 && !currentExam.currentQuestionStartedAt;
+    if (isBeforeFirstQuestion && !hasReviewedPreExamStats) {
+      setActiveTab('preExamStats');
+      message.warning('請先在「開測前統計」完成展示確認，再開始作答');
+      return;
+    }
 
     // 檢查是否還有題目可以推送
     if (questionIndex >= questions.length) {
@@ -598,12 +635,48 @@ export const ExamMonitor: React.FC = () => {
     navigate('/instructor');
   };
 
+  const pageBackgroundColor = isDark ? '#0f172a' : '#f5f5f5';
+  const cardBackgroundColor = isDark ? 'rgba(15, 23, 42, 0.92)' : '#fff';
+  const cardShadow = isDark ? '0 8px 20px rgba(0,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.1)';
+  const cardBorder = isDark ? '1px solid rgba(148, 163, 184, 0.25)' : '1px solid transparent';
+  const textPrimary = isDark ? '#f8fafc' : '#333';
+  const textSecondary = isDark ? 'rgba(226, 232, 240, 0.75)' : '#666';
+  const contentBackgroundColor = isDark ? 'rgba(15, 23, 42, 0.88)' : '#fff';
+  const sectionBackgroundColor = isDark ? 'rgba(30, 41, 59, 0.82)' : '#f5f5f5';
+  const sectionCardBackgroundColor = isDark ? 'rgba(15, 23, 42, 0.96)' : '#fff';
+  const sectionBorderColor = isDark ? 'rgba(148, 163, 184, 0.22)' : '#e5e7eb';
+  const sectionShadow = isDark ? '0 8px 24px rgba(2, 6, 23, 0.4)' : '0 2px 8px rgba(0,0,0,0.1)';
+  const mutedTextColor = isDark ? 'rgba(148, 163, 184, 0.92)' : '#999';
+  const tabInactiveBackgroundColor = isDark ? 'rgba(30, 41, 59, 0.82)' : '#fff';
+  const tabActiveBackgroundColor = isDark ? 'rgba(30, 64, 175, 0.28)' : '#e3f2fd';
+  const tabActiveTextColor = isDark ? '#93c5fd' : '#1976d2';
+  const connectedBadgeBackgroundColor = isDark ? 'rgba(34, 197, 94, 0.22)' : '#e8f5e9';
+  const connectedBadgeTextColor = '#2e7d32';
+  const warningTextColor = isDark ? '#fdba74' : '#ef6c00';
+  const successCardBackgroundColor = isDark ? 'rgba(34, 197, 94, 0.2)' : '#e8f5e9';
+  const successCardBorderColor = isDark ? '1px solid rgba(74, 222, 128, 0.55)' : '1px solid #4caf50';
+  const successTextColor = isDark ? '#bbf7d0' : '#2e7d32';
+  const warningCardBackgroundColor = isDark ? 'rgba(245, 158, 11, 0.2)' : '#fff3e0';
+  const warningCardBorderColor = isDark ? '1px solid rgba(251, 191, 36, 0.45)' : '1px solid #ffcc80';
+  const warningCardTextColor = isDark ? '#fcd34d' : '#ef6c00';
+  const neutralButtonBackgroundColor = isDark ? 'rgba(30, 41, 59, 0.9)' : '#fff';
+  const neutralButtonBorderColor = isDark ? 'rgba(148, 163, 184, 0.35)' : '#e0e0e0';
+  const loadingSpinnerTrackColor = isDark ? 'rgba(148, 163, 184, 0.32)' : '#e0e0e0';
+  const loadingSpinnerHeadColor = isDark ? '#93c5fd' : '#1976d2';
+  const locationRanking = Object.entries(locationStatistics?.locationCounts ?? {})
+    .sort(([, countA], [, countB]) => countB - countA);
+  const totalLocationCount = locationStatistics?.totalCount ?? 0;
+  const locationChartData = locationRanking.map(([locationCode, count]) => ({
+    value: locationStatistics?.locationNames?.[locationCode] || locationCode,
+    count,
+    percentage: totalLocationCount > 0 ? Number(((count / totalLocationCount) * 100).toFixed(2)) : 0,
+  }));
 
   // 載入中
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>載入中...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: pageBackgroundColor }}>
+        <div style={{ fontSize: '18px', color: textSecondary }}>載入中...</div>
       </div>
     );
   }
@@ -611,9 +684,9 @@ export const ExamMonitor: React.FC = () => {
   // 錯誤
   if (error || !currentExam) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', backgroundColor: pageBackgroundColor }}>
         <div style={{ fontSize: '18px', color: '#f44336' }}>{error || '載入失敗'}</div>
-        <button onClick={handleBack} style={{ padding: '10px 20px', fontSize: '14px', cursor: 'pointer' }}>
+        <button onClick={handleBack} style={{ padding: '10px 20px', fontSize: '14px', cursor: 'pointer', color: textPrimary, backgroundColor: neutralButtonBackgroundColor, border: `1px solid ${neutralButtonBorderColor}`, borderRadius: '8px' }}>
           返回主控台
         </button>
       </div>
@@ -623,9 +696,20 @@ export const ExamMonitor: React.FC = () => {
   const isCreated = currentExam.status === 'CREATED';
   const isStarted = currentExam.status === 'STARTED';
   const isEnded = currentExam.status === 'ENDED';
-  const locationRanking = Object.entries(locationStatistics?.locationCounts ?? {})
-    .sort(([, countA], [, countB]) => countB - countA);
-  const totalLocationCount = locationStatistics?.totalCount ?? 0;
+  const currentQuestionIndex = currentExam.currentQuestionIndex ?? 0;
+  const isPreExamStage = isStarted && currentQuestionIndex === 0 && !currentExam.currentQuestionStartedAt;
+  const isStartQuestionLocked = isPreExamStage && !hasReviewedPreExamStats;
+  const isStartQuestionDisabled = currentQuestionIndex >= questions.length || isStartQuestionLocked;
+  const statusBadgeBackgroundColor = isEnded
+    ? (isDark ? 'rgba(71, 85, 105, 0.45)' : '#f5f5f5')
+    : isStarted
+    ? (isDark ? 'rgba(34, 197, 94, 0.22)' : '#e8f5e9')
+    : (isDark ? 'rgba(59, 130, 246, 0.25)' : '#e3f2fd');
+  const statusBadgeTextColor = isEnded
+    ? (isDark ? '#cbd5e1' : '#666')
+    : isStarted
+    ? '#2e7d32'
+    : '#1976d2';
 
   return (
     <>
@@ -684,23 +768,24 @@ export const ExamMonitor: React.FC = () => {
         />
       ))}
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', padding: '20px' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: pageBackgroundColor, padding: '20px' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* 頂部控制列 */}
-        <div style={{ marginBottom: '24px', backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <div style={{ marginBottom: '24px', backgroundColor: cardBackgroundColor, borderRadius: '12px', padding: '20px', boxShadow: cardShadow, border: cardBorder }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div>
-              <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '700', color: '#333' }}>
+              <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '700', color: textPrimary }}>
                 {currentExam.title}
               </h1>
-              <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{currentExam.description}</p>
+              <p style={{ margin: 0, fontSize: '14px', color: textSecondary }}>{currentExam.description}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ padding: '8px 16px', backgroundColor: isEnded ? '#f5f5f5' : isStarted ? '#e8f5e9' : '#e3f2fd', color: isEnded ? '#666' : isStarted ? '#2e7d32' : '#1976d2', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
+              <ThemeToggle />
+              <div style={{ padding: '8px 16px', backgroundColor: statusBadgeBackgroundColor, color: statusBadgeTextColor, borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
                 {isEnded ? '已結束' : isStarted ? '進行中' : '已建立'}
               </div>
               {isConnected && (
-                <div style={{ padding: '8px 16px', backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
+                <div style={{ padding: '8px 16px', backgroundColor: connectedBadgeBackgroundColor, color: connectedBadgeTextColor, borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
                   ● 已連線
                 </div>
               )}
@@ -709,7 +794,7 @@ export const ExamMonitor: React.FC = () => {
 
           {/* 控制按鈕 */}
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={handleBack} style={{ padding: '10px 20px', fontSize: '14px', fontWeight: '500', color: '#666', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '6px', cursor: 'pointer' }}>
+            <button onClick={handleBack} style={{ padding: '10px 20px', fontSize: '14px', fontWeight: '500', color: textSecondary, backgroundColor: neutralButtonBackgroundColor, border: `1px solid ${neutralButtonBorderColor}`, borderRadius: '6px', cursor: 'pointer' }}>
               返回主控台
             </button>
             {isCreated && (
@@ -721,19 +806,19 @@ export const ExamMonitor: React.FC = () => {
               <>
                 <RippleButton
                   onClick={handleStartQuestion}
-                  disabled={currentExam.currentQuestionIndex >= questions.length}
+                  disabled={isStartQuestionDisabled}
                   style={{
                     padding: '10px 20px',
                     fontSize: '14px',
                     fontWeight: '500',
                     color: '#fff',
-                    backgroundColor: currentExam.currentQuestionIndex >= questions.length ? '#ccc' : '#1976d2',
+                    backgroundColor: isStartQuestionDisabled ? '#ccc' : '#1976d2',
                     border: 'none',
                     borderRadius: '6px',
-                    opacity: currentExam.currentQuestionIndex >= questions.length ? 0.6 : 1
+                    opacity: isStartQuestionDisabled ? 0.6 : 1
                   }}
                 >
-                  推送題目 ({Math.min(currentExam.currentQuestionIndex + 1, questions.length)}/{questions.length})
+                  {isPreExamStage ? '開始作答' : '推送題目'} ({Math.min(currentQuestionIndex + 1, questions.length)}/{questions.length})
                 </RippleButton>
                 <RippleButton
                   onClick={handleEndExam}
@@ -753,6 +838,11 @@ export const ExamMonitor: React.FC = () => {
               </>
             )}
           </div>
+          {isStartQuestionLocked && (
+            <div style={{ marginTop: '12px', fontSize: '13px', color: warningTextColor, fontWeight: '500' }}>
+              請先切換到「開測前統計」完成展示確認，才能開始作答。
+            </div>
+          )}
         </div>
 
         {/* 主要內容區 */}
@@ -782,11 +872,15 @@ export const ExamMonitor: React.FC = () => {
           <div>
             {/* 標籤列 */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              {(['students', 'question', 'leaderboard'] as const)
+              {(['students', 'preExamStats', 'question', 'leaderboard'] as const)
                 .filter((tab) => {
                   // 測驗結束時只顯示排行榜標籤
                   if (isEnded) {
                     return tab === 'leaderboard';
+                  }
+                  // 開測前統計僅在測驗開始且尚未推送第一題時顯示
+                  if (tab === 'preExamStats') {
+                    return isPreExamStage;
                   }
                   return true;
                 })
@@ -799,38 +893,44 @@ export const ExamMonitor: React.FC = () => {
                       padding: '12px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: activeTab === tab ? '#1976d2' : '#666',
-                      backgroundColor: activeTab === tab ? '#e3f2fd' : '#fff',
-                      border: 'none',
+                      color: activeTab === tab ? tabActiveTextColor : textSecondary,
+                      backgroundColor: activeTab === tab ? tabActiveBackgroundColor : tabInactiveBackgroundColor,
+                      border: `1px solid ${sectionBorderColor}`,
                       borderRadius: '8px 8px 0 0',
                       cursor: 'pointer',
-                      boxShadow: activeTab === tab ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none',
+                      boxShadow: activeTab === tab ? sectionShadow : 'none',
                       transition: 'all 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
                       if (activeTab !== tab) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                        e.currentTarget.style.backgroundColor = sectionBackgroundColor;
                         e.currentTarget.style.transform = 'translateY(-2px)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (activeTab !== tab) {
-                        e.currentTarget.style.backgroundColor = '#fff';
+                        e.currentTarget.style.backgroundColor = tabInactiveBackgroundColor;
                         e.currentTarget.style.transform = 'translateY(0)';
                       }
                     }}
                   >
-                    {tab === 'students' ? '學員資訊' : tab === 'question' ? '當前題目' : '排行榜'}
+                    {tab === 'students'
+                      ? '學員資訊'
+                      : tab === 'preExamStats'
+                      ? '開測前統計'
+                      : tab === 'question'
+                      ? '當前題目'
+                      : '排行榜'}
                   </button>
                 ))}
             </div>
 
             {/* 標籤內容 */}
-            <div style={{ backgroundColor: '#fff', borderRadius: '0 0 12px 12px', padding: '24px', minHeight: '600px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: contentBackgroundColor, borderRadius: '0 0 12px 12px', padding: '24px', minHeight: '600px', boxShadow: sectionShadow, border: `1px solid ${sectionBorderColor}` }}>
               {activeTab === 'students' && (
                 <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>學員資訊</h3>
-                  <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: textPrimary }}>學員資訊</h3>
+                  <div style={{ fontSize: '14px', color: textSecondary, lineHeight: '1.8' }}>
                     <p>總學員數：{students.length} 人</p>
                     <p>總題目數：{questions.length} 題</p>
                     <p>每題時限：{currentExam.questionTimeLimit} 秒</p>
@@ -838,16 +938,16 @@ export const ExamMonitor: React.FC = () => {
 
                   {/* 調查欄位統計 */}
                   {isLoadingSurveyStats && surveyDistributions.length === 0 && (
-                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
                       <div style={{ fontSize: '16px', color: '#1976d2', marginBottom: '12px' }}>⏳ 正在載入調查統計...</div>
                     </div>
                   )}
 
                   {surveyDistributions.length === 0 && !isLoadingSurveyStats && (
-                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
                       <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
-                      <div style={{ fontSize: '16px', color: '#999', marginBottom: '8px' }}>此測驗未設定調查欄位</div>
-                      <div style={{ fontSize: '14px', color: '#999' }}>建立測驗時可選擇要調查的欄位</div>
+                      <div style={{ fontSize: '16px', color: mutedTextColor, marginBottom: '8px' }}>此測驗未設定調查欄位</div>
+                      <div style={{ fontSize: '14px', color: mutedTextColor }}>建立測驗時可選擇要調查的欄位</div>
                     </div>
                   )}
 
@@ -857,10 +957,10 @@ export const ExamMonitor: React.FC = () => {
                       <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
                         📊 調查欄位統計
                       </h3>
-                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '8px', fontSize: '14px' }}>
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: tabActiveBackgroundColor, borderRadius: '8px', fontSize: '14px', color: textSecondary, border: `1px solid ${sectionBorderColor}` }}>
                         {surveyDistributions.map((dist) => (
                           <div key={dist.fieldKey} style={{ marginBottom: '8px' }}>
-                            <span style={{ fontWeight: '500' }}>{dist.fieldName}：</span>
+                            <span style={{ fontWeight: '500', color: textPrimary }}>{dist.fieldName}：</span>
                             {dist.respondentCount} 人填寫 / 共 {dist.totalStudents} 人
                           </div>
                         ))}
@@ -870,17 +970,17 @@ export const ExamMonitor: React.FC = () => {
 
                   {/* 地點統計 */}
                   {isLoadingLocationStats && !locationStatistics && (
-                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                    <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
                       <div style={{ fontSize: '16px', color: '#1976d2', marginBottom: '12px' }}>⏳ 正在載入地點統計...</div>
                     </div>
                   )}
 
                   {!isLoadingLocationStats && totalLocationCount === 0 && (
-                    <div style={{ marginTop: '24px', padding: '24px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                    <div style={{ marginTop: '24px', padding: '24px', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
                       <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
                         🗺️ 地點統計
                       </h3>
-                      <div style={{ fontSize: '14px', color: '#999' }}>
+                      <div style={{ fontSize: '14px', color: mutedTextColor }}>
                         目前尚無地點資料（已填寫地點 0 / 學員總數 {students.length}）。
                       </div>
                     </div>
@@ -891,8 +991,8 @@ export const ExamMonitor: React.FC = () => {
                       <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1976d2' }}>
                         🗺️ 地點統計
                       </h3>
-                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#fff3e0', borderRadius: '8px', border: '1px solid #ffcc80' }}>
-                        <div style={{ fontSize: '14px', color: '#ef6c00', fontWeight: '600', marginBottom: '12px' }}>
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: warningCardBackgroundColor, borderRadius: '8px', border: warningCardBorderColor }}>
+                        <div style={{ fontSize: '14px', color: warningCardTextColor, fontWeight: '600', marginBottom: '12px' }}>
                           已填寫地點：{totalLocationCount} / {students.length} 人
                           {students.length > 0 ? `（${((totalLocationCount / students.length) * 100).toFixed(1)}%）` : ''}
                         </div>
@@ -911,9 +1011,9 @@ export const ExamMonitor: React.FC = () => {
                                   alignItems: 'center',
                                   gap: '12px',
                                   padding: '10px 12px',
-                                  backgroundColor: '#ffffff',
+                                  backgroundColor: sectionCardBackgroundColor,
                                   borderRadius: '6px',
-                                  border: '1px solid #ffe0b2',
+                                  border: `1px solid ${sectionBorderColor}`,
                                 }}
                               >
                                 <div style={{
@@ -930,13 +1030,13 @@ export const ExamMonitor: React.FC = () => {
                                 }}>
                                   {index + 1}
                                 </div>
-                                <div style={{ fontSize: '14px', color: '#5d4037', fontWeight: '500' }}>
+                                <div style={{ fontSize: '14px', color: textPrimary, fontWeight: '500' }}>
                                   {locationName}
                                 </div>
-                                <div style={{ fontSize: '13px', color: '#8d6e63' }}>
+                                <div style={{ fontSize: '13px', color: textSecondary }}>
                                   {percentage.toFixed(1)}%
                                 </div>
-                                <div style={{ fontSize: '13px', color: '#6d4c41', fontWeight: '600' }}>
+                                <div style={{ fontSize: '13px', color: textPrimary, fontWeight: '600' }}>
                                   {count} 人
                                 </div>
                               </div>
@@ -949,13 +1049,132 @@ export const ExamMonitor: React.FC = () => {
                 </div>
               )}
 
+              {activeTab === 'preExamStats' && (
+                <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>
+                    開測前統計展示
+                  </h3>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: textSecondary, lineHeight: 1.7 }}>
+                    請先展示地區分布與各問券欄位統計，確認完成後再開始作答。
+                  </p>
+
+                  {/* 地區統計圖表 */}
+                  <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: textPrimary }}>
+                      🗺️ 地區統計圖表
+                    </h4>
+                    {isLoadingLocationStats && !locationStatistics && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: textSecondary }}>載入地區統計中...</div>
+                    )}
+                    {!isLoadingLocationStats && locationChartData.length === 0 && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: mutedTextColor }}>
+                        目前尚無地區資料可供展示
+                      </div>
+                    )}
+                    {locationChartData.length > 0 && (
+                      <PieChart
+                        data={locationChartData}
+                        dataType="surveyField"
+                        height={320}
+                        showLegend={true}
+                        showLabel={true}
+                      />
+                    )}
+                  </div>
+
+                  {/* 每個問券欄位統計圖表 */}
+                  <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: textPrimary }}>
+                      📊 每個問券欄位統計圖表
+                    </h4>
+                    {isLoadingSurveyStats && surveyDistributions.length === 0 && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: textSecondary }}>載入問券統計中...</div>
+                    )}
+                    {!isLoadingSurveyStats && surveyDistributions.length === 0 && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: mutedTextColor }}>
+                        尚無問券欄位統計資料
+                      </div>
+                    )}
+                    {surveyDistributions.length > 0 && (
+                      <div style={{ display: 'grid', gap: '20px' }}>
+                        {surveyDistributions.map((dist) => {
+                          const surveyFieldChartData = dist.valueStatistics.map((stat) => ({
+                            value: stat.value,
+                            count: stat.count,
+                            percentage: stat.respondentPercentage ?? stat.percentage ?? 0,
+                          }));
+
+                          return (
+                            <div key={dist.fieldKey} style={{ backgroundColor: sectionCardBackgroundColor, borderRadius: '10px', padding: '16px', border: `1px solid ${sectionBorderColor}` }}>
+                              <div style={{ marginBottom: '8px', fontSize: '15px', fontWeight: '600', color: '#1976d2' }}>
+                                {dist.fieldName}
+                              </div>
+                              <div style={{ marginBottom: '8px', fontSize: '13px', color: textSecondary }}>
+                                填寫人數：{dist.respondentCount} / {dist.totalStudents}
+                              </div>
+                              {surveyFieldChartData.length > 0 ? (
+                                <PieChart
+                                  data={surveyFieldChartData}
+                                  dataType="surveyField"
+                                  height={280}
+                                  showLegend={true}
+                                  showLabel={true}
+                                />
+                              ) : (
+                                <div style={{ padding: '16px', textAlign: 'center', color: mutedTextColor }}>
+                                  此欄位尚無填寫資料
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 展示確認 */}
+                  <div style={{ padding: '16px', backgroundColor: hasReviewedPreExamStats ? successCardBackgroundColor : warningCardBackgroundColor, borderRadius: '12px', border: hasReviewedPreExamStats ? successCardBorderColor : warningCardBorderColor }}>
+                    {hasReviewedPreExamStats ? (
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: successTextColor }}>
+                        ✅ 已完成統計展示，現在可以開始作答
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ fontSize: '14px', color: warningCardTextColor, fontWeight: '500' }}>
+                          請確認統計展示完成後，再按下方按鈕解鎖「開始作答」。
+                        </div>
+                        <div>
+                          <RippleButton
+                            onClick={() => {
+                              setHasReviewedPreExamStats(true);
+                              message.success('已完成統計展示，請開始作答');
+                            }}
+                            style={{
+                              padding: '10px 18px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: '#fff',
+                              backgroundColor: '#1976d2',
+                              border: 'none',
+                              borderRadius: '8px',
+                            }}
+                          >
+                            我已展示統計，開始作答
+                          </RippleButton>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'question' && (
                 <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
                   {currentQuestion ? (
                     <>
                       {/* 倒數計時器 */}
                       {currentQuestionExpiresAt && (
-                        <div style={{ marginBottom: '24px', padding: '24px', backgroundColor: '#f5f5f5', borderRadius: '12px', textAlign: 'center' }}>
+                        <div style={{ marginBottom: '24px', padding: '24px', backgroundColor: sectionBackgroundColor, borderRadius: '12px', textAlign: 'center', border: `1px solid ${sectionBorderColor}` }}>
                           <CountdownTimer
                             type="exam"
                             expiresAt={currentQuestionExpiresAt}
@@ -971,9 +1190,9 @@ export const ExamMonitor: React.FC = () => {
 
                       {/* 統計區域 */}
                       {isLoadingStats && !currentQuestionStats && (
-                        <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '12px' }}>
+                        <div style={{ marginTop: '24px', padding: '40px', textAlign: 'center', backgroundColor: sectionBackgroundColor, borderRadius: '12px', border: `1px solid ${sectionBorderColor}` }}>
                           <div style={{ fontSize: '16px', color: '#1976d2', marginBottom: '12px' }}>⏳ 正在計算統計數據...</div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>題目時間已到,統計即將顯示</div>
+                          <div style={{ fontSize: '14px', color: textSecondary }}>題目時間已到,統計即將顯示</div>
                         </div>
                       )}
 
@@ -987,8 +1206,8 @@ export const ExamMonitor: React.FC = () => {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 animate={{
-                                  backgroundColor: currentQuestionChartType === 'BAR' ? '#1976d2' : '#f5f5f5',
-                                  color: currentQuestionChartType === 'BAR' ? '#fff' : '#666',
+                                  backgroundColor: currentQuestionChartType === 'BAR' ? '#1976d2' : sectionBackgroundColor,
+                                  color: currentQuestionChartType === 'BAR' ? '#fff' : textSecondary,
                                 }}
                                 transition={{ duration: 0.2 }}
                                 style={{
@@ -1007,8 +1226,8 @@ export const ExamMonitor: React.FC = () => {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 animate={{
-                                  backgroundColor: currentQuestionChartType === 'PIE' ? '#1976d2' : '#f5f5f5',
-                                  color: currentQuestionChartType === 'PIE' ? '#fff' : '#666',
+                                  backgroundColor: currentQuestionChartType === 'PIE' ? '#1976d2' : sectionBackgroundColor,
+                                  color: currentQuestionChartType === 'PIE' ? '#fff' : textSecondary,
                                 }}
                                 transition={{ duration: 0.2 }}
                                 style={{
@@ -1047,13 +1266,13 @@ export const ExamMonitor: React.FC = () => {
                               </motion.div>
                             )}
                           </AnimatePresence>
-                          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '14px', border: '1px solid #4caf50' }}>
+                          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: successCardBackgroundColor, borderRadius: '8px', fontSize: '14px', border: successCardBorderColor, color: successTextColor }}>
                             <p style={{ margin: (isQuestionTimeExpired && currentQuestionStats.correctRate !== undefined) ? '0 0 8px 0' : 0, fontWeight: '500' }}>
-                              📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color="#2e7d32" suffix=" 人" />
+                              📝 答題人數：<AnimatedNumber value={currentQuestionStats.totalAnswers} fontSize="18px" color={successTextColor} suffix=" 人" />
                             </p>
                             {isQuestionTimeExpired && currentQuestionStats.correctRate !== undefined && (
                               <p style={{ margin: 0, fontWeight: '500' }}>
-                                ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color="#2e7d32" suffix="%" />
+                                ✅ 正確率：<AnimatedNumber value={currentQuestionStats.correctRate * 100} decimals={1} fontSize="18px" color={successTextColor} suffix="%" />
                               </p>
                             )}
                           </div>
@@ -1062,7 +1281,7 @@ export const ExamMonitor: React.FC = () => {
 
                     </>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>尚未推送題目</div>
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: mutedTextColor }}>尚未推送題目</div>
                   )}
                 </div>
               )}
@@ -1075,13 +1294,13 @@ export const ExamMonitor: React.FC = () => {
                       <div style={{
                         width: '50px',
                         height: '50px',
-                        border: '4px solid #e0e0e0',
-                        borderTop: '4px solid #1976d2',
+                        border: `4px solid ${loadingSpinnerTrackColor}`,
+                        borderTop: `4px solid ${loadingSpinnerHeadColor}`,
                         borderRadius: '50%',
                         margin: '0 auto 16px',
                         animation: 'spin 1s linear infinite'
                       }} />
-                      <div style={{ fontSize: '14px', color: '#999' }}>載入排行榜中...</div>
+                      <div style={{ fontSize: '14px', color: mutedTextColor }}>載入排行榜中...</div>
                     </div>
                   )}
 
@@ -1096,7 +1315,7 @@ export const ExamMonitor: React.FC = () => {
 
                   {/* 無排行榜資料 */}
                   {!isLoadingLeaderboard && !leaderboard && (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', animation: 'fadeIn 0.3s ease-in' }}>
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: mutedTextColor, animation: 'fadeIn 0.3s ease-in' }}>
                       暫無排行榜資料
                     </div>
                   )}

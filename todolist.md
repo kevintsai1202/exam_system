@@ -112,3 +112,43 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **講師端開測前統計展示（含地點統計）- 測試驗證（完成）**
   - 已執行 `npx tsc -b` 成功。
   - `npm run build` 失敗（既有問題：`react-simple-maps` 依賴 `prop-types` 無法解析，與本次修改無直接關聯）。
+
+- [x] **開測前統計畫面強化（地區圖表 + 每個問券圖表 + 開始前確認）- 文件更新（完成）**
+  - 更新 `spec.md`、`api.md`，補充講師需先展示統計才可推送第一題的流程規範。
+
+- [x] **開測前統計畫面強化（地區圖表 + 每個問券圖表 + 開始前確認）- 前端實作（完成）**
+  - `ExamMonitor` 新增「開測前統計」畫面與圖表，並在未確認前鎖定第一題推送。
+
+- [x] **開測前統計畫面強化（地區圖表 + 每個問券圖表 + 開始前確認）- 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - `npm run build` 失敗（既有問題：`react-simple-maps` 依賴 `prop-types` 無法解析，與本次修改無直接關聯）。
+
+- [x] **測驗頁日夜模式（講師/學員）- 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，定義講師監控頁與學員答題頁的日夜切換與持久化規範。
+
+- [x] **測驗頁日夜模式（講師/學員）- 前端實作（完成）**
+  - `ExamMonitor`、`StudentExam` 已顯示主題切換按鈕，並套用主要容器主題樣式。
+
+- [x] **測驗頁日夜模式（講師/學員）- 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - `npm run build` 失敗（既有問題：`react-simple-maps` 依賴 `prop-types` 無法解析，與本次修改無直接關聯）。
+
+- [x] **移除訪客模式 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，將登入流程調整為僅 Email / Google，不提供訪客入口。
+
+- [x] **移除訪客模式 - 前端實作（完成）**
+  - 已刪除登入頁訪客模式按鈕與導流程式。
+
+- [x] **移除訪客模式 - 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - `npm run build` 失敗（既有問題：`react-simple-maps` 依賴 `prop-types` 無法解析，與本次修改無直接關聯）。
+
+- [x] **前端 build 依賴修正（prop-types）- 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，記錄 `react-simple-maps` 所需 `prop-types` 依賴補齊策略。
+
+- [x] **前端 build 依賴修正（prop-types）- 套件安裝（完成）**
+  - 已在 `exam-system-frontend` 安裝 `prop-types` 並更新 lockfile（使用 `--legacy-peer-deps` 避免既有 peer 衝突中斷）。
+
+- [x] **前端 build 依賴修正（prop-types）- 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - 已執行 `npm run build` 成功（僅保留 chunk size warning）。

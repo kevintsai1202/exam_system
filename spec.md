@@ -1477,24 +1477,70 @@ sequenceDiagram
 ```
 
 ### 22. 講師端開測前統計展示（含地點統計）（2026-03-06）
-- 講師頁 `ExamMonitor` 在「學員資訊」頁籤，不論測驗是否已推送題目，都需顯示統計面板。
-- 統計面板至少包含：
-  - 基本統計：總學員數、總題目數、每題時限
-  - 調查欄位統計：各欄位填寫人數
-  - 地點統計：縣市分布（人數與比例）
+- 講師頁 `ExamMonitor` 新增「開測前統計」畫面，作為推送第一題前的展示頁。
+- 統計畫面至少包含：
+  - 地區統計圖表（縣市分布，人數與比例）
+  - 每個問券欄位（survey field）的統計圖表
+- 推送第一題前，講師需先完成「已展示統計」確認；確認前不得開始作答流程。
 - 地點統計資料來源為 `GET /api/locations/statistics/{examId}`，前端在以下時機更新：
   - 頁面初次載入
   - 收到學員加入 WebSocket 事件後
 
 ```mermaid
 flowchart TD
-    A[講師進入 ExamMonitor] --> B[載入學員資訊分頁]
+    A[講師啟動測驗] --> B[開測前統計畫面]
     B --> C[GET /api/statistics/exams/{examId}/survey-fields]
     B --> D[GET /api/locations/statistics/{examId}]
-    C --> E[渲染調查統計]
-    D --> F[渲染地點統計]
+    C --> E[渲染每個問券欄位圖表]
+    D --> F[渲染地區圖表]
     G[WebSocket: STUDENT_JOINED] --> C
     G --> D
+    B --> H{已展示統計?}
+    H -->|否| I[禁止推送第一題]
+    H -->|是| J[允許開始作答]
+```
+
+### 23. 講師/學員測驗頁日夜模式（2026-03-06）
+- 講師 `ExamMonitor` 與學員 `StudentExam` 皆需提供可見的日夜模式切換按鈕。
+- 兩頁主要畫面容器（頁面背景、卡片背景、主要文字）需跟隨 `themeStore.mode` 即時切換。
+- 主題偏好使用前端既有 `theme-storage` 持久化；每位使用者在自己的瀏覽器可獨立保存偏好。
+
+```mermaid
+flowchart LR
+    A[講師/學員點擊 ThemeToggle] --> B[themeStore.mode 切換]
+    B --> C[ExamMonitor / StudentExam 重新渲染]
+    C --> D[背景、卡片、文字改為日或夜色系]
+    B --> E[theme-storage 持久化]
+```
+
+### 24. 移除登入頁訪客模式（2026-03-06）
+- `LoginPage` 不再提供「以訪客模式繼續」按鈕。
+- 登入入口統一為：
+  - Email 註冊 / 登入
+  - Google OAuth2 登入
+- 未登入使用者若嘗試進入受保護頁面，仍維持導向 `/login` 的既有流程。
+
+```mermaid
+flowchart TD
+    A[使用者進入 LoginPage] --> B{選擇登入方式}
+    B --> C[Email 註冊/登入]
+    B --> D[Google OAuth2]
+    C --> E[登入成功後導向 returnTo 或首頁]
+    D --> E
+    B -. 不提供 .-> F[訪客模式]
+```
+
+### 25. 前端建置依賴補齊：prop-types（2026-03-06）
+- 前端使用 `react-simple-maps`，其 ESM 輸出會引用 `prop-types`。
+- 生產建置時若 `prop-types` 未安裝，Vite/Rollup 會出現 `failed to resolve import "prop-types"`。
+- 解法：在 `exam-system-frontend` 安裝 `prop-types` 為正式依賴（`dependencies`），確保 build 環境可正確解析。
+
+```mermaid
+flowchart TD
+    A[npm run build] --> B[載入 react-simple-maps]
+    B --> C{prop-types 是否存在}
+    C -->|否| D[Rollup 無法解析, build 失敗]
+    C -->|是| E[依賴解析成功, build 通過]
 ```
 
 ---

@@ -34,13 +34,6 @@ const LoginPage: React.FC = () => {
   };
 
   /**
-   * 訪客模式直接進入首頁
-   */
-  const handleGuestMode = () => {
-    navigate('/');
-  };
-
-  /**
    * 取得後端錯誤訊息
    */
   const extractErrorMessage = (err: unknown): string => {
@@ -275,17 +268,6 @@ const LoginPage: React.FC = () => {
           <span>使用 Google 帳號登入</span>
         </motion.button>
 
-        <motion.button
-          className="guest-mode-btn"
-          onClick={handleGuestMode}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          disabled={isSubmitting}
-        >
-          <span>👤</span>
-          <span>以訪客模式繼續</span>
-        </motion.button>
-
         <p className="login-note">
           若 Email 與 Google 為同一信箱，Google 登入時會自動綁定到同一帳號
         </p>
@@ -400,8 +382,7 @@ const LoginPage: React.FC = () => {
         }
 
         .email-submit-btn:disabled,
-        .google-login-btn:disabled,
-        .guest-mode-btn:disabled {
+        .google-login-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
           transform: none;
@@ -461,29 +442,6 @@ const LoginPage: React.FC = () => {
 
         .google-icon {
           flex-shrink: 0;
-        }
-
-        .guest-mode-btn {
-          margin-top: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          width: 100%;
-          padding: 12px 20px;
-          background: transparent;
-          color: #fff;
-          border: 1px solid rgba(255, 255, 255, 0.35);
-          border-radius: 12px;
-          font-size: 0.92rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .guest-mode-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.5);
         }
 
         .login-note {

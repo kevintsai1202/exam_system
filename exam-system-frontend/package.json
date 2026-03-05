@@ -16,6 +16,7 @@
     "d3-scale": "^4.0.2",
     "framer-motion": "^12.23.24",
     "p5": "^1.11.2",
+    "prop-types": "^15.8.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

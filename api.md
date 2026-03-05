@@ -1659,6 +1659,34 @@ curl -X POST http://localhost:8080/api/answers \
 }
 ```
 
+### 17.1 開測前統計展示規則（前端流程）
+- 講師端在推送第一題前，需顯示以下圖表：
+  1. 地區統計圖表（資料來源：`GET /api/locations/statistics/{examId}`）
+  2. 每個問券欄位統計圖表（資料來源：`GET /api/statistics/exams/{examId}/survey-fields`）
+- 在講師完成「已展示統計」確認前，前端不得呼叫第一題推送 API：
+  - `PUT /api/exams/{examId}/questions/0/start`
+- 此規則不影響既有 REST API 合約，屬前端操作流程約束。
+
+## 18. 測驗頁日夜模式（2026-03-06）
+- 本次不新增/調整後端 API。
+- 講師測驗頁（`/instructor/exam/{examId}/monitor`）與學員答題頁（`/student/exam/{examId}`）改為使用前端主題狀態：
+  - 來源：`themeStore.mode`
+  - 持久化：`theme-storage`
+- 頁面上提供 `ThemeToggle` 讓使用者即時切換日夜模式，並套用於主要容器樣式。
+
+## 19. 移除訪客模式（2026-03-06）
+- 本次不新增/調整後端 API。
+- 前端登入頁 `LoginPage` 移除訪客模式入口，不再提供直接以訪客身分導向首頁的操作。
+- 登入行為維持：
+  - `POST /api/auth/login`（Email 登入）
+  - `POST /api/auth/register`（Email 註冊）
+  - `GET /oauth2/authorization/google`（Google OAuth2）
+
+## 20. 前端建置依賴修正：prop-types（2026-03-06）
+- 本次不新增/調整後端 API。
+- 前端補上 `prop-types` 套件依賴，解決 `react-simple-maps` 在 production build 時的依賴解析錯誤。
+- 對外 API endpoint 與 request/response 合約皆無變更。
+
 ---
 
 **文件版本**：v1.1

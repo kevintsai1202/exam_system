@@ -9,11 +9,13 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { answerApi, studentApi } from '../services/apiService';
 import websocketService from '../services/websocketService';
 import { useStudentStore } from '../store';
+import { useThemeStore } from '../store/themeStore';
 import { useExamWebSocket, useMediaQuery, useResponsiveValue, useMessage } from '../hooks';
 import OptionButton from '../components/OptionButton';
 import { Message } from '../components/Message';
 import CountdownTimer from '../components/CountdownTimer';
 import { AvatarDisplay } from '../components/AvatarSelector';
+import ThemeToggle from '../components/ThemeToggle';
 import type { WebSocketMessage, QuestionOption } from '../types';
 
 /**
@@ -442,9 +444,35 @@ export const StudentExam: React.FC = () => {
 
   // 響應式設計
   const { isMobile } = useMediaQuery();
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   const containerPadding = useResponsiveValue('12px', '16px', '20px');
   const maxWidth = useResponsiveValue('100%', '700px', '800px');
   const showAnswerResult = revealedCorrectOptionIds.length > 0;
+  const pageBackgroundColor = isDark ? '#0f172a' : '#f5f5f5';
+  const cardBackgroundColor = isDark ? 'rgba(15, 23, 42, 0.92)' : '#fff';
+  const cardShadow = isDark ? '0 8px 20px rgba(0,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.1)';
+  const cardBorder = isDark ? '1px solid rgba(148, 163, 184, 0.25)' : '1px solid transparent';
+  const textPrimary = isDark ? '#f8fafc' : '#333';
+  const textSecondary = isDark ? 'rgba(226, 232, 240, 0.75)' : '#666';
+  const questionBackground = isDark ? 'rgba(30, 41, 59, 0.85)' : '#f5f5f5';
+  const statusBadgeBackgroundColor = examStatus === 'ENDED'
+    ? (isDark ? 'rgba(71, 85, 105, 0.45)' : '#f5f5f5')
+    : examStatus === 'STARTED'
+    ? (isDark ? 'rgba(34, 197, 94, 0.22)' : '#e8f5e9')
+    : (isDark ? 'rgba(59, 130, 246, 0.25)' : '#e3f2fd');
+  const statusBadgeTextColor = examStatus === 'ENDED'
+    ? (isDark ? '#cbd5e1' : '#666')
+    : examStatus === 'STARTED'
+    ? '#2e7d32'
+    : '#1976d2';
+  const connectedBadgeBackgroundColor = isDark ? 'rgba(34, 197, 94, 0.22)' : '#e8f5e9';
+  const connectedBadgeTextColor = '#2e7d32';
+  const submitDisabledColor = isDark ? 'rgba(100, 116, 139, 0.82)' : '#999';
+  const successHintBackgroundColor = isDark ? 'rgba(34, 197, 94, 0.2)' : '#e8f5e9';
+  const successHintTextColor = isDark ? '#bbf7d0' : '#2e7d32';
+  const dangerHintBackgroundColor = isDark ? 'rgba(239, 68, 68, 0.2)' : '#ffebee';
+  const dangerHintTextColor = isDark ? '#fecaca' : '#c62828';
 
   if (!isStoreHydrated) {
 
@@ -456,10 +484,10 @@ export const StudentExam: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: pageBackgroundColor,
         }}
       >
-        <div style={{ fontSize: '16px', color: '#666' }}>正在恢復學員連線...</div>
+        <div style={{ fontSize: '16px', color: textSecondary }}>正在恢復學員連線...</div>
       </div>
     );
   }
@@ -475,10 +503,10 @@ export const StudentExam: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: pageBackgroundColor,
         }}
       >
-        <div style={{ fontSize: '16px', color: '#666' }}>載入學員資料...</div>
+        <div style={{ fontSize: '16px', color: textSecondary }}>載入學員資料...</div>
       </div>
     );
   }
@@ -499,7 +527,7 @@ export const StudentExam: React.FC = () => {
       <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: pageBackgroundColor,
         padding: containerPadding,
       }}
     >
@@ -512,11 +540,12 @@ export const StudentExam: React.FC = () => {
         {/* 頂部資訊列 */}
         <div
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: cardBackgroundColor,
             borderRadius: isMobile ? '8px' : '12px',
             padding: isMobile ? '16px' : '20px',
             marginBottom: isMobile ? '16px' : '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            boxShadow: cardShadow,
+            border: cardBorder,
             display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
             alignItems: isMobile ? 'stretch' : 'center',
@@ -527,31 +556,22 @@ export const StudentExam: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <AvatarDisplay avatar={currentStudent.avatarIcon} size={isMobile ? 'medium' : 'large'} />
             <div>
-              <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+              <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: textPrimary }}>
                 {currentStudent.name}
               </div>
-              <div style={{ fontSize: '14px', color: '#666', marginTop: '2px' }}>
+              <div style={{ fontSize: '14px', color: textSecondary, marginTop: '2px' }}>
                 總分：{currentStudent.totalScore} 分
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <ThemeToggle />
             <div
               style={{
                 padding: '8px 16px',
-                backgroundColor:
-                  examStatus === 'ENDED'
-                    ? '#f5f5f5'
-                    : examStatus === 'STARTED'
-                    ? '#e8f5e9'
-                    : '#e3f2fd',
-                color:
-                  examStatus === 'ENDED'
-                    ? '#666'
-                    : examStatus === 'STARTED'
-                    ? '#2e7d32'
-                    : '#1976d2',
+                backgroundColor: statusBadgeBackgroundColor,
+                color: statusBadgeTextColor,
                 borderRadius: '6px',
                 fontSize: '14px',
                 fontWeight: '600',
@@ -563,8 +583,8 @@ export const StudentExam: React.FC = () => {
               <div
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
+                  backgroundColor: connectedBadgeBackgroundColor,
+                  color: connectedBadgeTextColor,
                   borderRadius: '6px',
                   fontSize: '12px',
                   fontWeight: '600',
@@ -580,10 +600,11 @@ export const StudentExam: React.FC = () => {
         {currentQuestion ? (
           <div
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: cardBackgroundColor,
               borderRadius: '12px',
               padding: '32px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              boxShadow: cardShadow,
+              border: cardBorder,
             }}
           >
             {/* 題號與倒數計時 */}
@@ -619,11 +640,11 @@ export const StudentExam: React.FC = () => {
               style={{
                 fontSize: '22px',
                 fontWeight: '500',
-                color: '#333',
+                color: textPrimary,
                 lineHeight: '1.6',
                 marginBottom: '32px',
                 padding: '20px',
-                backgroundColor: '#f5f5f5',
+                backgroundColor: questionBackground,
                 borderRadius: '8px',
                 borderLeft: '4px solid #1976d2',
               }}
@@ -666,7 +687,7 @@ export const StudentExam: React.FC = () => {
                   fontWeight: '600',
                   color: '#fff',
                   backgroundColor:
-                    !selectedOptionId || isSubmitting ? '#999' : '#4caf50',
+                    !selectedOptionId || isSubmitting ? submitDisabledColor : '#4caf50',
                   border: 'none',
                   borderRadius: '8px',
                   cursor:
@@ -693,8 +714,8 @@ export const StudentExam: React.FC = () => {
               <div
                 style={{
                   padding: '16px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
+                  backgroundColor: successHintBackgroundColor,
+                  color: successHintTextColor,
                   borderRadius: '8px',
                   textAlign: 'center',
                   fontSize: '16px',
@@ -710,8 +731,8 @@ export const StudentExam: React.FC = () => {
               <div
                 style={{
                   padding: '16px',
-                  backgroundColor: '#ffebee',
-                  color: '#c62828',
+                  backgroundColor: dangerHintBackgroundColor,
+                  color: dangerHintTextColor,
                   borderRadius: '8px',
                   textAlign: 'center',
                   fontSize: '16px',
@@ -728,8 +749,8 @@ export const StudentExam: React.FC = () => {
                 style={{
                   marginTop: '16px',
                   padding: '16px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
+                  backgroundColor: successHintBackgroundColor,
+                  color: successHintTextColor,
                   borderRadius: '8px',
                   textAlign: 'center',
                   fontSize: '16px',
@@ -755,11 +776,12 @@ export const StudentExam: React.FC = () => {
         ) : (
           <div
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: cardBackgroundColor,
               borderRadius: '12px',
               padding: '80px 40px',
               textAlign: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              boxShadow: cardShadow,
+              border: cardBorder,
             }}
           >
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏳</div>
@@ -768,12 +790,12 @@ export const StudentExam: React.FC = () => {
                 margin: '0 0 12px 0',
                 fontSize: '24px',
                 fontWeight: '600',
-                color: '#333',
+                color: textPrimary,
               }}
             >
               {examStatus === 'ENDED' ? '測驗已結束' : '等待講師推送題目'}
             </h2>
-            <p style={{ margin: 0, fontSize: '16px', color: '#666' }}>
+            <p style={{ margin: 0, fontSize: '16px', color: textSecondary }}>
               {examStatus === 'ENDED'
                 ? '即將跳轉至排行榜...'
                 : '請耐心等候'}
