@@ -152,3 +152,15 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **前端 build 依賴修正（prop-types）- 測試驗證（完成）**
   - 已執行 `npx tsc -b` 成功。
   - 已執行 `npm run build` 成功（僅保留 chunk size warning）。
+
+- [x] **測驗入口等待與地點統計修正 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，定義講師進入測驗預設停留學員資訊，以及學員地點為必填並納入地點統計。
+
+- [x] **測驗入口等待與地點統計修正 - 前後端實作（完成）**
+  - `ExamMonitor` 已調整初始頁籤為學員資訊等待。
+  - `StudentJoin`、`StudentDTO`、`StudentService` 已補齊地點必填與儲存流程。
+
+- [x] **測驗入口等待與地點統計修正 - 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - 已執行 `npm run build` 成功（僅 chunk size warning）。
+  - 已執行後端 `mvn -DskipTests compile` 成功。

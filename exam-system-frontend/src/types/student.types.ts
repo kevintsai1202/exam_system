@@ -46,7 +46,7 @@ export interface JoinExamRequest {
   occupation?: string;      // 學員職業（保留向下兼容）
   surveyData?: Record<string, string>;  // 調查資料（動態欄位）
   avatarIcon: string;       // 頭像圖示名稱
-  location?: string;        // 學員所在縣市代碼
+  location: string;         // 學員所在縣市代碼（必填）
 }
 
 // 學員加入回應介面

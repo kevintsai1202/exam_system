@@ -1543,6 +1543,28 @@ flowchart TD
     C -->|是| E[依賴解析成功, build 通過]
 ```
 
+### 26. 測驗入口等待與地點統計修正（2026-03-06）
+- 講師進入 `ExamMonitor` 時，預設頁籤應停留在「學員資訊」，不主動切換到「開測前統計」。
+- 「開測前統計」仍保留作為開始第一題前的檢視與確認流程，但需由講師自行切換或在按下開始時引導。
+- 學員地點（`location`）定義為加入測驗必填資料：
+  - 前端 `StudentJoin` 表單驗證必須要求選擇地區。
+  - 後端 `joinExam` 必須驗證並儲存地點代碼到 `Student.location`。
+- 地點統計（`GET /api/locations/statistics/{examId}`）以 `Student.location` 為來源統計，講師學員資訊頁可即時看到地區分布。
+
+```mermaid
+flowchart TD
+    A[講師進入 ExamMonitor] --> B[預設停留 學員資訊]
+    B --> C[查看學員/地點統計]
+    C --> D[切換到 開測前統計]
+    D --> E[完成展示確認]
+    E --> F[開始第一題]
+
+    G[學員送出加入表單] --> H{location 是否已填}
+    H -->|否| I[前端/後端拒絕加入]
+    H -->|是| J[儲存 Student.location]
+    J --> K[地點統計可見]
+```
+
 ---
 
 **文件版本**：v1.1

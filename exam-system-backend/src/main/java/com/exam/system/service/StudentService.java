@@ -37,6 +37,7 @@ public class StudentService {
         private final ExamRepository examRepository;
         private final WebSocketService webSocketService;
         private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+        private final LocationService locationService;
 
         /**
          * 學員加入測驗
@@ -89,6 +90,16 @@ public class StudentService {
                         }
                 }
 
+                // 驗證並標準化地點代碼（地點必填）
+                if (studentDTO.getLocation() == null || studentDTO.getLocation().trim().isEmpty()) {
+                        throw new BusinessException("REQUIRED_FIELD_MISSING", "必填欄位「地區」不能為空");
+                }
+                String normalizedLocation = studentDTO.getLocation().trim().toUpperCase();
+                if (!locationService.isValidLocation(normalizedLocation)) {
+                        throw new BusinessException("INVALID_LOCATION", "地區代碼無效");
+                }
+                studentDTO.setLocation(normalizedLocation);
+
                 // 檢查學員是否已存在（重新連線處理）
                 Optional<Student> existingStudentOpt;
                 if (studentDTO.getEmail() != null && !studentDTO.getEmail().trim().isEmpty()) {
@@ -100,6 +111,12 @@ public class StudentService {
 
                 if (existingStudentOpt.isPresent()) {
                         Student existingStudent = existingStudentOpt.get();
+                        if (!normalizedLocation.equals(existingStudent.getLocation())) {
+                                existingStudent.setLocation(normalizedLocation);
+                                existingStudent = studentRepository.save(existingStudent);
+                                log.info("Updated student location: {} -> {}",
+                                                existingStudent.getName(), normalizedLocation);
+                        }
                         log.info("Student already exists, resuming session: {} (sessionId: {})",
                                         existingStudent.getName(), existingStudent.getSessionId());
 
@@ -123,6 +140,7 @@ public class StudentService {
                                 .email(studentDTO.getEmail())
                                 .occupation(studentDTO.getOccupation())
                                 .surveyData(studentDTO.getSurveyData())
+                                .location(normalizedLocation)
                                 .avatarIcon(studentDTO.getAvatarIcon())
                                 .totalScore(0)
                                 .build();
@@ -248,6 +266,7 @@ public class StudentService {
                                 .email(student.getEmail())
                                 .occupation(student.getOccupation())
                                 .surveyData(student.getSurveyData())
+                                .location(student.getLocation())
                                 .avatarIcon(student.getAvatarIcon())
                                 .totalScore(student.getTotalScore())
                                 .correctAnswersCount((int) correctAnswersCount)

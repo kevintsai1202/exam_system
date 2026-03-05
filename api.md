@@ -1687,6 +1687,13 @@ curl -X POST http://localhost:8080/api/answers \
 - 前端補上 `prop-types` 套件依賴，解決 `react-simple-maps` 在 production build 時的依賴解析錯誤。
 - 對外 API endpoint 與 request/response 合約皆無變更。
 
+## 21. 學員地點必填與講師入口等待（2026-03-06）
+- 本次不新增 API endpoint，但調整既有 `POST /api/students/join` 驗證規則：
+  - `location` 改為必填。
+  - 僅接受有效地區代碼（例如 `TPE`、`KHH`）。
+- `GET /api/locations/statistics/{examId}` 仍使用既有合約，資料來源改為嚴格依賴已儲存的 `Student.location`。
+- 講師 `ExamMonitor` 預設頁籤行為屬前端流程調整，不影響 API 合約。
+
 ---
 
 **文件版本**：v1.1

@@ -71,6 +71,14 @@ public class StudentDTO {
     private Map<String, String> surveyData;
 
     /**
+     * 學員所在縣市代碼（必填）
+     * 例如: TPE, KHH
+     */
+    @NotBlank(message = "地區不能為空")
+    @Size(min = 3, max = 20, message = "地區代碼格式不正確")
+    private String location;
+
+    /**
      * 頭像圖示名稱
      */
     @NotBlank(message = "頭像不能為空")

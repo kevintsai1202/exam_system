@@ -342,7 +342,8 @@ export const ExamMonitor: React.FC = () => {
 
   /**
    * 控制開測前統計展示狀態
-   * 若測驗已開始但尚未推送第一題，需先停留在統計畫面並等待講師確認
+   * 若測驗已開始但尚未推送第一題，保持「待展示」狀態，
+   * 但不自動切換頁籤，讓講師先留在學員資訊等待。
    */
   useEffect(() => {
     if (!currentExam) return;
@@ -355,7 +356,6 @@ export const ExamMonitor: React.FC = () => {
     const isBeforeFirstQuestion = (currentExam.currentQuestionIndex ?? 0) === 0 && !currentExam.currentQuestionStartedAt;
     if (isBeforeFirstQuestion) {
       setHasReviewedPreExamStats(false);
-      setActiveTab('preExamStats');
       return;
     }
 
@@ -405,7 +405,7 @@ export const ExamMonitor: React.FC = () => {
       // 清空 currentQuestion（還沒推送題目）
       setCurrentQuestion(null);
       setHasReviewedPreExamStats(false);
-      setActiveTab('preExamStats');
+      setActiveTab('students');
 
       message.success('測驗已啟動！學生可隨時掃描 QR Code 加入');
     } catch (err: any) {

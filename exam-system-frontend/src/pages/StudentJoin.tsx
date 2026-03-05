@@ -239,6 +239,11 @@ export const StudentJoin: React.FC = () => {
       }
     }
 
+    // 驗證地區必填
+    if (!selectedLocation) {
+      return '請選擇所在地區';
+    }
+
     return null;
   };
 
@@ -283,7 +288,7 @@ export const StudentJoin: React.FC = () => {
         occupation: finalOccupation || undefined,
         surveyData: Object.keys(finalSurveyData).length > 0 ? finalSurveyData : undefined,
         avatarIcon,
-        location: selectedLocation,
+        location: selectedLocation!,
       };
 
       // 呼叫 API
@@ -334,6 +339,7 @@ export const StudentJoin: React.FC = () => {
 
   // 判斷表單是否應該被禁用（測驗未開始或已結束）
   const isFormDisabled = examStatus !== null && examStatus !== 'STARTED';
+  const isJoinButtonDisabled = isSubmitting || isFormDisabled || !selectedLocation;
 
   return (
     <div
@@ -695,7 +701,7 @@ export const StudentJoin: React.FC = () => {
                   color: isDark ? '#fff' : '#333',
                 }}
               >
-                選擇您的所在地區
+                選擇您的所在地區 <span style={{ color: '#f44336' }}>*</span>
               </label>
               <div
                 style={{
@@ -787,26 +793,26 @@ export const StudentJoin: React.FC = () => {
           {/* 提交按鈕 */}
           <button
             type="submit"
-            disabled={isSubmitting || isFormDisabled}
+            disabled={isJoinButtonDisabled}
             style={{
               width: '100%',
               padding: '16px',
               fontSize: '18px',
               fontWeight: '600',
               color: '#fff',
-              backgroundColor: (isSubmitting || isFormDisabled) ? '#999' : '#1976d2',
+              backgroundColor: isJoinButtonDisabled ? '#999' : '#1976d2',
               border: 'none',
               borderRadius: '8px',
-              cursor: (isSubmitting || isFormDisabled) ? 'not-allowed' : 'pointer',
+              cursor: isJoinButtonDisabled ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              if (!isSubmitting && !isFormDisabled) {
+              if (!isJoinButtonDisabled) {
                 e.currentTarget.style.backgroundColor = '#1565c0';
               }
             }}
             onMouseLeave={(e) => {
-              if (!isSubmitting && !isFormDisabled) {
+              if (!isJoinButtonDisabled) {
                 e.currentTarget.style.backgroundColor = '#1976d2';
               }
             }}
