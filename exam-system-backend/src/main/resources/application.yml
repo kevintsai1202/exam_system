@@ -25,7 +25,7 @@ spring:
             user-name-attribute: sub
   # PostgreSQL 資料庫配置（主要環境）
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgresql}:${DB_PORT:5432}/${DB_NAME:exam_system}
+    url: jdbc:postgresql://${DB_HOST:postgresql}:${DB_PORT:5432}/${POSTGRES_DATABASE:exam_system}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:exam_user}
     password: ${DB_PASSWORD:exam_password}
