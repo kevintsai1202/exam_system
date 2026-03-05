@@ -92,3 +92,13 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **WebSocket Endpoint 部署診斷輸出（完成）**
   - 更新 `spec.md`、`api.md` 補充前端啟動時需輸出 WS endpoint 解析來源與結果，便於 Zeabur 追查是否吃到新 build。
   - 調整 `websocketService.ts` 新增診斷 log（含來源與最終 URL）並執行 `npx tsc -b` 驗證成功。
+
+- [x] **學生端時間到顯示正確答案 - 文件更新（完成）**
+  - 更新 `spec.md`、`api.md`，補充時間到後由單題統計 WebSocket 顯示正確答案的規範。
+
+- [x] **學生端時間到顯示正確答案 - 前端實作（完成）**
+  - `StudentExam` 補上單題統計訂閱，收到 `isCorrect` 後切換答案顯示模式。
+
+- [x] **學生端時間到顯示正確答案 - 測試驗證（完成）**
+  - 已執行 `npx tsc -b` 成功。
+  - `npm run build` 失敗（既有問題：`react-simple-maps` 依賴 `prop-types` 無法解析，與本次修復無直接關聯）。

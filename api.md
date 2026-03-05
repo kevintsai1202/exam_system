@@ -1606,7 +1606,38 @@ curl -X POST http://localhost:8080/api/answers \
 - 前端在初始化 WebSocket 服務時會輸出 endpoint 解析資訊（來源 + 最終 URL）。
 - 此輸出僅為部署診斷用途，不影響 API 合約與後端行為。
 
+## 16. 題目時間到後顯示正確答案（2026-03-06）
+- 本次不新增 REST endpoint，延續既有 `PUT /api/exams/{examId}/questions/{questionId}/complete`。
+- 關鍵行為為 WebSocket payload 變化：
+  - Topic：`/topic/exam/{examId}/statistics/question/{questionId}`
+  - Message Type：`STATISTICS_UPDATED`
+  - 內容位於 `data` 欄位（外層仍為 `{ type, data, timestamp }`）
+- `data.optionStatistics[].isCorrect` 與 `data.correctRate` 規則：
+  1. 題目作答期間（一般統計更新）為 `null`
+  2. 題目時間到後（completeQuestion）帶入實際值
+
+**WebSocket 範例（時間到後）**:
+```json
+{
+  "type": "STATISTICS_UPDATED",
+  "data": {
+    "questionId": 12,
+    "questionText": "Java 是哪一年發布的？",
+    "totalAnswers": 18,
+    "chartType": "BAR",
+    "optionStatistics": [
+      { "optionId": 101, "optionText": "1995", "count": 15, "percentage": 83.33, "isCorrect": true },
+      { "optionId": 102, "optionText": "2000", "count": 2, "percentage": 11.11, "isCorrect": false },
+      { "optionId": 103, "optionText": "2005", "count": 1, "percentage": 5.56, "isCorrect": false }
+    ],
+    "correctRate": 0.8333,
+    "timestamp": "2026-03-06T11:20:00"
+  },
+  "timestamp": "2026-03-06T11:20:00"
+}
+```
+
 ---
 
 **文件版本**：v1.1
-**最後更新**：2026-03-05
+**最後更新**：2026-03-06

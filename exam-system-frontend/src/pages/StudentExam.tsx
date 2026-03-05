@@ -47,6 +47,8 @@ export const StudentExam: React.FC = () => {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTimerExpired, setIsTimerExpired] = useState(false);
+  const [revealedCorrectOptionIds, setRevealedCorrectOptionIds] = useState<number[]>([]);
+  const [revealedCorrectRate, setRevealedCorrectRate] = useState<number | null>(null);
   const [examStatus, setExamStatus] = useState<'CREATED' | 'STARTED' | 'ENDED'>('CREATED');
   const isFetchingStudentRef = useRef(false);
   const autoRejoinRef = useRef(false);
@@ -144,18 +146,68 @@ export const StudentExam: React.FC = () => {
       setSelectedOptionId(null);
       setHasSubmitted(false);
       setIsTimerExpired(false); // 重置計時器到期狀態
+      setRevealedCorrectOptionIds([]); // 重置正確答案顯示
+      setRevealedCorrectRate(null); // 重置正確率顯示
       setExamStatus('STARTED'); // 更新測驗狀態為進行中
     }
   }, []);
 
   const handleTimerExpired = useCallback(() => {
+    if (isTimerExpired) return;
+
     setIsTimerExpired(true); // 標記計時器已到期
 
     // 時間到，自動提交（如果還沒提交的話）
     if (!hasSubmitted && selectedOptionId) {
       handleSubmitAnswer();
     }
-  }, [hasSubmitted, selectedOptionId]);
+  }, [hasSubmitted, selectedOptionId, isTimerExpired]);
+
+  /**
+   * 計時器 WebSocket 訊息處理
+   * 僅在真正時間到（TIMER_EXPIRED 或 remainingSeconds=0）時觸發到期邏輯
+   */
+  const handleTimerUpdate = useCallback((message: WebSocketMessage) => {
+    const msg = message as any;
+    const type = msg?.type;
+    const remainingSeconds = msg?.data?.remainingSeconds ?? msg?.remainingSeconds;
+
+    if (type === 'TIMER_EXPIRED' || remainingSeconds === 0) {
+      handleTimerExpired();
+    }
+  }, [handleTimerExpired]);
+
+  /**
+   * 題目統計更新處理
+   * 只有在收到 includeAnswer=true（包含 isCorrect）時才顯示正確答案
+   */
+  const handleQuestionStatisticsUpdated = useCallback((message: WebSocketMessage) => {
+    const msg = message as any;
+    const statistics = msg?.data;
+
+    if (!statistics || !currentQuestion || statistics.questionId !== currentQuestion.questionId) {
+      return;
+    }
+
+    const optionStatistics = Array.isArray(statistics.optionStatistics) ? statistics.optionStatistics : [];
+    const hasAnswerReveal = optionStatistics.some((option: any) => typeof option?.isCorrect === 'boolean');
+    if (!hasAnswerReveal) {
+      return;
+    }
+
+    const correctOptionIds = optionStatistics
+      .filter((option: any) => option?.isCorrect === true)
+      .map((option: any) => Number(option.optionId))
+      .filter((optionId: number) => Number.isFinite(optionId));
+
+    if (correctOptionIds.length === 0) {
+      return;
+    }
+
+    setRevealedCorrectOptionIds(correctOptionIds);
+    setRevealedCorrectRate(typeof statistics.correctRate === 'number' ? statistics.correctRate : null);
+    setIsTimerExpired(true);
+  }, [currentQuestion]);
 
   // WebSocket 連線（訂閱通用主題）
   const { isConnected } = useExamWebSocket(
@@ -163,7 +215,7 @@ export const StudentExam: React.FC = () => {
     {
       onExamStatus: handleExamStatus,
       onQuestionStarted: handleQuestionStarted,
-      onTimerUpdate: handleTimerExpired,
+      onTimerUpdate: handleTimerUpdate,
     }
   );
 
@@ -191,6 +243,30 @@ export const StudentExam: React.FC = () => {
       websocketService.unsubscribe(topic);
     };
   }, [examId, sessionId, isConnected, handleQuestionStarted]);
+
+  /**
+   * 訂閱當前題目的統計主題
+   * 用於在時間到後接收包含正確答案的統計資料
+   */
+  useEffect(() => {
+    if (!examId || !currentQuestion?.questionId || !isConnected) return;
+
+    const examIdNum = parseInt(examId);
+    const questionId = currentQuestion.questionId;
+
+    console.log('[StudentExam] 訂閱題目統計主題:', `/topic/exam/${examIdNum}/statistics/question/${questionId}`);
+
+    const topic = websocketService.subscribeQuestionStatistics(
+      examIdNum,
+      questionId,
+      handleQuestionStatisticsUpdated
+    );
+
+    return () => {
+      console.log('[StudentExam] 取消訂閱題目統計主題:', questionId);
+      websocketService.unsubscribe(topic);
+    };
+  }, [examId, currentQuestion?.questionId, isConnected, handleQuestionStatisticsUpdated]);
 
   /**
    * 從 currentStudent 載入當前題目（如果有的話）
@@ -368,6 +444,7 @@ export const StudentExam: React.FC = () => {
   const { isMobile } = useMediaQuery();
   const containerPadding = useResponsiveValue('12px', '16px', '20px');
   const maxWidth = useResponsiveValue('100%', '700px', '800px');
+  const showAnswerResult = revealedCorrectOptionIds.length > 0;
 
   if (!isStoreHydrated) {
 
@@ -563,8 +640,15 @@ export const StudentExam: React.FC = () => {
                     key={option.id}
                     option={option}
                     isSelected={selectedOptionId === option.id}
-                    disabled={hasSubmitted || isSubmitting || isTimerExpired}
-                    onClick={() => !hasSubmitted && !isTimerExpired && setSelectedOptionId(option.id)}
+                    isCorrect={showAnswerResult && revealedCorrectOptionIds.includes(option.id)}
+                    isWrong={
+                      showAnswerResult &&
+                      selectedOptionId === option.id &&
+                      !revealedCorrectOptionIds.includes(option.id)
+                    }
+                    showResult={showAnswerResult}
+                    disabled={hasSubmitted || isSubmitting || isTimerExpired || showAnswerResult}
+                    onClick={() => !hasSubmitted && !isTimerExpired && !showAnswerResult && setSelectedOptionId(option.id)}
                     size="large"
                   />
                 ))}
@@ -622,7 +706,7 @@ export const StudentExam: React.FC = () => {
             )}
 
             {/* 時間到期提示 */}
-            {isTimerExpired && !hasSubmitted && (
+            {isTimerExpired && !hasSubmitted && !showAnswerResult && (
               <div
                 style={{
                   padding: '16px',
@@ -635,6 +719,36 @@ export const StudentExam: React.FC = () => {
                 }}
               >
                 ⏰ 時間已到，無法作答
+              </div>
+            )}
+
+            {/* 正確答案揭露提示 */}
+            {showAnswerResult && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  backgroundColor: '#e8f5e9',
+                  color: '#2e7d32',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                }}
+              >
+                <div>
+                  ✅ 正確答案已公布
+                  {selectedOptionId
+                    ? revealedCorrectOptionIds.includes(selectedOptionId)
+                      ? '，你答對了'
+                      : '，你這題答錯'
+                    : '，你本題未作答'}
+                </div>
+                {revealedCorrectRate !== null && (
+                  <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: '500' }}>
+                    本題正確率：{(revealedCorrectRate * 100).toFixed(1)}%
+                  </div>
+                )}
               </div>
             )}
           </div>

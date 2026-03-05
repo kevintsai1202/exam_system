@@ -1457,7 +1457,26 @@ flowchart TD
   - endpoint 來源（`VITE_WS_ENDPOINT` / `VITE_API_BASE_URL` / `WINDOW_HOST` / `DEV_DEFAULT`）
 - 用途：確認 Zeabur 已部署新 build，避免誤判為程式邏輯問題。
 
+### 21. 學員端時間到顯示正確答案（2026-03-06）
+- 講師端在題目時間到時，會呼叫 `PUT /api/exams/{examId}/questions/{questionId}/complete`。
+- 後端透過 `/topic/exam/{examId}/statistics/question/{questionId}` 推送 `STATISTICS_UPDATED`：
+  - 答題期間：`optionStatistics[].isCorrect = null`、`correctRate = null`
+  - 時間到後：`optionStatistics[].isCorrect` 與 `correctRate` 會帶入實際值
+- 學員端需訂閱當前題目的統計 Topic，當收到含 `isCorrect` 的資料後，立即切換選項顯示為結果模式（標示正確/錯誤答案）。
+
+```mermaid
+sequenceDiagram
+    participant I as 講師端 ExamMonitor
+    participant BE as Backend
+    participant S as 學員端 StudentExam
+
+    I->>BE: PUT /api/exams/{examId}/questions/{questionId}/complete
+    BE->>BE: 產生 includeAnswer=true 單題統計
+    BE-->>S: WS /topic/exam/{examId}/statistics/question/{questionId}
+    S-->>S: 套用 isCorrect + correctRate，顯示正確答案
+```
+
 ---
 
 **文件版本**：v1.1
-**最後更新**：2026-03-05
+**最後更新**：2026-03-06
