@@ -249,3 +249,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **admin 帳密登入失敗（功能欄位 migration）- 測試驗證（完成）**
   - 已使用 Java 21 執行後端 `mvn -DskipTests compile` 成功。
+
+- [x] **左上固定選單仍遮擋內容 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充共用 layout 安全區需覆蓋固定選單實際視覺高度，而非僅估算內容高度。
+
+- [x] **左上固定選單仍遮擋內容 - 前端修正（完成）**
+  - 已調整 `PageLayout` 的內容安全上邊距，改為更大的桌機/手機差異化保留空間。
+
+- [x] **左上固定選單仍遮擋內容 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功，僅保留既有 chunk size warning。

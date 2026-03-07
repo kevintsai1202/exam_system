@@ -2110,6 +2110,13 @@ curl -X POST http://localhost:8080/api/answers \
   - 避免 PostgreSQL 在 Hibernate `ddl-auto=update` 時因 `NOT NULL` 新欄位含舊資料 null 而失敗
   - 避免後端啟動失敗後，前端誤判為帳號密碼錯誤
 
+### 22.14 固定左上選單安全區修正（2026-03-07）
+- 本次為前端共用 layout 間距修正，不新增或修改 REST API。
+- 約束如下：
+  - `PageLayout` 必須為固定左上選單預留足夠內容安全區。
+  - 安全區需能覆蓋桌機與手機下的實際遮擋高度。
+  - 此調整不得改變任何 API 呼叫或頁面資料流。
+
 ---
 
 **文件版本**：v2.0-draft

@@ -9,6 +9,7 @@ import P5Background from './P5Background';
 import ThemeToggle from './ThemeToggle';
 import { useThemeStore, themes } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
+import { useMediaQuery } from '../hooks';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -29,9 +30,10 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const theme = themes[mode];
   const isDark = mode === 'dark';
   const { user, isAdmin, isInstructor, logout } = useAuthStore();
+  const { isMobile } = useMediaQuery();
   const navigate = useNavigate();
   const location = useLocation();
-  const contentTopPadding = '96px';
+  const contentTopPadding = isMobile ? '112px' : '136px';
 
   const handleLogout = () => {
     logout();
