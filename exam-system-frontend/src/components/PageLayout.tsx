@@ -2,7 +2,7 @@
  * 通用頁面佈局元件
  * 提供 P5.js 背景和主題切換功能
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import P5Background from './P5Background';
@@ -34,10 +34,20 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const contentTopPadding = isMobile ? '112px' : '104px';
+  const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
 
   const handleLogout = () => {
+    setIsMobileNavExpanded(false);
     logout();
     navigate('/');
+  };
+
+  /**
+   * 手機版導頁後收合選單
+   */
+  const handleNavigate = (path: string) => {
+    setIsMobileNavExpanded(false);
+    navigate(path);
   };
 
   return (
@@ -69,20 +79,39 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       )}
 
       {/* 浮動導覽列 */}
-      <div className="global-nav">
-        <button onClick={() => navigate('/')} className="nav-btn">
+      <div className={`global-nav ${isMobile ? 'mobile-nav' : ''} ${isMobileNavExpanded ? 'expanded' : 'collapsed'}`}>
+        {isMobile && (
+          <button
+            onClick={() => setIsMobileNavExpanded((prev) => !prev)}
+            className="nav-btn nav-toggle-btn"
+            aria-label={isMobileNavExpanded ? '收合選單' : '展開選單'}
+          >
+            {isMobileNavExpanded ? (
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+              </svg>
+            )}
+            <span className="nav-text">{isMobileNavExpanded ? '收合' : '選單'}</span>
+          </button>
+        )}
+
+        <button onClick={() => handleNavigate('/')} className="nav-btn">
           <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="nav-text">首頁</span>
         </button>
         {isAdmin && isAdmin() && location.pathname !== '/admin/users' && (
-          <button onClick={() => navigate('/admin/users')} className="nav-btn admin-btn">
+          <button onClick={() => handleNavigate('/admin/users')} className="nav-btn admin-btn">
             <span className="nav-text">系統管理</span>
           </button>
         )}
         {(isInstructor() || isAdmin()) && !location.pathname.startsWith('/instructor') && (
-          <button onClick={() => navigate('/instructor')} className="nav-btn instructor-btn">
+          <button onClick={() => handleNavigate('/instructor')} className="nav-btn instructor-btn">
             <span className="nav-text">講師入口</span>
           </button>
         )}
@@ -133,6 +162,10 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           overflow: hidden;
           transition: padding 0.24s ease, gap 0.24s ease, box-shadow 0.24s ease;
+        }
+
+        .nav-toggle-btn {
+          display: none;
         }
 
         .nav-btn {
@@ -215,7 +248,42 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 
         @media (max-width: 600px) {
           .global-nav {
-             padding: 8px;
+             padding: 8px 10px;
+             gap: 8px;
+          }
+
+          .mobile-nav .nav-toggle-btn {
+             display: flex;
+          }
+
+          .mobile-nav.collapsed {
+             gap: 0;
+             padding: 8px 10px;
+          }
+
+          .mobile-nav.collapsed .nav-btn:not(.nav-toggle-btn) {
+             width: 0;
+             min-width: 0;
+             padding-left: 0;
+             padding-right: 0;
+             margin: 0;
+             opacity: 0;
+             pointer-events: none;
+             overflow: hidden;
+             border-width: 0;
+          }
+
+          .mobile-nav.collapsed .nav-toggle-btn {
+             gap: 6px;
+          }
+
+          .mobile-nav.expanded {
+             gap: 8px;
+          }
+
+          .mobile-nav.expanded .nav-btn {
+             opacity: 1;
+             pointer-events: auto;
           }
         }
 
