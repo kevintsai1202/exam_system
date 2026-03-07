@@ -443,11 +443,14 @@ export const StudentExam: React.FC = () => {
   }, [sessionId, currentQuestion, setCurrentStudent, success, error]);
 
   // 響應式設計
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isDesktop } = useMediaQuery();
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
-  const containerPadding = useResponsiveValue('12px', '16px', '20px');
-  const maxWidth = useResponsiveValue('100%', '700px', '800px');
+  const containerPadding = useResponsiveValue('12px', '20px', '28px');
+  const maxWidth = useResponsiveValue('100%', '920px', '1440px');
+  const contentGap = useResponsiveValue('16px', '20px', '28px');
+  const questionCardPadding = useResponsiveValue('20px', '28px', '36px');
+  const infoPanelWidth = '320px';
   const showAnswerResult = revealedCorrectOptionIds.length > 0;
   const pageBackgroundColor = isDark ? '#0f172a' : '#f5f5f5';
   const cardBackgroundColor = isDark ? 'rgba(15, 23, 42, 0.92)' : '#fff';
@@ -473,6 +476,24 @@ export const StudentExam: React.FC = () => {
   const successHintTextColor = isDark ? '#bbf7d0' : '#2e7d32';
   const dangerHintBackgroundColor = isDark ? 'rgba(239, 68, 68, 0.2)' : '#ffebee';
   const dangerHintTextColor = isDark ? '#fecaca' : '#c62828';
+  const sidePanelHintBackgroundColor = isDark ? 'rgba(30, 41, 59, 0.7)' : '#f8fafc';
+  const sidePanelHintBorder = isDark ? '1px solid rgba(148, 163, 184, 0.18)' : '1px solid #e2e8f0';
+  const currentSelectionLabel = currentQuestion && selectedOptionId
+    ? currentQuestion.options.find((option) => option.id === selectedOptionId)?.optionText ?? '已選擇選項'
+    : '尚未選擇';
+  const answerStatusLabel = showAnswerResult
+    ? selectedOptionId
+      ? revealedCorrectOptionIds.includes(selectedOptionId)
+        ? '本題答對'
+        : '本題答錯'
+      : '本題未作答'
+    : hasSubmitted
+      ? '已提交答案'
+      : isTimerExpired
+        ? '作答時間已到'
+        : selectedOptionId
+          ? '已選擇答案，等待提交'
+          : '尚未作答';
 
   if (!isStoreHydrated) {
 
@@ -596,212 +617,348 @@ export const StudentExam: React.FC = () => {
           </div>
         </div>
 
-        {/* 題目區域 */}
-        {currentQuestion ? (
-          <div
-            style={{
-              backgroundColor: cardBackgroundColor,
-              borderRadius: '12px',
-              padding: '32px',
-              boxShadow: cardShadow,
-              border: cardBorder,
-            }}
-          >
-            {/* 題號與倒數計時 */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '24px',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1976d2',
-                }}
-              >
-                第 {currentQuestion.questionIndex + 1} 題
-              </h2>
-              <CountdownTimer
-                type="exam"
-                expiresAt={currentQuestion.expiresAt}
-                onExpire={handleTimerExpired}
-                size="medium"
-                showLabel={true}
-              />
-            </div>
-
-            {/* 題目內容 */}
-            <div
-              style={{
-                fontSize: '22px',
-                fontWeight: '500',
-                color: textPrimary,
-                lineHeight: '1.6',
-                marginBottom: '32px',
-                padding: '20px',
-                backgroundColor: questionBackground,
-                borderRadius: '8px',
-                borderLeft: '4px solid #1976d2',
-              }}
-            >
-              {currentQuestion.questionText}
-            </div>
-
-            {/* 選項列表 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-              {currentQuestion.options
-                .sort((a, b) => a.optionOrder - b.optionOrder)
-                .map((option) => (
-                  <OptionButton
-                    key={option.id}
-                    option={option}
-                    isSelected={selectedOptionId === option.id}
-                    isCorrect={showAnswerResult && revealedCorrectOptionIds.includes(option.id)}
-                    isWrong={
-                      showAnswerResult &&
-                      selectedOptionId === option.id &&
-                      !revealedCorrectOptionIds.includes(option.id)
-                    }
-                    showResult={showAnswerResult}
-                    disabled={hasSubmitted || isSubmitting || isTimerExpired || showAnswerResult}
-                    onClick={() => !hasSubmitted && !isTimerExpired && !showAnswerResult && setSelectedOptionId(option.id)}
-                    size="large"
-                  />
-                ))}
-            </div>
-
-            {/* 提交按鈕 */}
-            {!hasSubmitted && !isTimerExpired && (
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={!selectedOptionId || isSubmitting || isTimerExpired}
-                style={{
-                  width: '100%',
-                  padding: '18px',
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: '#fff',
-                  backgroundColor:
-                    !selectedOptionId || isSubmitting ? submitDisabledColor : '#4caf50',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor:
-                    !selectedOptionId || isSubmitting ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedOptionId && !isSubmitting) {
-                    e.currentTarget.style.backgroundColor = '#45a049';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedOptionId && !isSubmitting) {
-                    e.currentTarget.style.backgroundColor = '#4caf50';
-                  }
-                }}
-              >
-                {isSubmitting ? '提交中...' : '提交答案'}
-              </button>
-            )}
-
-            {/* 已提交提示 */}
-            {hasSubmitted && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isDesktop ? `minmax(0, 1fr) ${infoPanelWidth}` : '1fr',
+            gap: contentGap,
+            alignItems: 'start',
+          }}
+        >
+          <div>
+            {/* 題目區域 */}
+            {currentQuestion ? (
               <div
                 style={{
-                  padding: '16px',
-                  backgroundColor: successHintBackgroundColor,
-                  color: successHintTextColor,
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  fontSize: '16px',
-                  fontWeight: '600',
+                  backgroundColor: cardBackgroundColor,
+                  borderRadius: '12px',
+                  padding: questionCardPadding,
+                  boxShadow: cardShadow,
+                  border: cardBorder,
                 }}
               >
-                ✓ 答案已提交，請等待下一題
-              </div>
-            )}
-
-            {/* 時間到期提示 */}
-            {isTimerExpired && !hasSubmitted && !showAnswerResult && (
-              <div
-                style={{
-                  padding: '16px',
-                  backgroundColor: dangerHintBackgroundColor,
-                  color: dangerHintTextColor,
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                }}
-              >
-                ⏰ 時間已到，無法作答
-              </div>
-            )}
-
-            {/* 正確答案揭露提示 */}
-            {showAnswerResult && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  padding: '16px',
-                  backgroundColor: successHintBackgroundColor,
-                  color: successHintTextColor,
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                }}
-              >
-                <div>
-                  ✅ 正確答案已公布
-                  {selectedOptionId
-                    ? revealedCorrectOptionIds.includes(selectedOptionId)
-                      ? '，你答對了'
-                      : '，你這題答錯'
-                    : '，你本題未作答'}
+                {/* 題號與倒數計時 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    justifyContent: 'space-between',
+                    gap: isMobile ? '12px' : '16px',
+                    marginBottom: '24px',
+                  }}
+                >
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontSize: isDesktop ? '24px' : '20px',
+                      fontWeight: '600',
+                      color: '#1976d2',
+                    }}
+                  >
+                    第 {currentQuestion.questionIndex + 1} 題
+                  </h2>
+                  {!isDesktop && (
+                    <CountdownTimer
+                      type="exam"
+                      expiresAt={currentQuestion.expiresAt}
+                      onExpire={handleTimerExpired}
+                      size="medium"
+                      showLabel={true}
+                    />
+                  )}
                 </div>
-                {revealedCorrectRate !== null && (
-                  <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: '500' }}>
-                    本題正確率：{(revealedCorrectRate * 100).toFixed(1)}%
+
+                {/* 題目內容 */}
+                <div
+                  style={{
+                    fontSize: isDesktop ? '26px' : '22px',
+                    fontWeight: '500',
+                    color: textPrimary,
+                    lineHeight: '1.7',
+                    marginBottom: '32px',
+                    padding: isDesktop ? '28px' : '20px',
+                    backgroundColor: questionBackground,
+                    borderRadius: '12px',
+                    borderLeft: '4px solid #1976d2',
+                  }}
+                >
+                  {currentQuestion.questionText}
+                </div>
+
+                {/* 選項列表 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isDesktop ? '18px' : '16px', marginBottom: '32px' }}>
+                  {currentQuestion.options
+                    .sort((a, b) => a.optionOrder - b.optionOrder)
+                    .map((option) => (
+                      <OptionButton
+                        key={option.id}
+                        option={option}
+                        isSelected={selectedOptionId === option.id}
+                        isCorrect={showAnswerResult && revealedCorrectOptionIds.includes(option.id)}
+                        isWrong={
+                          showAnswerResult &&
+                          selectedOptionId === option.id &&
+                          !revealedCorrectOptionIds.includes(option.id)
+                        }
+                        showResult={showAnswerResult}
+                        disabled={hasSubmitted || isSubmitting || isTimerExpired || showAnswerResult}
+                        onClick={() => !hasSubmitted && !isTimerExpired && !showAnswerResult && setSelectedOptionId(option.id)}
+                        size="large"
+                      />
+                    ))}
+                </div>
+
+                {/* 提交按鈕 */}
+                {!hasSubmitted && !isTimerExpired && (
+                  <button
+                    onClick={handleSubmitAnswer}
+                    disabled={!selectedOptionId || isSubmitting || isTimerExpired}
+                    style={{
+                      width: '100%',
+                      padding: isDesktop ? '20px' : '18px',
+                      fontSize: isDesktop ? '20px' : '18px',
+                      fontWeight: '600',
+                      color: '#fff',
+                      backgroundColor:
+                        !selectedOptionId || isSubmitting ? submitDisabledColor : '#4caf50',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor:
+                        !selectedOptionId || isSubmitting ? 'not-allowed' : 'pointer',
+                      transition: 'background-color 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedOptionId && !isSubmitting) {
+                        e.currentTarget.style.backgroundColor = '#45a049';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedOptionId && !isSubmitting) {
+                        e.currentTarget.style.backgroundColor = '#4caf50';
+                      }
+                    }}
+                  >
+                    {isSubmitting ? '提交中...' : '提交答案'}
+                  </button>
+                )}
+
+                {/* 已提交提示 */}
+                {hasSubmitted && (
+                  <div
+                    style={{
+                      padding: '16px',
+                      backgroundColor: successHintBackgroundColor,
+                      color: successHintTextColor,
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ✓ 答案已提交，請等待下一題
+                  </div>
+                )}
+
+                {/* 時間到期提示 */}
+                {isTimerExpired && !hasSubmitted && !showAnswerResult && (
+                  <div
+                    style={{
+                      padding: '16px',
+                      backgroundColor: dangerHintBackgroundColor,
+                      color: dangerHintTextColor,
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ⏰ 時間已到，無法作答
+                  </div>
+                )}
+
+                {/* 正確答案揭露提示 */}
+                {showAnswerResult && (
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '16px',
+                      backgroundColor: successHintBackgroundColor,
+                      color: successHintTextColor,
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    <div>
+                      ✅ 正確答案已公布
+                      {selectedOptionId
+                        ? revealedCorrectOptionIds.includes(selectedOptionId)
+                          ? '，你答對了'
+                          : '，你這題答錯'
+                        : '，你本題未作答'}
+                    </div>
+                    {revealedCorrectRate !== null && (
+                      <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: '500' }}>
+                        本題正確率：{(revealedCorrectRate * 100).toFixed(1)}%
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            ) : (
+              <div
+                style={{
+                  backgroundColor: cardBackgroundColor,
+                  borderRadius: '12px',
+                  padding: isDesktop ? '120px 56px' : '80px 40px',
+                  textAlign: 'center',
+                  boxShadow: cardShadow,
+                  border: cardBorder,
+                }}
+              >
+                <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏳</div>
+                <h2
+                  style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '24px',
+                    fontWeight: '600',
+                    color: textPrimary,
+                  }}
+                >
+                  {examStatus === 'ENDED' ? '測驗已結束' : '等待講師推送題目'}
+                </h2>
+                <p style={{ margin: 0, fontSize: '16px', color: textSecondary }}>
+                  {examStatus === 'ENDED'
+                    ? '即將跳轉至排行榜...'
+                    : '請耐心等候'}
+                </p>
+              </div>
             )}
           </div>
-        ) : (
-          <div
-            style={{
-              backgroundColor: cardBackgroundColor,
-              borderRadius: '12px',
-              padding: '80px 40px',
-              textAlign: 'center',
-              boxShadow: cardShadow,
-              border: cardBorder,
-            }}
-          >
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏳</div>
-            <h2
+
+          {isDesktop && (
+            <aside
               style={{
-                margin: '0 0 12px 0',
-                fontSize: '24px',
-                fontWeight: '600',
-                color: textPrimary,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+                position: 'sticky',
+                top: '28px',
               }}
             >
-              {examStatus === 'ENDED' ? '測驗已結束' : '等待講師推送題目'}
-            </h2>
-            <p style={{ margin: 0, fontSize: '16px', color: textSecondary }}>
-              {examStatus === 'ENDED'
-                ? '即將跳轉至排行榜...'
-                : '請耐心等候'}
-            </p>
-          </div>
-        )}
+              <div
+                style={{
+                  backgroundColor: cardBackgroundColor,
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: cardShadow,
+                  border: cardBorder,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+                  <AvatarDisplay avatar={currentStudent.avatarIcon} size="large" />
+                  <div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: textPrimary }}>
+                      {currentStudent.name}
+                    </div>
+                    <div style={{ marginTop: '4px', fontSize: '14px', color: textSecondary }}>
+                      目前總分：{currentStudent.totalScore} 分
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: sidePanelHintBackgroundColor,
+                      border: sidePanelHintBorder,
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', color: textSecondary, marginBottom: '6px' }}>測驗狀態</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: textPrimary }}>
+                      {examStatus === 'ENDED' ? '已結束' : examStatus === 'STARTED' ? '進行中' : '等待開始'}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: sidePanelHintBackgroundColor,
+                      border: sidePanelHintBorder,
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', color: textSecondary, marginBottom: '6px' }}>連線狀態</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: isConnected ? connectedBadgeTextColor : dangerHintTextColor }}>
+                      {isConnected ? '已連線' : '重新連線中'}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: sidePanelHintBackgroundColor,
+                      border: sidePanelHintBorder,
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', color: textSecondary, marginBottom: '6px' }}>作答狀態</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: textPrimary }}>
+                      {answerStatusLabel}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: sidePanelHintBackgroundColor,
+                      border: sidePanelHintBorder,
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', color: textSecondary, marginBottom: '6px' }}>目前選擇</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: textPrimary, lineHeight: '1.5' }}>
+                      {currentSelectionLabel}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: cardBackgroundColor,
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: cardShadow,
+                  border: cardBorder,
+                }}
+              >
+                {currentQuestion ? (
+                  <CountdownTimer
+                    type="exam"
+                    expiresAt={currentQuestion.expiresAt}
+                    onExpire={handleTimerExpired}
+                    size="medium"
+                    showLabel={true}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '14px', color: textSecondary, marginBottom: '8px' }}>
+                      作答提示
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: textPrimary, lineHeight: '1.6' }}>
+                      {examStatus === 'ENDED' ? '測驗已結束，準備進入排行榜。' : '目前尚未推送題目，請等待講師開始。'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </aside>
+          )}
+        </div>
       </div>
     </div>
     </>

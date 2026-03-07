@@ -1,0 +1,7 @@
+interface:
+  display_name: "Exam System Project"
+  short_description: "Exam System 專案開發、驗證與發布技能"
+  default_prompt: "Use $exam-system-project to work in this repository with doc-first updates, validation, commit, push, and a release report."
+
+policy:
+  allow_implicit_invocation: true

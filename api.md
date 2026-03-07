@@ -2021,6 +2021,29 @@ curl -X POST http://localhost:8080/api/answers \
 - `GET /api/v2/exams/{examId}/student-answers`
   - 補齊目前只有聚合統計、缺乏逐人逐題明細的缺口
 
+### 22.9 學員答題頁桌機版型規範（2026-03-07）
+- 本次為前端表現層調整，不新增或修改 REST API。
+- `StudentExam` 必須維持既有資料來源不變：
+  - `GET /api/students/{sessionId}`
+  - WebSocket 題目推送與倒數主題
+  - `POST /api/answers`
+- 響應式約束：
+  - 桌機版型調整不得改變學員作答請求格式。
+  - 桌機版型調整不得改變 WebSocket topic 與 payload。
+  - 桌機版型調整後，手機版 API 呼叫時機與互動流程需保持一致。
+
+### 22.10 專案技能納入版本控管（2026-03-07）
+- 本次新增 repo 內 AI 專案技能，屬開發流程資產，不新增或修改任何 REST API。
+- 專案技能僅提供以下資訊：
+  - 專案目錄與責任分層
+  - 文件更新順序
+  - 常用建置 / 測試 / 發布檢查指令
+  - 發布報告所需內容摘要
+- 因此：
+  - 不變更 endpoint
+  - 不變更 request / response schema
+  - 不變更認證與授權規則
+
 ---
 
 **文件版本**：v2.0-draft
