@@ -21,9 +21,9 @@ public class LocationService {
     private final StudentRepository studentRepository;
 
     /**
-     * 台灣縣市代碼與名稱對照表
+     * 地區代碼與名稱對照表
      */
-    private static final Map<String, String> TAIWAN_LOCATIONS = new LinkedHashMap<>() {
+    private static final Map<String, String> LOCATION_NAMES = new LinkedHashMap<>() {
         {
             // 北部
             put("TPE", "台北市");
@@ -52,6 +52,13 @@ public class LocationService {
             put("PEN", "澎湖縣");
             put("KIN", "金門縣");
             put("LNN", "連江縣");
+            // 海外固定選項
+            put("HKG", "香港");
+            put("MAC", "澳門");
+            put("CHN", "大陸");
+            put("SGP", "新加坡");
+            put("USA", "美國");
+            put("OTHER", "其他");
         }
     };
 
@@ -59,7 +66,7 @@ public class LocationService {
      * 取得位置名稱對照表
      */
     public Map<String, String> getLocationNames() {
-        return new LinkedHashMap<>(TAIWAN_LOCATIONS);
+        return new LinkedHashMap<>(LOCATION_NAMES);
     }
 
     /**
@@ -79,10 +86,13 @@ public class LocationService {
             }
         }
 
+        Map<String, String> resolvedLocationNames = new LinkedHashMap<>(getLocationNames());
+        locationCounts.keySet().forEach(code -> resolvedLocationNames.put(code, getLocationName(code)));
+
         return LocationStatisticsDTO.builder()
                 .totalCount(totalWithLocation)
                 .locationCounts(locationCounts)
-                .locationNames(getLocationNames())
+                .locationNames(resolvedLocationNames)
                 .build();
     }
 
@@ -90,14 +100,37 @@ public class LocationService {
      * 驗證位置代碼是否有效
      */
     public boolean isValidLocation(String locationCode) {
-        return locationCode == null || locationCode.isEmpty() ||
-                TAIWAN_LOCATIONS.containsKey(locationCode);
+        if (locationCode == null || locationCode.isEmpty()) {
+            return true;
+        }
+
+        if (LOCATION_NAMES.containsKey(locationCode)) {
+            return true;
+        }
+
+        return isCustomOtherLocation(locationCode);
     }
 
     /**
      * 取得位置名稱
      */
     public String getLocationName(String locationCode) {
-        return TAIWAN_LOCATIONS.getOrDefault(locationCode, "未知");
+        if (isCustomOtherLocation(locationCode)) {
+            return locationCode.substring("OTHER:".length()).trim();
+        }
+
+        return LOCATION_NAMES.getOrDefault(locationCode, "未知");
+    }
+
+    /**
+     * 判斷是否為其他自訂地區
+     */
+    private boolean isCustomOtherLocation(String locationCode) {
+        if (locationCode == null || !locationCode.startsWith("OTHER:")) {
+            return false;
+        }
+
+        String customName = locationCode.substring("OTHER:".length()).trim();
+        return !customName.isEmpty();
     }
 }

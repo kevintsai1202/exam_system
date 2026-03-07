@@ -1683,6 +1683,20 @@ curl -X POST http://localhost:8080/api/answers \
   - 第二次導頁 fallback 到 `/`
 - 此規範不新增後端 endpoint，屬前端消費既有 OAuth2 callback 的行為約束。
 
+## 11.8 學員地區選擇擴充規範（2026-03-07）
+- 本次不新增 endpoint，沿用既有：
+  - `POST /api/students/join`
+  - `GET /api/locations/statistics/{examId}`
+- `POST /api/students/join` 的 `location` 驗證規則擴充如下：
+  - 台灣地區：沿用既有地區代碼。
+  - 海外固定選項：允許 `HKG`、`MAC`、`CHN`、`SGP`、`USA`。
+  - 自訂其他地區：允許 `OTHER:{自訂文字}` 格式，且 `{自訂文字}` 不可為空。
+- 前端互動規則：
+  - 台灣地圖需限制拖曳邊界與縮放範圍，降低手機誤操作。
+  - 若選擇 `OTHER`，前端必須顯示自訂輸入框並要求必填。
+- 統計規則：
+  - `GET /api/locations/statistics/{examId}` 回傳的 `locationNames` 需能正確顯示海外固定選項與 `OTHER:{文字}` 的自訂名稱。
+
 ## 12. 主環境資料庫設定（2026-03-05）
 - 本次僅調整後端主環境資料庫連線設定，API Endpoint 與 Request/Response 格式無變更。
 - `application.yml` 主環境改為 PostgreSQL，連線資訊由環境變數提供：

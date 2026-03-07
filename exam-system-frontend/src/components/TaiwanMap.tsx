@@ -7,52 +7,61 @@ import taiwanCounties from '../assets/taiwan-counties.json';
 // System Location Codes mapped to Display Names
 export const TAIWAN_LOCATIONS: Record<string, { name: string; coordinates: [number, number] }> = {
     TPE: { name: '台北市', coordinates: [121.5654, 25.0330] },
-    TPH: { name: '新北市', coordinates: [121.4657, 25.0125] },
-    KLU: { name: '基隆市', coordinates: [121.7419, 25.1276] },
-    TYC: { name: '桃園市', coordinates: [121.3009, 24.9936] },
-    HCH: { name: '新竹縣', coordinates: [121.1611, 24.7073] },
-    HAC: { name: '新竹市', coordinates: [120.9675, 24.8138] },
-    MAL: { name: '苗栗縣', coordinates: [120.8207, 24.5650] },
+    NTP: { name: '新北市', coordinates: [121.4657, 25.0125] },
+    KEL: { name: '基隆市', coordinates: [121.7419, 25.1276] },
+    TYN: { name: '桃園市', coordinates: [121.3009, 24.9936] },
+    HSH: { name: '新竹縣', coordinates: [121.1611, 24.7073] },
+    HSC: { name: '新竹市', coordinates: [120.9675, 24.8138] },
+    MIA: { name: '苗栗縣', coordinates: [120.8207, 24.5650] },
     TXG: { name: '台中市', coordinates: [120.6736, 24.1477] },
-    CWH: { name: '彰化縣', coordinates: [120.5396, 24.0567] },
+    CHW: { name: '彰化縣', coordinates: [120.5396, 24.0567] },
     NTO: { name: '南投縣', coordinates: [120.9605, 23.9609] },
     YUN: { name: '雲林縣', coordinates: [120.5332, 23.7092] },
-    CHY: { name: '嘉義縣', coordinates: [120.5746, 23.4518] },
+    CYQ: { name: '嘉義縣', coordinates: [120.5746, 23.4518] },
     CYI: { name: '嘉義市', coordinates: [120.4491, 23.4800] },
     TNN: { name: '台南市', coordinates: [120.1973, 22.9997] },
     KHH: { name: '高雄市', coordinates: [120.3014, 22.6273] },
-    IUH: { name: '屏東縣', coordinates: [120.4856, 22.6744] },
-    ILA: { name: '宜蘭縣', coordinates: [121.7611, 24.7021] },
-    HWA: { name: '花蓮縣', coordinates: [121.6011, 23.9871] },
+    PIF: { name: '屏東縣', coordinates: [120.4856, 22.6744] },
+    YLN: { name: '宜蘭縣', coordinates: [121.7611, 24.7021] },
+    HUN: { name: '花蓮縣', coordinates: [121.6011, 23.9871] },
     TTT: { name: '台東縣', coordinates: [121.1456, 22.7583] },
-    PEH: { name: '澎湖縣', coordinates: [119.5793, 23.5711] },
-    KMN: { name: '金門縣', coordinates: [118.3201, 24.4400] },
+    PEN: { name: '澎湖縣', coordinates: [119.5793, 23.5711] },
+    KIN: { name: '金門縣', coordinates: [118.3201, 24.4400] },
     LNN: { name: '連江縣', coordinates: [119.9288, 26.1557] },
+};
+
+export const OVERSEAS_LOCATIONS: Record<string, string> = {
+    HKG: '香港',
+    MAC: '澳門',
+    CHN: '大陸',
+    SGP: '新加坡',
+    USA: '美國',
+    OTHER: '其他',
 };
 
 // Map from TopoJSON COUNTYNAME to Location Code
 const NAME_TO_CODE: Record<string, string> = {
     '臺北市': 'TPE', '台北市': 'TPE',
-    '新北市': 'TPH',
-    '基隆市': 'KLU',
-    '桃園市': 'TYC',
-    '新竹縣': 'HCH',
-    '新竹市': 'HAC',
-    '苗栗縣': 'MAL',
+    '新北市': 'NTP',
+    '基隆市': 'KEL',
+    '桃園市': 'TYN',
+    '新竹縣': 'HSH',
+    '新竹市': 'HSC',
+    '苗栗縣': 'MIA',
     '臺中市': 'TXG', '台中市': 'TXG',
-    '彰化縣': 'CWH',
+    '彰化縣': 'CHW',
     '南投縣': 'NTO',
     '雲林縣': 'YUN',
-    '嘉義縣': 'CHY',
+    '嘉義縣': 'CYQ',
     '嘉義市': 'CYI',
     '臺南市': 'TNN', '台南市': 'TNN',
     '高雄市': 'KHH',
-    '屏東縣': 'IUH',
-    '宜蘭縣': 'ILA',
-    '花蓮縣': 'HWA',
+    '屏東縣': 'PIF',
+    '宜蘭縣': 'YLN',
+    '花蓮縣': 'HUN',
     '臺東縣': 'TTT', '台東縣': 'TTT',
-    '澎湖縣': 'PEH',
-    '金門縣': 'KMN',
+    '澎湖縣': 'PEN',
+    '金門縣': 'KIN',
     '連江縣': 'LNN',
 };
 
@@ -105,7 +114,16 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
                 }}
                 style={{ width: '100%', height: '100%' }}
             >
-                <ZoomableGroup center={[120.5, 23.8]} zoom={1} maxZoom={interactive ? 4 : 1} minZoom={1}>
+                <ZoomableGroup
+                    center={[120.5, 23.8]}
+                    zoom={1}
+                    maxZoom={interactive ? 2.4 : 1}
+                    minZoom={1}
+                    translateExtent={[
+                        [80, 40],
+                        [920, 640]
+                    ]}
+                >
                     <Geographies geography={taiwanCounties}>
                         {({ geographies }) => {
                             // Sort geographies to put the selected one last (render on top)
@@ -133,7 +151,7 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
                                 const count = statistics ? (statistics[code] || 0) : 0;
 
                                 // Identify if this is an outlying island
-                                const isIsland = ['KMN', 'LNN', 'PEH'].includes(code);
+                                const isIsland = ['KIN', 'LNN', 'PEN'].includes(code);
 
                                 // Determine fill color
                                 let fillColor;
@@ -155,9 +173,9 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
 
                                     // Island specific overrides for better visibility
                                     if (isIsland && !isSelected) {
-                                        if (code === 'KMN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
+                                        if (code === 'KIN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
                                         if (code === 'LNN') fillColor = isDark ? '#b794f4' : '#9f7aea';
-                                        if (code === 'PEH') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
+                                        if (code === 'PEN') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
                                     }
 
                                     if (isDark && !isSelected && !isIsland) {

@@ -11,7 +11,7 @@ import { useStudentStore } from '../store';
 import { useAuthStore } from '../store/authStore';
 import { useMediaQuery, useResponsiveValue } from '../hooks';
 import AvatarSelector from '../components/AvatarSelector';
-import TaiwanMap, { TAIWAN_LOCATIONS } from '../components/TaiwanMap';
+import TaiwanMap, { OVERSEAS_LOCATIONS, TAIWAN_LOCATIONS } from '../components/TaiwanMap';
 
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import { useThemeStore } from '../store/themeStore';
@@ -43,6 +43,7 @@ export const StudentJoin: React.FC = () => {
   const [customOccupation, _setCustomOccupation] = useState('');
   const [avatarIcon, setAvatarIcon] = useState<AvatarIcon>('cat');
   const [selectedLocation, setSelectedLocation] = useState<string | undefined>(undefined);
+  const [customLocation, setCustomLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -244,6 +245,10 @@ export const StudentJoin: React.FC = () => {
       return '請選擇所在地區';
     }
 
+    if (selectedLocation === 'OTHER' && !customLocation.trim()) {
+      return '請輸入其他地區名稱';
+    }
+
     return null;
   };
 
@@ -288,7 +293,9 @@ export const StudentJoin: React.FC = () => {
         occupation: finalOccupation || undefined,
         surveyData: Object.keys(finalSurveyData).length > 0 ? finalSurveyData : undefined,
         avatarIcon,
-        location: selectedLocation!,
+        location: selectedLocation === 'OTHER'
+          ? `OTHER:${customLocation.trim()}`
+          : selectedLocation!,
       };
 
       // 呼叫 API
@@ -328,13 +335,21 @@ export const StudentJoin: React.FC = () => {
   useEffect(() => {
     const savedLocation = localStorage.getItem('student_location_preference');
     if (savedLocation) {
-      setSelectedLocation(savedLocation);
+      if (savedLocation.startsWith('OTHER:')) {
+        setSelectedLocation('OTHER');
+        setCustomLocation(savedLocation.substring('OTHER:'.length));
+      } else {
+        setSelectedLocation(savedLocation);
+      }
     }
   }, []);
 
   const handleLocationSelect = (code: string) => {
     setSelectedLocation(code);
-    localStorage.setItem('student_location_preference', code);
+    if (code !== 'OTHER') {
+      setCustomLocation('');
+      localStorage.setItem('student_location_preference', code);
+    }
   };
 
   // 判斷表單是否應該被禁用（測驗未開始或已結束）
@@ -720,6 +735,85 @@ export const StudentJoin: React.FC = () => {
                   selectedLocation={selectedLocation}
                   onSelect={handleLocationSelect}
                 />
+                <div
+                  style={{
+                    width: '100%',
+                    marginTop: '20px',
+                    paddingTop: '16px',
+                    borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e0e0e0'}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom: '10px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: isDark ? 'rgba(255,255,255,0.85)' : '#444',
+                    }}
+                  >
+                    海外或其他地區
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {Object.entries(OVERSEAS_LOCATIONS).map(([code, label]) => {
+                      const isSelected = selectedLocation === code;
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => handleLocationSelect(code)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '999px',
+                            border: `1px solid ${isSelected ? (isDark ? '#a5b4fc' : '#1976d2') : (isDark ? 'rgba(255,255,255,0.15)' : '#d0d7de')}`,
+                            backgroundColor: isSelected ? (isDark ? 'rgba(102,126,234,0.24)' : '#e3f2fd') : 'transparent',
+                            color: isSelected ? (isDark ? '#c7d2fe' : '#1976d2') : (isDark ? 'rgba(255,255,255,0.75)' : '#555'),
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedLocation === 'OTHER' && (
+                    <div style={{ marginTop: '12px' }}>
+                      <input
+                        type="text"
+                        value={customLocation}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          setCustomLocation(nextValue);
+                          if (nextValue.trim()) {
+                            localStorage.setItem('student_location_preference', `OTHER:${nextValue.trim()}`);
+                          }
+                        }}
+                        placeholder="請輸入您的地區，例如：加拿大、英國、馬來西亞"
+                        disabled={isSubmitting || isFormDisabled}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          fontSize: '15px',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                      />
+                    </div>
+                  )}
+                </div>
                 {selectedLocation && (
                   <div
                     style={{
@@ -737,11 +831,21 @@ export const StudentJoin: React.FC = () => {
                   >
                     <span>📍</span>
                     <span>
-                      已選擇：{TAIWAN_LOCATIONS[selectedLocation as keyof typeof TAIWAN_LOCATIONS]?.name}
+                      已選擇：{
+                        selectedLocation === 'OTHER'
+                          ? (customLocation.trim() || '其他')
+                          : TAIWAN_LOCATIONS[selectedLocation as keyof typeof TAIWAN_LOCATIONS]?.name ||
+                            OVERSEAS_LOCATIONS[selectedLocation as keyof typeof OVERSEAS_LOCATIONS] ||
+                            selectedLocation
+                      }
                     </span>
                     <button
                       type="button"
-                      onClick={() => setSelectedLocation(undefined)}
+                      onClick={() => {
+                        setSelectedLocation(undefined);
+                        setCustomLocation('');
+                        localStorage.removeItem('student_location_preference');
+                      }}
                       style={{
                         marginLeft: '8px',
                         padding: '2px 8px',
