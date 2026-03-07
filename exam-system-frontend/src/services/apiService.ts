@@ -36,6 +36,7 @@ import type {
   // 調查欄位相關型別
   SurveyField
 } from '../types';
+import type { ExamExportDTO } from '../types/exam.types';
 
 // API Base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -281,6 +282,62 @@ export const examApi = {
     const response = await apiClient.put(`/exams/${examId}/questions/${questionId}/options/reorder`, {
       ids: optionIds,
     });
+    return response.data;
+  },
+
+  /**
+   * 匯出 Markdown 檔案
+   * POST /api/exams/{examId}/export/markdown
+   */
+  exportMarkdown: async (
+    examId: number,
+    includeAnswers: boolean
+  ): Promise<{ blob: Blob; filename?: string }> => {
+    const response = await apiClient.post(
+      `/exams/${examId}/export/markdown`,
+      {
+        includeAnswers,
+        showQuestionNumbers: true,
+        showOptionLabels: true,
+        showExamInfo: true,
+      },
+      {
+        responseType: 'blob',
+      }
+    );
+
+    return {
+      blob: response.data,
+      filename: response.headers['content-disposition'],
+    };
+  },
+
+  /**
+   * 匯出 JSON 檔案
+   * GET /api/exams/{examId}/export/json
+   */
+  exportJson: async (
+    examId: number
+  ): Promise<{ data: ExamExportDTO; filename?: string }> => {
+    const response = await apiClient.get<ExamExportDTO>(`/exams/${examId}/export/json`);
+    return {
+      data: response.data,
+      filename: response.headers['content-disposition'],
+    };
+  },
+
+  /**
+   * 從 JSON 匯入測驗
+   * POST /api/exams/import
+   */
+  importExamFromJson: async (
+    data: ExamExportDTO,
+    importSurveyFields: boolean
+  ): Promise<Exam> => {
+    const response = await apiClient.post<Exam>(
+      `/exams/import?importSurveyFields=${importSurveyFields}`,
+      data
+    );
     return response.data;
   },
 };

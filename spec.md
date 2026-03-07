@@ -1,5 +1,7 @@
 # 即時互動測驗統計系統 - 系統規格文件
 
+> 文件定位：本文件已升級為 `v2.0-draft` 規劃版。現行 v1 功能仍可運作，V2 章節定義後續最小改動演進方案。
+
 ## 1. 架構與選型
 
 ### 1.1 技術棧
@@ -591,6 +593,12 @@ mvn clean package -DskipTests
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+### 7.3 講師主控台匯出/匯入授權規則（2026-03-07）
+- `InstructorDashboard` 的 Markdown 匯出、JSON 匯出、JSON 匯入皆屬講師受保護操作。
+- 前端不得直接使用未攜帶 JWT 的原生 `fetch` 呼叫上述 API，必須統一經由 `apiService` / `apiClient` 送出請求。
+- `apiClient` 需從 `auth-storage` 注入 `Authorization: Bearer <token>`，以符合後端 Spring Security 的受保護 API 驗證。
+- 若講師在上述流程遇到 `401 Unauthorized`，前端仍須遵守既有 401 導流規範，清除本地登入狀態並返回登入頁。
 
 ## 8. 序列圖
 
@@ -1565,7 +1573,268 @@ flowchart TD
     J --> K[地點統計可見]
 ```
 
+### 27. V2 規劃總覽（2026-03-07）
+- V2 目標是在**保留既有即時測驗流程**的前提下，新增「題庫 / 模板 / 測驗擁有權 / 作答歷史」能力。
+- 最小改動原則如下：
+  - 保留既有 `Exam`、`Question`、`QuestionOption`、`Student`、`Answer` 作為**單次測驗執行與結果快照**。
+  - 新增題庫與模板層，避免每次複製整份測驗才能重複開考。
+  - 以 `ownerUserId` 與 `ADMIN` bypass 實作資料存取隔離。
+  - 保留既有 WebSocket 與即時作答流程，降低前後端重寫成本。
+
+#### 27.1 架構與選型
+- `Exam` 沿用：代表一次實際開測的場次（Exam Run）。
+- `Question` / `QuestionOption` 沿用：代表開測當下複製下來的題目快照，確保歷史成績不受後續題庫修改影響。
+- 新增 `QuestionBankItem` / `QuestionBankOption`：儲存講師私有題與公開題。
+- 新增 `ExamTemplate` / `ExamTemplateQuestion`：將題庫題目組成可重複開測的模板。
+- `Student` 新增 `userId`（nullable）：保留現有 session 流程，同時支援學生查詢跨講師歷史。
+- `Exam` 新增 `ownerUserId`、`sourceTemplateId`：支援講師隔離、結果存取控制、追溯來源模板。
+
+#### 27.2 資料模型
+**沿用並擴充的實體**
+
+| 實體 | V2 角色 | 主要新增欄位 |
+|------|---------|--------------|
+| `Exam` | 單次測驗執行 / 結果容器 | `ownerUserId`, `sourceTemplateId` |
+| `Question` | 場次題目快照 | 無必改欄位，沿用既有設計 |
+| `Student` | 場次參與者 | `userId`（nullable） |
+| `Answer` | 場次作答記錄 | 無必改欄位，沿用既有設計 |
+
+**新增實體**
+
+| 實體 | 用途 | 關鍵欄位 |
+|------|------|----------|
+| `QuestionBankItem` | 講師題庫單題 | `ownerUserId`, `visibility`, `questionText`, `correctOptionOrder` |
+| `QuestionBankOption` | 題庫選項 | `questionBankItemId`, `optionOrder`, `optionText` |
+| `ExamTemplate` | 可重複開測的題組 | `ownerUserId`, `visibility`, `title`, `description`, `questionTimeLimit` |
+| `ExamTemplateQuestion` | 模板與題庫題目的關聯 | `templateId`, `questionBankItemId`, `questionOrder`, `exportable`, `singleStatChartType`, `cumulativeChartType` |
+
+#### 27.3 關鍵流程
+1. 講師建立題庫題目，預設為私有，可切換為 `PUBLIC`。
+2. 講師從自己的題庫題與可讀取的公開題建立 `ExamTemplate`。
+3. 講師從模板發起一次新的 `Exam` 場次。
+4. 系統將模板題目快照複製到既有 `Question` / `QuestionOption`，後續即時作答仍沿用既有流程。
+5. 結果查詢以 `Exam.ownerUserId` 限制講師只能看自己的資料，`ADMIN` 可看全部。
+6. 學生若已登入，加入測驗時將 `Student.userId` 寫入，供跨講師歷史查詢。
+
+#### 27.4 虛擬碼
+```java
+// 從模板建立單次測驗場次（沿用既有 Exam 作為 run）
+public ExamDTO launchExamFromTemplate(Long templateId, Long currentUserId) {
+    ExamTemplate template = templateRepository.findOwnedOrPublic(templateId, currentUserId);
+
+    Exam exam = Exam.builder()
+        .title(template.getTitle())
+        .description(template.getDescription())
+        .questionTimeLimit(template.getQuestionTimeLimit())
+        .ownerUserId(currentUserId)
+        .sourceTemplateId(template.getId())
+        .status(ExamStatus.CREATED)
+        .build();
+
+    exam = examRepository.save(exam);
+
+    for (ExamTemplateQuestion templateQuestion : template.getQuestions()) {
+        Question question = copyTemplateQuestionToExam(templateQuestion, exam);
+        exam.addQuestion(question);
+    }
+
+    return convertToDTO(examRepository.save(exam));
+}
+```
+
+#### 27.5 系統脈絡圖（V2）
+```mermaid
+flowchart LR
+    Instructor[講師] --> FE[前端講師介面]
+    Student[學生] --> SFE[前端學生介面]
+    Admin[管理員] --> AFE[前端管理介面]
+
+    FE --> API[Spring Boot API]
+    SFE --> API
+    AFE --> API
+
+    API --> QB[(Question Bank)]
+    API --> TP[(Exam Template)]
+    API --> RUN[(Exam / Student / Answer)]
+    API --> WS[WebSocket]
+```
+
+#### 27.6 容器/部署概觀（V2）
+```mermaid
+flowchart TB
+    Browser[Browser / React] --> Gateway[Nginx / Gateway]
+    Gateway --> Backend[Spring Boot Backend]
+    Backend --> Postgres[(PostgreSQL)]
+    Browser -. STOMP / SockJS .-> Backend
+
+    subgraph PostgreSQL
+        QB[(question_bank_item / option)]
+        TP[(exam_template / template_question)]
+        RUN[(exam / question / student / answer)]
+    end
+```
+
+#### 27.7 模組關係圖（V2）
+```mermaid
+flowchart LR
+    subgraph Backend
+        QBS[QuestionBankService]
+        ETS[ExamTemplateService]
+        ES[ExamService]
+        SS[StudentService]
+        AS[AnswerService]
+        STS[StatisticsService]
+    end
+
+    QBS --> ETS
+    ETS --> ES
+    ES --> STS
+    ES --> SS
+    SS --> AS
+```
+
+#### 27.8 序列圖（V2：模板開測）
+```mermaid
+sequenceDiagram
+    participant I as 講師
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as Database
+
+    I->>FE: 從模板按下「建立新場次」
+    FE->>BE: POST /api/v2/templates/{templateId}/launch
+    BE->>DB: 讀取模板與模板題目
+    BE->>DB: 建立 Exam
+    BE->>DB: 複製題目到 Question / QuestionOption
+    DB-->>BE: examId
+    BE-->>FE: 回傳新的 ExamDTO
+    FE-->>I: 導向既有 ExamMonitor
+```
+
+#### 27.9 ER 圖（V2）
+```mermaid
+erDiagram
+    USER ||--o{ QUESTION_BANK_ITEM : owns
+    USER ||--o{ EXAM_TEMPLATE : owns
+    USER ||--o{ EXAM : owns
+    USER ||--o{ STUDENT : may_bind
+
+    QUESTION_BANK_ITEM ||--o{ QUESTION_BANK_OPTION : has
+    EXAM_TEMPLATE ||--o{ EXAM_TEMPLATE_QUESTION : has
+    QUESTION_BANK_ITEM ||--o{ EXAM_TEMPLATE_QUESTION : referenced_by
+
+    EXAM ||--o{ QUESTION : snapshots
+    EXAM ||--o{ STUDENT : has
+    QUESTION ||--o{ QUESTION_OPTION : has
+    STUDENT ||--o{ ANSWER : submits
+    QUESTION ||--o{ ANSWER : receives
+```
+
+#### 27.10 類別圖（V2）
+```mermaid
+classDiagram
+    class Exam {
+        Long id
+        Long ownerUserId
+        Long sourceTemplateId
+        String title
+        ExamStatus status
+    }
+
+    class QuestionBankItem {
+        Long id
+        Long ownerUserId
+        Visibility visibility
+        String questionText
+    }
+
+    class ExamTemplate {
+        Long id
+        Long ownerUserId
+        Visibility visibility
+        String title
+    }
+
+    class Student {
+        Long id
+        Long userId
+        String sessionId
+        String name
+    }
+
+    ExamTemplate --> QuestionBankItem
+    Exam --> Student
+```
+
+#### 27.11 流程圖（V2：權限判斷）
+```mermaid
+flowchart TD
+    A[使用者請求題庫 / 模板 / 結果] --> B{角色是否 ADMIN}
+    B -->|是| C[允許查看全部]
+    B -->|否| D{資源 ownerUserId == currentUserId}
+    D -->|是| E[允許讀寫]
+    D -->|否| F{資源是否 PUBLIC 且為唯讀資源}
+    F -->|是| G[允許讀取]
+    F -->|否| H[拒絕 403]
+```
+
+#### 27.12 狀態圖（V2：題庫 / 模板 / 場次）
+```mermaid
+stateDiagram-v2
+    [*] --> QuestionPrivate
+    QuestionPrivate --> QuestionPublic : 講師公開
+    QuestionPublic --> QuestionPrivate : 講師取消公開
+
+    [*] --> TemplateDraft
+    TemplateDraft --> TemplateReady : 題目完整
+    TemplateReady --> ExamCreated : 發起新場次
+
+    ExamCreated --> ExamStarted : 啟動測驗
+    ExamStarted --> ExamEnded : 結束測驗
+```
+
+### 28. V2 對既有架構的最小改動策略（2026-03-07）
+- **保留不動**
+  - `ExamMonitor`、`StudentJoin`、`StudentExam` 主要即時流程。
+  - `Exam`、`Question`、`QuestionOption`、`Student`、`Answer` 的場次角色。
+  - `StatisticsService` 以 `examId` 為中心的聚合邏輯。
+- **必須新增**
+  - 題庫與模板資料表、Repository、Service、Controller。
+  - `Exam.ownerUserId`、`Exam.sourceTemplateId`、`Student.userId`。
+  - 題庫可見性與結果授權檢查。
+- **前端最小調整**
+  - 既有 `InstructorDashboard` 保留作為「我的測驗場次」入口。
+  - 新增「題庫管理」與「模板管理」頁，不強迫重寫既有 `ExamMonitor`。
+  - `ExamCreator` 在 V2 可逐步轉型為模板編輯頁。
+
+### 29. Google OAuth2 Callback 防重處理（2026-03-07）
+- 前端 `AuthCallback` 頁面在開發模式受 React `StrictMode` 影響，`useEffect` 可能被額外執行一次。
+- Callback 若重複處理同一個 token，可能導致：
+  - `sessionStorage.returnTo` 被第一次流程清除後，第二次流程 fallback 到 `/`
+  - 使用者感知為「首次登入需要操作兩次」
+- 規範如下：
+  - `AuthCallback` 必須對同一次 callback 僅消費 token 一次。
+  - 導頁計時器需在 effect cleanup 時清除，避免重複跳轉。
+  - 此修正不改變後端 OAuth2/JWT 合約，屬前端認證流程穩定性修正。
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant FE as AuthCallback
+    participant ST as sessionStorage
+
+    U->>FE: /auth/callback?token=JWT
+    FE->>FE: 檢查是否已處理 callback
+    alt 尚未處理
+        FE->>ST: 讀取 returnTo
+        FE->>ST: 清除 returnTo
+        FE-->>U: 導向原頁或首頁
+    else 已處理
+        FE-->>U: 忽略重複 effect
+    end
+```
+
 ---
 
-**文件版本**：v1.1
-**最後更新**：2026-03-06
+**文件版本**：v2.0-draft
+**最後更新**：2026-03-07

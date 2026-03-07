@@ -117,3 +117,36 @@ export interface QuestionsResponse {
   totalQuestions: number;   // 總題目數
   questions: Question[];    // 題目列表
 }
+
+// 匯出用選項介面
+export interface ExamExportOption {
+  optionOrder: number;      // 選項順序
+  optionText: string;       // 選項內容
+}
+
+// 匯出用題目介面
+export interface ExamExportQuestion {
+  questionOrder: number;            // 題目順序
+  questionText: string;             // 題目內容
+  correctOptionOrder: number;       // 正確答案選項順序
+  singleStatChartType: ChartType;   // 單題統計圖表類型
+  cumulativeChartType: ChartType;   // 累積統計圖表類型
+  exportable?: boolean;             // 是否匯出此題目
+  options: ExamExportOption[];      // 匯出選項列表
+}
+
+// 匯出用問卷欄位設定介面
+export interface ExamExportSurveyFieldConfig {
+  fieldKey: string;         // 調查欄位鍵值
+  isRequired: boolean;      // 是否必填
+  displayOrder: number;     // 顯示順序
+}
+
+// 測驗 JSON 匯出/匯入格式
+export interface ExamExportDTO {
+  title: string;                                        // 測驗標題
+  description?: string;                                 // 測驗描述
+  questionTimeLimit: number;                            // 每題倒數時間
+  surveyFieldConfigs?: ExamExportSurveyFieldConfig[];   // 問卷欄位設定
+  questions: ExamExportQuestion[];                      // 題目列表
+}

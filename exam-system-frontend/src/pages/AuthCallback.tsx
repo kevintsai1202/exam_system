@@ -2,7 +2,7 @@
  * OAuth2 回調頁面
  * 處理 Google 登入成功後的 Token
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { motion } from 'framer-motion';
@@ -12,15 +12,30 @@ const AuthCallback: React.FC = () => {
     const [searchParams] = useSearchParams();
     const { login } = useAuthStore();
     const [error, setError] = useState<string | null>(null);
+    const hasHandledCallbackRef = useRef(false);
 
     useEffect(() => {
+        if (hasHandledCallbackRef.current) {
+            return;
+        }
+        hasHandledCallbackRef.current = true;
+
+        let redirectTimer: number | null = null;
+
+        /**
+         * 排程返回登入頁
+         */
+        const scheduleRedirectToLogin = () => {
+            redirectTimer = window.setTimeout(() => navigate('/login'), 3000);
+        };
+
         const handleCallback = async () => {
             const token = searchParams.get('token');
             const errorParam = searchParams.get('error');
 
             if (errorParam) {
                 setError(decodeURIComponent(errorParam));
-                setTimeout(() => navigate('/login'), 3000);
+                scheduleRedirectToLogin();
                 return;
             }
 
@@ -33,15 +48,21 @@ const AuthCallback: React.FC = () => {
                     navigate(returnTo, { replace: true });
                 } catch (err) {
                     setError('登入處理失敗，請重試');
-                    setTimeout(() => navigate('/login'), 3000);
+                    scheduleRedirectToLogin();
                 }
             } else {
                 setError('未收到認證資訊');
-                setTimeout(() => navigate('/login'), 3000);
+                scheduleRedirectToLogin();
             }
         };
 
-        handleCallback();
+        void handleCallback();
+
+        return () => {
+            if (redirectTimer !== null) {
+                window.clearTimeout(redirectTimer);
+            }
+        };
     }, [searchParams, login, navigate]);
 
     return (

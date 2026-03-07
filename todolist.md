@@ -163,4 +163,34 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **測驗入口等待與地點統計修正 - 測試驗證（完成）**
   - 已執行 `npx tsc -b` 成功。
   - 已執行 `npm run build` 成功（僅 chunk size warning）。
-  - 已執行後端 `mvn -DskipTests compile` 成功。
+
+- [x] **講師匯出 / JSON 匯入匯出授權修正 - 文件更新（完成）**
+  - 更新 `spec.md`、`api.md`，補充講師主控台匯出 Markdown、匯出 JSON、匯入 JSON 必須透過帶 JWT 的 API client 呼叫。
+
+- [x] **講師匯出 / JSON 匯入匯出授權修正 - 前端實作（完成）**
+  - 將 `InstructorDashboard` 的直接 `fetch` 改為統一走 `apiService`，確保自動帶入 `Authorization: Bearer <token>`。
+
+- [x] **講師匯出 / JSON 匯入匯出授權修正 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功。
+
+- [x] **V2 文件規劃 - 需求拆解與版本定位（完成）**
+  - 已根據「題庫 / 模板 / 測驗執行 / 成績查詢」需求，整理最小改動版 V2 架構。
+  - 已於 `spec.md`、`api.md` 明確標示為 `v2.0-draft` 規劃文件。
+
+- [ ] **V2 第一階段 - 題庫與模板資料模型**
+  - 新增題庫（私有 / 公開）與模板模型，保留既有 `Exam` 作為單次測驗執行與結果容器。
+
+- [ ] **V2 第二階段 - 測驗擁有權與結果授權**
+  - `Exam` 增加講師擁有者資訊；講師僅可查看自己的測驗與結果，`ADMIN` 可查看全部。
+
+- [ ] **V2 第三階段 - 講師作答明細與學生歷史**
+  - 講師可查看單次測驗所有學生答題狀況；學生可查看自己跨講師的測驗答題紀錄。
+
+- [x] **學生首次登入需操作兩次 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充 Google OAuth2 callback 在前端需避免重複處理 token 的規範。
+
+- [x] **學生首次登入需操作兩次 - 前端修正（完成）**
+  - 已在 `AuthCallback` 加入一次性防重處理，避免 React StrictMode 導致 callback 執行兩次。
+
+- [x] **學生首次登入需操作兩次 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功。

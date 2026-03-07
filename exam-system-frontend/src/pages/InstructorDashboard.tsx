@@ -8,12 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { examApi } from '../services/apiService';
 import { useInstructorStore } from '../store';
-import type { Exam, ExamStatus } from '../types';
+import type { Exam, ExamStatus, ExamExportDTO } from '../types';
 import { useThemeStore } from '../store/themeStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD
-  ? ''  // 生產環境：相對路徑
-  : 'http://localhost:8080'); // 開發環境：完整 URL
 
 /**
  * 講師主控台頁面
@@ -33,6 +29,23 @@ export const InstructorDashboard: React.FC = () => {
   const [exportingExamId, setExportingExamId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  /**
+   * 從 Content-Disposition 解析下載檔名
+   */
+  const resolveDownloadFilename = (contentDisposition: string | undefined, fallback: string): string => {
+    if (!contentDisposition) {
+      return fallback;
+    }
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      return decodeURIComponent(utf8Match[1]);
+    }
+
+    const basicMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+    return basicMatch?.[1] || fallback;
+  };
 
   /**
    * 載入測驗列表
@@ -124,36 +137,12 @@ export const InstructorDashboard: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
 
-      // 呼叫匯出 API
-      const response = await fetch(`${API_BASE_URL}/api/exams/${examId}/export/markdown`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          includeAnswers: includeAnswers,
-          showQuestionNumbers: true,
-          showOptionLabels: true,
-          showExamInfo: true,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('匯出失敗');
-      }
-
-      // 取得 blob
-      const blob = await response.blob();
-
-      // 從 Content-Disposition 標頭取得檔名
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `exam_${examId}.md`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
+      // 呼叫匯出 API（透過 apiClient 自動帶入 JWT）
+      const { blob, filename: contentDisposition } = await examApi.exportMarkdown(examId, includeAnswers);
+      const filename = resolveDownloadFilename(
+        contentDisposition,
+        `exam_${examId}${includeAnswers ? '_teacher' : '_student'}.md`
+      );
 
       // 建立下載連結
       const url = window.URL.createObjectURL(blob);
@@ -192,30 +181,9 @@ export const InstructorDashboard: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
 
-      // 呼叫匯出 API
-      const response = await fetch(`${API_BASE_URL}/api/exams/${examId}/export/json`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('匯出 JSON 失敗');
-      }
-
-      // 取得 JSON 資料
-      const jsonData = await response.json();
-
-      // 從 Content-Disposition 標頭取得檔名
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `exam_${examId}.json`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
+      // 呼叫匯出 API（透過 apiClient 自動帶入 JWT）
+      const { data: jsonData, filename: contentDisposition } = await examApi.exportJson(examId);
+      const filename = resolveDownloadFilename(contentDisposition, `exam_${examId}.json`);
 
       // 建立 Blob 並下載
       const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
@@ -257,7 +225,7 @@ export const InstructorDashboard: React.FC = () => {
 
       // 讀取檔案內容
       const fileContent = await file.text();
-      const jsonData = JSON.parse(fileContent);
+      const jsonData = JSON.parse(fileContent) as ExamExportDTO;
 
       // 檢查是否包含問卷調查欄位配置
       let importSurveyFields = false;
@@ -272,25 +240,8 @@ export const InstructorDashboard: React.FC = () => {
         importSurveyFields = confirm(confirmMessage);
       }
 
-      // 呼叫匯入 API
-      const url = importSurveyFields
-        ? `${API_BASE_URL}/api/exams/import?importSurveyFields=true`
-        : `${API_BASE_URL}/api/exams/import?importSurveyFields=false`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '匯入 JSON 失敗');
-      }
-
-      const createdExam = await response.json();
+      // 呼叫匯入 API（透過 apiClient 自動帶入 JWT）
+      const createdExam = await examApi.importExamFromJson(jsonData, importSurveyFields);
 
       // 重新載入測驗列表
       const data = await examApi.getAllExams();

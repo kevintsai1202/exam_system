@@ -1,5 +1,7 @@
 # 即時互動測驗統計系統 - API 規格文件
 
+> 文件定位：本文件已升級為 `v2.0-draft` 規劃版。既有 v1 即時測驗 API 仍保留；以下新增 V2 資源管理與授權規劃。
+
 ## API 基本資訊
 
 - **Base URL**: `http://localhost:8080/api`
@@ -491,6 +493,8 @@
 
 **描述**: 將測驗題目匯出為 Markdown 格式檔案，支援講師版（含答案）和學員版（無答案）兩種格式
 
+**認證需求**: 需要 Bearer Token（講師或管理員）
+
 **Path Parameters**:
 - `examId` (Long): 測驗 ID
 
@@ -559,37 +563,127 @@ JVM 的全名是什麼？
 
 **錯誤回應**:
 - `404 Not Found`: 測驗不存在
+- `401 Unauthorized`: 未登入、Token 無效或過期
 
 **前端調用範例**:
 ```javascript
 // 匯出講師版（含答案）
-const response = await fetch(`/api/exams/${examId}/export/markdown`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    includeAnswers: true
-  })
+const response = await apiClient.post(`/exams/${examId}/export/markdown`, {
+  includeAnswers: true
+}, {
+  responseType: 'blob'
 });
 
-const blob = await response.blob();
-const url = window.URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = `exam_${examId}_teacher.md`;
-a.click();
+// apiClient 會自動帶入 Authorization: Bearer <token>
+const blob = response.data;
 
 // 匯出學員版（無答案）
-const response = await fetch(`/api/exams/${examId}/export/markdown`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    includeAnswers: false
-  })
+const response = await apiClient.post(`/exams/${examId}/export/markdown`, {
+  includeAnswers: false
+}, {
+  responseType: 'blob'
 });
+```
+
+---
+
+### 1.11 匯出測驗為 JSON 檔案
+
+**Endpoint**: `GET /api/exams/{examId}/export/json`
+
+**描述**: 匯出指定測驗為 JSON 檔案，供備份或後續匯入使用
+
+**認證需求**: 需要 Bearer Token（講師或管理員）
+
+**Path Parameters**:
+- `examId` (Long): 測驗 ID
+
+**Response** (200 OK):
+- **Content-Type**: `application/json`
+- **Content-Disposition**: `attachment; filename="[測驗標題].json"`
+- **Body**: `ExamExportDTO`
+
+**錯誤回應**:
+- `401 Unauthorized`: 未登入、Token 無效或過期
+- `404 Not Found`: 測驗不存在
+
+**前端調用範例**:
+```javascript
+const response = await apiClient.get(`/exams/${examId}/export/json`, {
+  responseType: 'json'
+});
+
+// apiClient 會自動帶入 Authorization: Bearer <token>
+const jsonData = response.data;
+```
+
+---
+
+### 1.12 從 JSON 匯入測驗
+
+**Endpoint**: `POST /api/exams/import?importSurveyFields=true|false`
+
+**描述**: 從 JSON 檔案匯入測驗，可選擇是否一併匯入問卷調查欄位配置
+
+**認證需求**: 需要 Bearer Token（講師或管理員）
+
+**Query Parameters**:
+- `importSurveyFields` (Boolean, 預設: `false`): 是否匯入問卷欄位配置
+
+**Request Body**:
+```json
+{
+  "title": "Java 基礎測驗",
+  "description": "測試 Java 基本知識",
+  "questionTimeLimit": 30,
+  "surveyFieldConfigs": [
+    {
+      "fieldKey": "occupation",
+      "isRequired": true,
+      "displayOrder": 1
+    }
+  ],
+  "questions": [
+    {
+      "questionOrder": 1,
+      "questionText": "Java 是哪一年發布的？",
+      "correctOptionOrder": 1,
+      "singleStatChartType": "BAR",
+      "cumulativeChartType": "BAR",
+      "exportable": true,
+      "options": [
+        {
+          "optionOrder": 1,
+          "optionText": "1995"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "id": 1,
+  "title": "Java 基礎測驗",
+  "description": "測試 Java 基本知識"
+}
+```
+
+**錯誤回應**:
+- `400 Bad Request`: JSON 結構或欄位驗證失敗
+- `401 Unauthorized`: 未登入、Token 無效或過期
+
+**前端調用範例**:
+```javascript
+const response = await apiClient.post(
+  `/exams/import?importSurveyFields=${importSurveyFields}`,
+  jsonData
+);
+
+// apiClient 會自動帶入 Authorization: Bearer <token>
+const createdExam = response.data;
 ```
 
 ---
@@ -1581,6 +1675,14 @@ curl -X POST http://localhost:8080/api/answers \
   2. 保留當前路徑於 `sessionStorage.returnTo`。
   3. 導向 `/login`，完成登入後再返回原頁。
 
+### 11.7 Google Callback 前端處理規範
+- `GET /oauth2/authorization/google` 成功回呼後，前端 `/auth/callback` 對同一個 `token` 僅可處理一次。
+- 若前端框架於開發模式啟用 `StrictMode`，callback 頁面需自行防重，避免：
+  - 重複呼叫登入流程
+  - 提前清除 `sessionStorage.returnTo`
+  - 第二次導頁 fallback 到 `/`
+- 此規範不新增後端 endpoint，屬前端消費既有 OAuth2 callback 的行為約束。
+
 ## 12. 主環境資料庫設定（2026-03-05）
 - 本次僅調整後端主環境資料庫連線設定，API Endpoint 與 Request/Response 格式無變更。
 - `application.yml` 主環境改為 PostgreSQL，連線資訊由環境變數提供：
@@ -1694,7 +1796,218 @@ curl -X POST http://localhost:8080/api/answers \
 - `GET /api/locations/statistics/{examId}` 仍使用既有合約，資料來源改為嚴格依賴已儲存的 `Student.location`。
 - 講師 `ExamMonitor` 預設頁籤行為屬前端流程調整，不影響 API 合約。
 
+## 22. V2 API 規劃（2026-03-07）
+
+### 22.1 版本策略
+- V2 新增資源採用 `/api/v2/**`。
+- 既有即時測驗執行 API（例如 `/api/exams/{examId}/start`、`/api/exams/{examId}/questions/{questionIndex}/start`）在 V2 第一階段仍保留。
+- V2 的核心策略是：
+  - 題庫 / 模板 / 結果查詢 改走 `/api/v2`
+  - 即時開測與答題流程先沿用既有 `/api/exams`、`/api/students`、`/api/answers`
+
+### 22.2 題庫 API（Question Bank）
+
+#### 22.2.1 取得我的題庫題目
+**Endpoint**: `GET /api/v2/question-bank/mine`
+
+**描述**: 取得目前登入講師建立的私有與公開題目
+
+**認證需求**: Bearer Token（`INSTRUCTOR` / `ADMIN`）
+
+#### 22.2.2 取得公開題庫題目
+**Endpoint**: `GET /api/v2/question-bank/public`
+
+**描述**: 取得可被所有講師引用的公開題目
+
+**認證需求**: Bearer Token（`INSTRUCTOR` / `ADMIN`）
+
+#### 22.2.3 建立題庫題目
+**Endpoint**: `POST /api/v2/question-bank`
+
+**描述**: 建立單一道題，預設為私有
+
+**認證需求**: Bearer Token（`INSTRUCTOR` / `ADMIN`）
+
+**Request Body**:
+```json
+{
+  "questionText": "Java 是哪一年發布的？",
+  "singleStatChartType": "BAR",
+  "cumulativeChartType": "BAR",
+  "correctOptionOrder": 1,
+  "visibility": "PRIVATE",
+  "options": [
+    { "optionOrder": 1, "optionText": "1995" },
+    { "optionOrder": 2, "optionText": "2000" }
+  ]
+}
+```
+
+#### 22.2.4 切換題庫可見性
+**Endpoint**: `PATCH /api/v2/question-bank/{itemId}/visibility`
+
+**描述**: 將題目切換為 `PRIVATE` 或 `PUBLIC`
+
+**認證需求**: Bearer Token（owner 或 `ADMIN`）
+
+### 22.3 模板 API（Exam Template）
+
+#### 22.3.1 取得我的模板
+**Endpoint**: `GET /api/v2/templates/mine`
+
+**描述**: 取得目前登入講師建立的模板
+
+#### 22.3.2 建立模板
+**Endpoint**: `POST /api/v2/templates`
+
+**描述**: 以題庫題目建立可重複使用的模板
+
+**Request Body**:
+```json
+{
+  "title": "Java 基礎題組",
+  "description": "V2 模板示例",
+  "questionTimeLimit": 30,
+  "visibility": "PRIVATE",
+  "questionItems": [
+    {
+      "questionBankItemId": 101,
+      "questionOrder": 1,
+      "exportable": true,
+      "singleStatChartType": "BAR",
+      "cumulativeChartType": "BAR"
+    }
+  ]
+}
+```
+
+#### 22.3.3 從模板建立新場次
+**Endpoint**: `POST /api/v2/templates/{templateId}/launch`
+
+**描述**: 由模板建立一筆新的 `Exam` 場次，回傳既有 `ExamDTO`
+
+**認證需求**: Bearer Token（owner、可讀取 public 模板的講師、或 `ADMIN`）
+
+**Response** (201 Created):
+```json
+{
+  "id": 88,
+  "title": "Java 基礎題組",
+  "description": "V2 模板示例",
+  "questionTimeLimit": 30,
+  "status": "CREATED",
+  "accessCode": "A1B2C3",
+  "currentQuestionIndex": 0
+}
+```
+
+### 22.4 測驗場次與結果 API（Exam Run / Result）
+
+#### 22.4.1 取得我的測驗場次
+**Endpoint**: `GET /api/v2/exams/mine`
+
+**描述**: 取得目前講師擁有的測驗場次；`ADMIN` 可另用管理端 API 查全部
+
+#### 22.4.2 取得測驗結果總覽
+**Endpoint**: `GET /api/v2/exams/{examId}/results`
+
+**描述**: 取得單次測驗的整體結果摘要（學員數、平均分、排行榜、作答完成率）
+
+**認證需求**: Bearer Token（owner 或 `ADMIN`）
+
+#### 22.4.3 取得學生作答明細
+**Endpoint**: `GET /api/v2/exams/{examId}/student-answers`
+
+**描述**: 取得該場次所有學生的逐題作答明細
+
+**認證需求**: Bearer Token（owner 或 `ADMIN`）
+
+**Response** (200 OK):
+```json
+[
+  {
+    "studentId": 501,
+    "studentName": "王小明",
+    "email": "wang@example.com",
+    "totalScore": 8,
+    "answers": [
+      {
+        "questionId": 1001,
+        "questionOrder": 1,
+        "questionText": "Java 是哪一年發布的？",
+        "selectedOptionId": 3001,
+        "selectedOptionText": "1995",
+        "correctOptionId": 3001,
+        "isCorrect": true,
+        "answeredAt": "2026-03-07T10:05:00"
+      }
+    ]
+  }
+]
+```
+
+### 22.5 管理員 API（Admin Read Scope）
+
+#### 22.5.1 取得全部題庫題目
+**Endpoint**: `GET /api/v2/admin/question-bank`
+
+**描述**: 管理員查看所有講師的題庫題目
+
+**認證需求**: Bearer Token（`ADMIN`）
+
+#### 22.5.2 取得全部測驗場次
+**Endpoint**: `GET /api/v2/admin/exams`
+
+**描述**: 管理員查看全部測驗場次與擁有者
+
+**認證需求**: Bearer Token（`ADMIN`）
+
+#### 22.5.3 取得任一測驗結果
+**Endpoint**: `GET /api/v2/admin/exams/{examId}/results`
+
+**描述**: 管理員查看任何場次的結果與作答明細
+
+**認證需求**: Bearer Token（`ADMIN`）
+
+### 22.6 學生歷史 API（Student History）
+
+#### 22.6.1 取得我的測驗歷史
+**Endpoint**: `GET /api/v2/me/exam-history`
+
+**描述**: 取得當前登入學生參與過的所有測驗場次，包含不同講師的考試
+
+**認證需求**: Bearer Token（已綁定學生身分）
+
+#### 22.6.2 取得我的單次測驗作答明細
+**Endpoint**: `GET /api/v2/me/exam-history/{examId}`
+
+**描述**: 取得目前學生在指定場次的逐題作答狀況
+
+**認證需求**: Bearer Token（該學生本人）
+
+### 22.7 V2 授權規則
+- `INSTRUCTOR`
+  - 可讀寫自己的題庫題目與模板
+  - 可讀取 `PUBLIC` 題庫題目與 `PUBLIC` 模板
+  - 只能查看自己 `ownerUserId` 的測驗結果
+- `ADMIN`
+  - 可查看所有題庫、模板、測驗結果
+  - 可管理使用者與資料審查
+- `STUDENT`
+  - 不得查看講師端結果
+  - 僅可查看自己參與過的場次歷史與個人作答明細
+
+### 22.8 V2 與既有 v1 API 的對應
+- `POST /api/v2/templates/{templateId}/launch`
+  - 產生既有 `Exam`
+  - 回傳既有 `ExamDTO`
+  - 後續仍由 `PUT /api/exams/{examId}/start` 進入即時考試流程
+- `GET /api/v2/exams/mine`
+  - 長期可取代目前無 owner 過濾的 `GET /api/exams`
+- `GET /api/v2/exams/{examId}/student-answers`
+  - 補齊目前只有聚合統計、缺乏逐人逐題明細的缺口
+
 ---
 
-**文件版本**：v1.1
-**最後更新**：2026-03-06
+**文件版本**：v2.0-draft
+**最後更新**：2026-03-07
