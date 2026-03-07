@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import { examApi } from '../services/apiService';
 import { useInstructorStore } from '../store';
 import type { Exam, ExamStatus, ExamExportDTO } from '../types';
@@ -16,6 +17,7 @@ import { useThemeStore } from '../store/themeStore';
  */
 export const InstructorDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { canManageSurveys, canManageEmails } = useAuthStore();
   const { setInstructorSessionId } = useInstructorStore();
   const { mode } = useThemeStore();
 
@@ -503,63 +505,67 @@ export const InstructorDashboard: React.FC = () => {
             📊 管理調查欄位
           </button>
 
-          <button
-            onClick={() => navigate('/surveys')}
-            style={{
-              padding: '16px 32px',
-              fontSize: '16px',
-              fontWeight: '500',
-              color: '#7c4dff',
-              backgroundColor: '#fff',
-              border: '2px solid #7c4dff',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(124, 77, 255, 0.1)',
-              transition: 'all 0.2s ease',
-              outline: 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#ede7f6';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 77, 255, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#fff';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(124, 77, 255, 0.1)';
-            }}
-          >
-            📋 問券管理
-          </button>
+          {canManageSurveys() && (
+            <button
+              onClick={() => navigate('/surveys')}
+              style={{
+                padding: '16px 32px',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#7c4dff',
+                backgroundColor: '#fff',
+                border: '2px solid #7c4dff',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(124, 77, 255, 0.1)',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ede7f6';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 77, 255, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(124, 77, 255, 0.1)';
+              }}
+            >
+              📋 問券管理
+            </button>
+          )}
 
-          <button
-            onClick={() => navigate('/emails')}
-            style={{
-              padding: '16px 32px',
-              fontSize: '16px',
-              fontWeight: '500',
-              color: '#00bcd4',
-              backgroundColor: '#fff',
-              border: '2px solid #00bcd4',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0, 188, 212, 0.1)',
-              transition: 'all 0.2s ease',
-              outline: 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e0f7fa';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#fff';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.1)';
-            }}
-          >
-            ✉️ 郵件管理
-          </button>
+          {canManageEmails() && (
+            <button
+              onClick={() => navigate('/emails')}
+              style={{
+                padding: '16px 32px',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#00bcd4',
+                backgroundColor: '#fff',
+                border: '2px solid #00bcd4',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 188, 212, 0.1)',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e0f7fa';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.1)';
+              }}
+            >
+              ✉️ 郵件管理
+            </button>
+          )}
 
           {/* 匯入測驗按鈕 */}
           <label

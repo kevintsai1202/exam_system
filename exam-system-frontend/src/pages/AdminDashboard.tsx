@@ -64,6 +64,29 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    /**
+     * 切換使用者功能權限
+     */
+    const handleToggleFeature = async (
+        userId: number,
+        featureKey: 'surveyManagementEnabled' | 'emailManagementEnabled',
+        currentValue: boolean | undefined
+    ) => {
+        try {
+            setProcessingId(userId);
+            await userApiService.updateUserFeatures(userId, {
+                [featureKey]: currentValue === false ? true : false,
+            });
+            await fetchUsers();
+        } catch (err: any) {
+            console.error('更新功能權限失敗:', err);
+            const errMsg = err?.message || err?.response?.data?.message || '未知錯誤';
+            alert(`更新功能權限失敗: ${errMsg}`);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
@@ -106,13 +129,15 @@ const AdminDashboard: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflowX: 'auto' }}
                 >
-                    <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', minWidth: '1040px', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #eee' }}>
                                 <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>ID</th>
                                 <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>Email</th>
                                 <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>名稱</th>
                                 <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>目前角色</th>
+                                <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>問券管理</th>
+                                <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>郵件管理</th>
                                 <th style={{ padding: '16px', textAlign: 'right', color: '#333', fontWeight: 600 }}>操作</th>
                             </tr>
                         </thead>
@@ -133,6 +158,28 @@ const AdminDashboard: React.FC = () => {
                                         }}>
                                             {u.role}
                                         </span>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#333', fontSize: '13px' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={u.role === 'ADMIN' ? true : u.surveyManagementEnabled !== false}
+                                                disabled={processingId === u.id || u.role === 'ADMIN'}
+                                                onChange={() => handleToggleFeature(u.id, 'surveyManagementEnabled', u.surveyManagementEnabled)}
+                                            />
+                                            {u.role === 'ADMIN' ? '永遠開啟' : (u.surveyManagementEnabled !== false ? '已開啟' : '已停用')}
+                                        </label>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#333', fontSize: '13px' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={u.role === 'ADMIN' ? true : u.emailManagementEnabled !== false}
+                                                disabled={processingId === u.id || u.role === 'ADMIN'}
+                                                onChange={() => handleToggleFeature(u.id, 'emailManagementEnabled', u.emailManagementEnabled)}
+                                            />
+                                            {u.role === 'ADMIN' ? '永遠開啟' : (u.emailManagementEnabled !== false ? '已開啟' : '已停用')}
+                                        </label>
                                     </td>
                                     <td style={{ padding: '16px', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

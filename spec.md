@@ -1909,6 +1909,58 @@ flowchart TD
     E --> F[commit / push / 發布報告]
 ```
 
+### 33. 測驗頁固定選單避讓與主題切換精簡（2026-03-07）
+- 全站左上角固定導覽列不可遮擋講師與學員測驗頁的主要內容。
+- 版面規則：
+  - 共用頁面容器需對固定導覽列預留足夠上方安全距離。
+  - 在桌機與手機下都需避免頁面標題、控制列、狀態列被左上導覽覆蓋。
+- 主題切換規則：
+  - 日夜模式切換按鈕僅保留共用 `PageLayout` 右上角的全域按鈕。
+  - `ExamMonitor`、`StudentExam` 等頁面內不得再放置第二顆主題切換按鈕。
+  - 狀態徽章、連線資訊等仍可保留在頁面內容區。
+
+```mermaid
+flowchart TD
+    A[進入任一頁面] --> B[PageLayout 渲染固定左上導覽與右上 ThemeToggle]
+    B --> C[內容區自動套用安全上邊距]
+    C --> D{頁面是否為測驗頁}
+    D -->|是| E[頁面內不再渲染額外 ThemeToggle]
+    D -->|否| F[維持既有內容]
+```
+
+### 34. 講師問券/郵件功能開關（2026-03-07）
+- `ADMIN` 可控制個別講師是否可進入：
+  - 問券管理
+  - 郵件管理
+- 最小改動策略：
+  - 沿用既有 `User`，新增兩個布林欄位：
+    - `surveyManagementEnabled`
+    - `emailManagementEnabled`
+  - 預設值為 `true`，避免影響既有講師。
+  - `ADMIN` 不受此功能旗標限制，永遠可進入。
+- 行為規則：
+  - 當講師的 `surveyManagementEnabled = false` 時：
+    - 前端隱藏問券管理入口
+    - 相關管理路由禁止進入
+    - 後端問券管理 API 拒絕操作
+  - 當講師的 `emailManagementEnabled = false` 時：
+    - 前端隱藏郵件管理入口
+    - 相關管理路由禁止進入
+    - 後端郵件管理 API 拒絕操作
+  - 公開問券填寫頁 `SurveyResponse` 不受此限制影響
+
+```mermaid
+flowchart TD
+    A[講師登入] --> B[取得 UserDTO 功能旗標]
+    B --> C{surveyManagementEnabled?}
+    C -->|是| D[顯示問券管理入口]
+    C -->|否| E[隱藏問券管理入口並封鎖管理路由]
+    B --> F{emailManagementEnabled?}
+    F -->|是| G[顯示郵件管理入口]
+    F -->|否| H[隱藏郵件管理入口並封鎖管理路由]
+    I[ADMIN 調整使用者功能開關] --> B
+```
+
 ---
 
 **文件版本**：v2.0-draft

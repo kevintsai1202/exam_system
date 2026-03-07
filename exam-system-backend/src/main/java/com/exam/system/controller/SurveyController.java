@@ -3,12 +3,15 @@ package com.exam.system.controller;
 import com.exam.system.dto.SurveyDTO;
 import com.exam.system.dto.SurveyResponseDTO;
 import com.exam.system.dto.SurveyStatisticsDTO;
+import com.exam.system.entity.User;
+import com.exam.system.service.FeaturePermissionService;
 import com.exam.system.service.SurveyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +27,16 @@ import java.util.Map;
 public class SurveyController {
 
     private final SurveyService surveyService;
+    private final FeaturePermissionService featurePermissionService;
 
     /**
      * 建立問券
      * POST /api/surveys
      */
     @PostMapping("/surveys")
-    public ResponseEntity<SurveyDTO> createSurvey(@Valid @RequestBody SurveyDTO dto) {
+    public ResponseEntity<SurveyDTO> createSurvey(@Valid @RequestBody SurveyDTO dto,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         log.info("建立問券: examId={}, title={}", dto.getExamId(), dto.getTitle());
         SurveyDTO created = surveyService.createSurvey(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -43,7 +49,9 @@ public class SurveyController {
     @PutMapping("/surveys/{id}")
     public ResponseEntity<SurveyDTO> updateSurvey(
             @PathVariable Long id,
-            @Valid @RequestBody SurveyDTO dto) {
+            @Valid @RequestBody SurveyDTO dto,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         log.info("更新問券: id={}", id);
         SurveyDTO updated = surveyService.updateSurvey(id, dto);
         return ResponseEntity.ok(updated);
@@ -64,7 +72,8 @@ public class SurveyController {
      * GET /api/surveys
      */
     @GetMapping("/surveys")
-    public ResponseEntity<List<SurveyDTO>> getAllSurveys() {
+    public ResponseEntity<List<SurveyDTO>> getAllSurveys(@AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         List<SurveyDTO> surveys = surveyService.getAllSurveys();
         return ResponseEntity.ok(surveys);
     }
@@ -74,7 +83,9 @@ public class SurveyController {
      * GET /api/exams/{examId}/surveys
      */
     @GetMapping("/exams/{examId}/surveys")
-    public ResponseEntity<List<SurveyDTO>> getSurveysByExamId(@PathVariable Long examId) {
+    public ResponseEntity<List<SurveyDTO>> getSurveysByExamId(@PathVariable Long examId,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         List<SurveyDTO> surveys = surveyService.getSurveysByExamId(examId);
         return ResponseEntity.ok(surveys);
     }
@@ -84,7 +95,9 @@ public class SurveyController {
      * PUT /api/surveys/{id}/activate
      */
     @PutMapping("/surveys/{id}/activate")
-    public ResponseEntity<SurveyDTO> activateSurvey(@PathVariable Long id) {
+    public ResponseEntity<SurveyDTO> activateSurvey(@PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         log.info("啟用問券: id={}", id);
         SurveyDTO activated = surveyService.activateSurvey(id);
         return ResponseEntity.ok(activated);
@@ -95,7 +108,9 @@ public class SurveyController {
      * PUT /api/surveys/{id}/close
      */
     @PutMapping("/surveys/{id}/close")
-    public ResponseEntity<SurveyDTO> closeSurvey(@PathVariable Long id) {
+    public ResponseEntity<SurveyDTO> closeSurvey(@PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         log.info("關閉問券: id={}", id);
         SurveyDTO closed = surveyService.closeSurvey(id);
         return ResponseEntity.ok(closed);
@@ -106,7 +121,9 @@ public class SurveyController {
      * DELETE /api/surveys/{id}
      */
     @DeleteMapping("/surveys/{id}")
-    public ResponseEntity<Map<String, String>> deleteSurvey(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> deleteSurvey(@PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         log.info("刪除問券: id={}", id);
         surveyService.deleteSurvey(id);
         return ResponseEntity.ok(Map.of("message", "問券已刪除", "id", id.toString()));
@@ -131,7 +148,9 @@ public class SurveyController {
      * GET /api/surveys/{id}/statistics
      */
     @GetMapping("/surveys/{id}/statistics")
-    public ResponseEntity<SurveyStatisticsDTO> getSurveyStatistics(@PathVariable Long id) {
+    public ResponseEntity<SurveyStatisticsDTO> getSurveyStatistics(@PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        featurePermissionService.assertCanManageSurveys(user);
         SurveyStatisticsDTO statistics = surveyService.getSurveyStatistics(id);
         return ResponseEntity.ok(statistics);
     }

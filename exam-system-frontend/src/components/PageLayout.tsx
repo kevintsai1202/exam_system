@@ -31,6 +31,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const { user, isAdmin, isInstructor, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const contentTopPadding = '96px';
 
   const handleLogout = () => {
     logout();
@@ -95,7 +96,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        style={{ maxWidth, padding }}
+        style={{ maxWidth, padding, paddingTop: `calc(${padding} + ${contentTopPadding})` }}
       >
         {children}
       </motion.div>
@@ -177,6 +178,19 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           width: 100%;
           margin: 0 auto;
           min-height: 100vh;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+          .theme-toggle-wrapper {
+            top: 16px;
+            right: 16px;
+          }
+
+          .global-nav {
+            top: 16px;
+            left: 16px;
+          }
         }
 
         /* 通用主題樣式 */

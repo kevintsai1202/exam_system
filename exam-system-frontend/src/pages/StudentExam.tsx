@@ -15,7 +15,6 @@ import OptionButton from '../components/OptionButton';
 import { Message } from '../components/Message';
 import CountdownTimer from '../components/CountdownTimer';
 import { AvatarDisplay } from '../components/AvatarSelector';
-import ThemeToggle from '../components/ThemeToggle';
 import type { WebSocketMessage, QuestionOption } from '../types';
 
 /**
@@ -587,7 +586,6 @@ export const StudentExam: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <ThemeToggle />
             <div
               style={{
                 padding: '8px 16px',

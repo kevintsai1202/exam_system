@@ -22,7 +22,6 @@ import Confetti from '../components/Confetti';
 import RippleButton from '../components/RippleButton';
 import LeaderboardDisplay from '../components/LeaderboardDisplay';
 import { Message } from '../components/Message';
-import ThemeToggle from '../components/ThemeToggle';
 import type { WebSocketMessage, SurveyFieldDistribution, LocationStatistics } from '../types';
 
 /**
@@ -780,7 +779,6 @@ export const ExamMonitor: React.FC = () => {
               <p style={{ margin: 0, fontSize: '14px', color: textSecondary }}>{currentExam.description}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ThemeToggle />
               <div style={{ padding: '8px 16px', backgroundColor: statusBadgeBackgroundColor, color: statusBadgeTextColor, borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
                 {isEnded ? '已結束' : isStarted ? '進行中' : '已建立'}
               </div>

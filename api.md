@@ -2044,6 +2044,64 @@ curl -X POST http://localhost:8080/api/answers \
   - 不變更 request / response schema
   - 不變更認證與授權規則
 
+### 22.11 測驗頁固定選單避讓與主題切換精簡（2026-03-07）
+- 本次為前端共用 layout 與頁面視覺行為調整，不新增或修改 REST API。
+- 約束如下：
+  - 固定左上導覽列不得遮擋測驗頁主要內容。
+  - 主題切換按鈕只保留右上全域入口，不在個別測驗頁重複渲染。
+  - 此調整不得改變 `ExamMonitor`、`StudentExam` 的 API 呼叫順序、WebSocket topic、或請求格式。
+
+### 22.12 講師問券/郵件功能開關（2026-03-07）
+
+#### 22.12.1 UserDTO 擴充
+- `GET /api/auth/user` 回傳的 `user` 需新增：
+```json
+{
+  "surveyManagementEnabled": true,
+  "emailManagementEnabled": true
+}
+```
+
+#### 22.12.2 Admin 更新使用者功能開關
+**Endpoint**: `PUT /api/roles/users/{userId}/features`
+
+**描述**: 管理員更新指定使用者的問券/郵件管理功能開關
+
+**認證需求**: Bearer Token（`ADMIN`）
+
+**Request Body**
+```json
+{
+  "surveyManagementEnabled": true,
+  "emailManagementEnabled": false
+}
+```
+
+**Response** (200 OK)
+```json
+{
+  "success": true,
+  "message": "使用者功能權限已更新",
+  "user": {
+    "id": 12,
+    "email": "teacher@example.com",
+    "role": "INSTRUCTOR",
+    "surveyManagementEnabled": true,
+    "emailManagementEnabled": false
+  }
+}
+```
+
+#### 22.12.3 授權規則
+- `ADMIN`
+  - 永遠可使用問券管理與郵件管理
+  - 可調整任意使用者的功能開關
+- `INSTRUCTOR`
+  - 需同時符合角色與功能旗標才可使用對應管理功能
+- `STUDENT`
+  - 不可進入問券管理與郵件管理
+- 公開問券填寫 API 不受此功能開關影響
+
 ---
 
 **文件版本**：v2.0-draft

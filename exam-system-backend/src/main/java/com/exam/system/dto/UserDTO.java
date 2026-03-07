@@ -21,4 +21,6 @@ public class UserDTO {
     private String role;
     private boolean googleLinked;
     private boolean passwordSet;
+    private boolean surveyManagementEnabled;
+    private boolean emailManagementEnabled;
 }

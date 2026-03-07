@@ -17,6 +17,8 @@ export interface User {
   role: string;
   googleLinked?: boolean;
   passwordSet?: boolean;
+  surveyManagementEnabled?: boolean;
+  emailManagementEnabled?: boolean;
 }
 
 interface AuthState {
@@ -38,6 +40,8 @@ interface AuthState {
   isInstructor: () => boolean;
   isStudent: () => boolean;
   isAdmin: () => boolean;
+  canManageSurveys: () => boolean;
+  canManageEmails: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -149,6 +153,20 @@ export const useAuthStore = create<AuthState>()(
         isAdmin: () => {
           const user = get().user;
           return user?.role === 'ADMIN';
+        },
+
+        canManageSurveys: () => {
+          const user = get().user;
+          if (!user) return false;
+          if (user.role === 'ADMIN') return true;
+          return user.role === 'INSTRUCTOR' && user.surveyManagementEnabled !== false;
+        },
+
+        canManageEmails: () => {
+          const user = get().user;
+          if (!user) return false;
+          if (user.role === 'ADMIN') return true;
+          return user.role === 'INSTRUCTOR' && user.emailManagementEnabled !== false;
         }
       }),
       {

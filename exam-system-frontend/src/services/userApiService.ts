@@ -24,5 +24,17 @@ export const userApiService = {
      */
     upgradeToAdmin: async (userId: number): Promise<void> => {
         await apiClient.post(`/roles/upgrade-admin/${userId}`);
+    },
+
+    /**
+     * 更新使用者功能權限（需 ADMIN 權限）
+     * @param userId 目標用戶 ID
+     * @param features 功能權限設定
+     */
+    updateUserFeatures: async (
+        userId: number,
+        features: { surveyManagementEnabled?: boolean; emailManagementEnabled?: boolean }
+    ): Promise<void> => {
+        await apiClient.put(`/roles/users/${userId}/features`, features);
     }
 };

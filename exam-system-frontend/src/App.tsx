@@ -649,6 +649,20 @@ const InstructorGuard: React.FC<{ component?: React.ReactNode }> = ({ component 
 };
 
 /**
+ * 功能權限護衛
+ */
+const FeatureGuard: React.FC<{ component: React.ReactNode; feature: 'survey' | 'email' }> = ({ component, feature }) => {
+  const { canManageSurveys, canManageEmails } = useAuthStore();
+  const allowed = feature === 'survey' ? canManageSurveys() : canManageEmails();
+
+  if (!allowed) {
+    return <Navigate to="/instructor" replace />;
+  }
+
+  return <>{component}</>;
+};
+
+/**
  * 主應用程式元件
  */
 const App: React.FC = () => {
@@ -701,39 +715,39 @@ const App: React.FC = () => {
         {/* 問券調查路由 - 需要登入 */}
         <Route path="/surveys" element={
           <ProtectedRoute>
-            <SurveyManager />
+            <FeatureGuard feature="survey" component={<SurveyManager />} />
           </ProtectedRoute>
         } />
         <Route path="/surveys/new" element={
           <ProtectedRoute>
-            <SurveyCreator />
+            <FeatureGuard feature="survey" component={<SurveyCreator />} />
           </ProtectedRoute>
         } />
         <Route path="/surveys/:id/edit" element={
           <ProtectedRoute>
-            <SurveyCreator />
+            <FeatureGuard feature="survey" component={<SurveyCreator />} />
           </ProtectedRoute>
         } />
         <Route path="/surveys/:id/statistics" element={
           <ProtectedRoute>
-            <SurveyStats />
+            <FeatureGuard feature="survey" component={<SurveyStats />} />
           </ProtectedRoute>
         } />
 
         {/* 郵件功能路由 - 需要登入 */}
         <Route path="/emails" element={
           <ProtectedRoute>
-            <EmailManager />
+            <FeatureGuard feature="email" component={<EmailManager />} />
           </ProtectedRoute>
         } />
         <Route path="/emails/new" element={
           <ProtectedRoute>
-            <EmailComposer />
+            <FeatureGuard feature="email" component={<EmailComposer />} />
           </ProtectedRoute>
         } />
         <Route path="/emails/:id/edit" element={
           <ProtectedRoute>
-            <EmailComposer />
+            <FeatureGuard feature="email" component={<EmailComposer />} />
           </ProtectedRoute>
         } />
 

@@ -30,12 +30,14 @@ public class RoleController {
                                         "authenticated", false));
                 }
 
-                return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(Map.of(
                                 "authenticated", true,
                                 "role", user.getRole().name(),
                                 "isInstructor",
                                 user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.ADMIN,
-                                "isAdmin", user.getRole() == UserRole.ADMIN));
+                                "isAdmin", user.getRole() == UserRole.ADMIN,
+                                "surveyManagementEnabled", user.isSurveyManagementEnabled(),
+                                "emailManagementEnabled", user.isEmailManagementEnabled()));
         }
 
         /**
@@ -112,9 +114,53 @@ public class RoleController {
                                                 "id", user.getId(),
                                                 "email", user.getEmail(),
                                                 "name", user.getName(),
-                                                "role", user.getRole().name()))
+                                                "role", user.getRole().name(),
+                                                "surveyManagementEnabled", user.isSurveyManagementEnabled(),
+                                                "emailManagementEnabled", user.isEmailManagementEnabled()))
                                 .toList();
 
                 return ResponseEntity.ok(users);
+        }
+
+        /**
+         * 更新使用者功能權限（需 ADMIN 權限）
+         */
+        @PutMapping("/users/{userId}/features")
+        public ResponseEntity<?> updateUserFeatures(
+                        @PathVariable Long userId,
+                        @RequestBody Map<String, Boolean> request,
+                        @AuthenticationPrincipal User admin) {
+                if (admin == null || admin.getRole() != UserRole.ADMIN) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "只有管理員可以調整功能權限"));
+                }
+
+                return userRepository.findById(userId)
+                                .map(user -> {
+                                        Boolean surveyManagementEnabled = request.get("surveyManagementEnabled");
+                                        Boolean emailManagementEnabled = request.get("emailManagementEnabled");
+
+                                        if (surveyManagementEnabled != null) {
+                                                user.setSurveyManagementEnabled(surveyManagementEnabled);
+                                        }
+                                        if (emailManagementEnabled != null) {
+                                                user.setEmailManagementEnabled(emailManagementEnabled);
+                                        }
+
+                                        userRepository.save(user);
+                                        return ResponseEntity.ok(Map.of(
+                                                        "success", true,
+                                                        "message", "使用者功能權限已更新",
+                                                        "user", Map.of(
+                                                                        "id", user.getId(),
+                                                                        "email", user.getEmail(),
+                                                                        "role", user.getRole().name(),
+                                                                        "surveyManagementEnabled",
+                                                                        user.isSurveyManagementEnabled(),
+                                                                        "emailManagementEnabled",
+                                                                        user.isEmailManagementEnabled())));
+                                })
+                                .orElse(ResponseEntity.notFound().build());
         }
 }
