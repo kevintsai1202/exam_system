@@ -1961,6 +1961,25 @@ flowchart TD
     I[ADMIN 調整使用者功能開關] --> B
 ```
 
+### 35. 使用者功能欄位 migration 相容性（2026-03-07）
+- 本專案目前使用 PostgreSQL + Hibernate `ddl-auto=update`。
+- 對既有資料表新增 `NOT NULL` 欄位時，若舊資料列尚無值，資料庫會拒絕 `ALTER TABLE ... ADD COLUMN ... NOT NULL`。
+- 因此對 `users` 這類既有表新增布林功能欄位時，需遵循：
+  - DDL 層提供資料庫預設值，例如 `boolean default true`
+  - 再搭配應用層預設值，確保新舊資料都能相容
+- 適用欄位：
+  - `surveyManagementEnabled`
+  - `emailManagementEnabled`
+
+```mermaid
+flowchart TD
+    A[Hibernate update users 表] --> B[新增布林欄位]
+    B --> C{欄位是否 NOT NULL 且無 DB default}
+    C -->|是| D[PostgreSQL 因舊資料 null 而拒絕 migration]
+    C -->|否| E[欄位成功建立]
+    E --> F[後端正常啟動]
+```
+
 ---
 
 **文件版本**：v2.0-draft

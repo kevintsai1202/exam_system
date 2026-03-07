@@ -71,14 +71,14 @@ public class User {
     /**
      * 是否允許進入問券管理
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private boolean surveyManagementEnabled = true;
 
     /**
      * 是否允許進入郵件管理
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private boolean emailManagementEnabled = true;
 

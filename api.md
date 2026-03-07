@@ -2102,6 +2102,14 @@ curl -X POST http://localhost:8080/api/answers \
   - 不可進入問券管理與郵件管理
 - 公開問券填寫 API 不受此功能開關影響
 
+### 22.13 使用者功能欄位 migration 相容性（2026-03-07）
+- 本次不新增 API，但補充後端資料模型相容性要求。
+- 若 `User` 新增布林功能欄位且資料庫已存在舊資料，欄位 DDL 必須帶有資料庫預設值，例如：
+  - `boolean default true`
+- 目的：
+  - 避免 PostgreSQL 在 Hibernate `ddl-auto=update` 時因 `NOT NULL` 新欄位含舊資料 null 而失敗
+  - 避免後端啟動失敗後，前端誤判為帳號密碼錯誤
+
 ---
 
 **文件版本**：v2.0-draft

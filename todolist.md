@@ -240,3 +240,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **講師問券/郵件功能開關 - 測試驗證（完成）**
   - 已執行前端 `npm run build` 成功。
   - 已使用 Java 21 執行後端 `mvn -DskipTests compile` 成功。
+
+- [x] **admin 帳密登入失敗（功能欄位 migration）- 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充既有 `users` 資料表新增布林欄位時需提供資料庫預設值，避免 PostgreSQL schema update 失敗。
+
+- [x] **admin 帳密登入失敗（功能欄位 migration）- 後端修正（完成）**
+  - 已調整 `User` 新增欄位的 DDL 定義，讓 Hibernate 對既有資料表補欄位時可安全套用預設值。
+
+- [x] **admin 帳密登入失敗（功能欄位 migration）- 測試驗證（完成）**
+  - 已使用 Java 21 執行後端 `mvn -DskipTests compile` 成功。
