@@ -33,7 +33,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const { isMobile } = useMediaQuery();
   const navigate = useNavigate();
   const location = useLocation();
-  const contentTopPadding = isMobile ? '112px' : '136px';
+  const contentTopPadding = isMobile ? '112px' : '104px';
 
   const handleLogout = () => {
     logout();
@@ -131,6 +131,8 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           border-radius: 100px;
           border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          overflow: hidden;
+          transition: padding 0.24s ease, gap 0.24s ease, box-shadow 0.24s ease;
         }
 
         .nav-btn {
@@ -146,6 +148,52 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           padding: 6px 10px;
           border-radius: 20px;
           transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .nav-text {
+          display: inline-block;
+          overflow: hidden;
+          max-width: 160px;
+          opacity: 1;
+          transition: max-width 0.24s ease, opacity 0.18s ease, margin-left 0.24s ease;
+        }
+
+        @media (min-width: 769px) {
+          .global-nav {
+            gap: 0;
+            padding: 8px 10px;
+          }
+
+          .global-nav .nav-btn {
+            gap: 0;
+            padding: 8px 10px;
+          }
+
+          .global-nav .nav-text {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+          }
+
+          .global-nav:hover,
+          .global-nav:focus-within {
+            gap: 12px;
+            padding: 8px 16px;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+          }
+
+          .global-nav:hover .nav-btn,
+          .global-nav:focus-within .nav-btn {
+            gap: 6px;
+          }
+
+          .global-nav:hover .nav-text,
+          .global-nav:focus-within .nav-text {
+            max-width: 160px;
+            opacity: 1;
+            margin-left: 2px;
+          }
         }
 
         .nav-btn:hover {
@@ -166,9 +214,6 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         }
 
         @media (max-width: 600px) {
-          .nav-text {
-             display: none;
-          }
           .global-nav {
              padding: 8px;
           }

@@ -258,3 +258,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **左上固定選單仍遮擋內容 - 測試驗證（完成）**
   - 已執行前端 `npm run build` 成功，僅保留既有 chunk size warning。
+
+- [x] **左上固定選單改為預設收合、靠近展開 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充桌機左上固定選單預設收合，hover/focus 才展開的互動規則。
+
+- [x] **左上固定選單改為預設收合、靠近展開 - 前端實作（完成）**
+  - 已調整 `PageLayout` 導覽列為桌機預設 icon-only，滑鼠靠近或 focus 才展開文字。
+
+- [x] **左上固定選單改為預設收合、靠近展開 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功，僅保留既有 chunk size warning。
