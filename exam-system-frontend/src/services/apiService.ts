@@ -256,14 +256,6 @@ export const examApi = {
   },
 
   /**
-   * 清除測驗 Session
-   * DELETE /api/exams/{examId}/session
-   */
-  clearExamSession: async (examId: number): Promise<void> => {
-    await apiClient.delete(`/exams/${examId}/session`);
-  },
-
-  /**
    * 調整題目順序
    * PUT /api/exams/{examId}/questions/reorder
    */

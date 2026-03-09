@@ -318,3 +318,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **黑夜模式台灣離島配色可視性修正 - 測試驗證（完成）**
   - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。
+
+- [x] **講師主控台移除清除 Session 按鈕 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充講師主控台不再提供手動清除 Session 入口。
+
+- [x] **講師主控台移除清除 Session 按鈕 - 前端實作（完成）**
+  - 已移除 `InstructorDashboard` 的清除 Session 按鈕與對應前端處理流程。
+
+- [x] **講師主控台移除清除 Session 按鈕 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。

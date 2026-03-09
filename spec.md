@@ -600,6 +600,13 @@ mvn clean package -DskipTests
 - `apiClient` 需從 `auth-storage` 注入 `Authorization: Bearer <token>`，以符合後端 Spring Security 的受保護 API 驗證。
 - 若講師在上述流程遇到 `401 Unauthorized`，前端仍須遵守既有 401 導流規範，清除本地登入狀態並返回登入頁。
 
+### 7.4 講師主控台移除清除 Session 入口（2026-03-09）
+- 講師主控台 `InstructorDashboard` 不再提供手動「清除 Session」按鈕。
+- 原因：目前講師操作已改以帳號註冊 / 登入為主，主控台不需要額外提供清除 session 的手動入口。
+- 最小改動策略：
+  - 僅移除前端按鈕與對應處理流程。
+  - 不影響監控頁既有的 session 恢復機制，也不強制移除後端 API。
+
 ## 8. 序列圖
 
 ### 8.1 學員加入測驗序列圖

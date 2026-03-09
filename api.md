@@ -156,6 +156,10 @@
 
 **描述**: 取得所有測驗列表（講師主控台用）
 
+**前端主控台補充規範**:
+- `InstructorDashboard` 仍可提供建立、編輯、複製、匯入、匯出等操作。
+- `InstructorDashboard` 不再提供手動「清除 Session」按鈕；此調整不影響既有 API 合約。
+
 **Response** (200 OK):
 ```json
 [
