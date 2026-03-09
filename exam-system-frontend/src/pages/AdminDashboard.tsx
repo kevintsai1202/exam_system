@@ -65,6 +65,35 @@ const AdminDashboard: React.FC = () => {
     };
 
     /**
+     * 刪除使用者
+     */
+    const handleDeleteUser = async (targetUser: User) => {
+        if (user?.id === targetUser.id) {
+            alert('不可刪除目前登入中的管理員帳號');
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `確定要刪除使用者「${targetUser.name || targetUser.email}」嗎？此操作無法復原。`
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setProcessingId(targetUser.id);
+            await userApiService.deleteUser(targetUser.id);
+            await fetchUsers();
+        } catch (err: any) {
+            console.error('刪除使用者失敗:', err);
+            const errMsg = err?.message || err?.response?.data?.message || '未知錯誤';
+            alert(`刪除使用者失敗: ${errMsg}`);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    /**
      * 切換使用者功能權限
      */
     const handleToggleFeature = async (
@@ -227,6 +256,34 @@ const AdminDashboard: React.FC = () => {
                                                     {processingId === u.id ? '處理中...' : '設為管理員'}
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => handleDeleteUser(u)}
+                                                disabled={processingId === u.id || user?.id === u.id}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    backgroundColor: processingId === u.id || user?.id === u.id ? '#bdbdbd' : '#5d4037',
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: processingId === u.id || user?.id === u.id ? 'not-allowed' : 'pointer',
+                                                    fontSize: '13px',
+                                                    fontWeight: 500,
+                                                    transition: 'background-color 0.2s',
+                                                    outline: 'none'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (processingId !== u.id && user?.id !== u.id) {
+                                                        e.currentTarget.style.backgroundColor = '#3e2723';
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (processingId !== u.id && user?.id !== u.id) {
+                                                        e.currentTarget.style.backgroundColor = '#5d4037';
+                                                    }
+                                                }}
+                                            >
+                                                {processingId === u.id ? '處理中...' : user?.id === u.id ? '不可刪除自己' : '刪除使用者'}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

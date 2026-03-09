@@ -36,5 +36,13 @@ export const userApiService = {
         features: { surveyManagementEnabled?: boolean; emailManagementEnabled?: boolean }
     ): Promise<void> => {
         await apiClient.put(`/roles/users/${userId}/features`, features);
+    },
+
+    /**
+     * 刪除指定使用者（需 ADMIN 權限）
+     * @param userId 目標用戶 ID
+     */
+    deleteUser: async (userId: number): Promise<void> => {
+        await apiClient.delete(`/roles/users/${userId}`);
     }
 };

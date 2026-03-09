@@ -287,3 +287,14 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **OAuth 首次登入註冊後直接登入 - 測試驗證（完成）**
   - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
   - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。
+
+- [x] **管理員介面增加使用者刪除功能 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充 admin 使用者管理頁可刪除帳號，且不得刪除目前登入中的管理員自己。
+
+- [x] **管理員介面增加使用者刪除功能 - 前後端實作（完成）**
+  - 後端已新增 admin 刪除使用者 API。
+  - 前端 `AdminDashboard` 已新增刪除按鈕與確認流程，刪除成功後刷新列表。
+
+- [x] **管理員介面增加使用者刪除功能 - 測試驗證（完成）**
+  - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
+  - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。

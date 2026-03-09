@@ -163,4 +163,34 @@ public class RoleController {
                                 })
                                 .orElse(ResponseEntity.notFound().build());
         }
+
+        /**
+         * 刪除使用者（需 ADMIN 權限）
+         */
+        @DeleteMapping("/users/{userId}")
+        public ResponseEntity<?> deleteUser(
+                        @PathVariable Long userId,
+                        @AuthenticationPrincipal User admin) {
+                if (admin == null || admin.getRole() != UserRole.ADMIN) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "只有管理員可以刪除使用者"));
+                }
+
+                if (admin.getId().equals(userId)) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                        "success", false,
+                                        "message", "不可刪除目前登入中的管理員帳號"));
+                }
+
+                return userRepository.findById(userId)
+                                .map(user -> {
+                                        userRepository.delete(user);
+                                        return ResponseEntity.ok(Map.of(
+                                                        "success", true,
+                                                        "message", "使用者已刪除",
+                                                        "deletedUserId", userId));
+                                })
+                                .orElse(ResponseEntity.notFound().build());
+        }
 }

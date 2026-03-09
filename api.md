@@ -2111,10 +2111,31 @@ curl -X POST http://localhost:8080/api/answers \
 }
 ```
 
-#### 22.12.3 授權規則
+#### 22.12.3 Admin 刪除使用者
+**Endpoint**: `DELETE /api/roles/users/{userId}`
+
+**描述**: 管理員刪除指定使用者帳號
+
+**認證需求**: Bearer Token（`ADMIN`）
+
+**Response** (200 OK)
+```json
+{
+  "success": true,
+  "message": "使用者已刪除",
+  "deletedUserId": 12
+}
+```
+
+**Error**
+- `403 Forbidden`: 非管理員，或嘗試刪除目前登入中的管理員自己
+- `404 Not Found`: 使用者不存在
+
+#### 22.12.4 授權規則
 - `ADMIN`
   - 永遠可使用問券管理與郵件管理
   - 可調整任意使用者的功能開關
+  - 可刪除其他使用者帳號，但不可刪除自己
 - `INSTRUCTOR`
   - 需同時符合角色與功能旗標才可使用對應管理功能
 - `STUDENT`
