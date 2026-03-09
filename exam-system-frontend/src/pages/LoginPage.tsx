@@ -2,7 +2,7 @@
  * 登入頁面
  * 提供 Email 註冊/登入與 Google OAuth2 登入
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -14,9 +14,30 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD
 
 type AuthMode = 'login' | 'register';
 
+/**
+ * 正規化登入後導向目標，避免回到登入頁造成重複登入錯覺
+ */
+const resolvePostLoginTarget = (rawTarget: string | null): string => {
+  if (!rawTarget || rawTarget === '/login') {
+    return '/';
+  }
+
+  try {
+    const parsedUrl = new URL(rawTarget, window.location.origin);
+    if (parsedUrl.origin === window.location.origin) {
+      const normalizedPath = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      return normalizedPath === '/login' ? '/' : normalizedPath;
+    }
+  } catch {
+    // 非完整 URL 時改走字串判斷
+  }
+
+  return rawTarget.startsWith('/') && rawTarget !== '/login' ? rawTarget : '/';
+};
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { login, isAuthenticated } = useAuthStore();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
@@ -30,10 +51,28 @@ const LoginPage: React.FC = () => {
    * 導向後端 Google OAuth2 授權端點
    */
   const handleGoogleLogin = () => {
-    const returnTo = sessionStorage.getItem('returnTo') || window.location.pathname;
+    const returnTo = resolvePostLoginTarget(
+      sessionStorage.getItem('returnTo') || window.location.pathname
+    );
     sessionStorage.setItem('oauthReturnTo', returnTo);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
+
+  /**
+   * 已登入時自動離開登入頁
+   */
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const returnTo = resolvePostLoginTarget(
+      sessionStorage.getItem('oauthReturnTo') || sessionStorage.getItem('returnTo')
+    );
+    sessionStorage.removeItem('oauthReturnTo');
+    sessionStorage.removeItem('returnTo');
+    navigate(returnTo, { replace: true });
+  }, [isAuthenticated, navigate]);
 
   /**
    * 取得後端錯誤訊息
@@ -76,7 +115,7 @@ const LoginPage: React.FC = () => {
       }
 
       await login(token);
-      const returnTo = sessionStorage.getItem('returnTo') || '/';
+      const returnTo = resolvePostLoginTarget(sessionStorage.getItem('returnTo'));
       sessionStorage.removeItem('returnTo');
       navigate(returnTo, { replace: true });
     } catch (err) {
@@ -122,7 +161,7 @@ const LoginPage: React.FC = () => {
       }
 
       await login(token);
-      const returnTo = sessionStorage.getItem('returnTo') || '/';
+      const returnTo = resolvePostLoginTarget(sessionStorage.getItem('returnTo'));
       sessionStorage.removeItem('returnTo');
       navigate(returnTo, { replace: true });
     } catch (err) {

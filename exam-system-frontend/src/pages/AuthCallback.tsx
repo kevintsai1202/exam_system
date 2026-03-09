@@ -33,20 +33,21 @@ const AuthCallback: React.FC = () => {
          * 將 OAuth callback 帶回的導頁目標正規化為站內路徑
          */
         const resolveReturnTarget = (rawTarget: string | null): string => {
-            if (!rawTarget) {
+            if (!rawTarget || rawTarget === '/login') {
                 return '/';
             }
 
             try {
                 const parsedUrl = new URL(rawTarget, window.location.origin);
                 if (parsedUrl.origin === window.location.origin) {
-                    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+                    const normalizedPath = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+                    return normalizedPath === '/login' ? '/' : normalizedPath;
                 }
             } catch {
                 // 非完整 URL 時改走下方字串判斷
             }
 
-            return rawTarget.startsWith('/') ? rawTarget : '/';
+            return rawTarget.startsWith('/') && rawTarget !== '/login' ? rawTarget : '/';
         };
 
         const handleCallback = async () => {

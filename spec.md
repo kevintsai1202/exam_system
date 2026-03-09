@@ -1938,6 +1938,31 @@ flowchart TD
     F -->|否| D
 ```
 
+### 29.5 登入後不可回到登入頁造成二次操作錯覺（2026-03-09）
+- Google OAuth 若從 `/login` 頁發起，登入成功後不可再把使用者導回 `/login`，否則會造成「看起來還沒登入、需要再按一次」的錯覺。
+- 導頁規則：
+  - 若 `returnTo` / `oauthReturnTo` 為空，預設導向 `/`。
+  - 若 `returnTo` / `oauthReturnTo` 指向 `/login`，也必須視為無效目標並改導向 `/`。
+  - 只有真正的原始目標頁（例如 `/student/join?...`、`/instructor`）才可作為登入成功後的返回頁。
+- `LoginPage` 行為規則：
+  - 若頁面載入時已處於 `isAuthenticated=true`，需自動離開登入頁並導向有效的 `returnTo` 或首頁。
+  - 不可讓已登入使用者持續停留在登入頁，避免誤以為登入失敗。
+
+```mermaid
+flowchart TD
+    A[使用者位於 /login] --> B[點擊 Google 登入]
+    B --> C[記錄 oauthReturnTo]
+    C --> D{目標是否為 /login 或空值?}
+    D -->|是| E[改存 /]
+    D -->|否| F[保留原目標頁]
+    E --> G[OAuth callback 成功]
+    F --> G
+    G --> H[AuthCallback 正規化返回頁]
+    H --> I{返回頁是否為 /login?}
+    I -->|是| J[導向 /]
+    I -->|否| K[導向原目標頁]
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

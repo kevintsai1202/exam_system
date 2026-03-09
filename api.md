@@ -2240,6 +2240,19 @@ curl -X POST http://localhost:8080/api/answers \
   - 繼續顯示原本的加入表單
 - 此流程以學員 `email` 欄位為主，不可只依賴 `googleEmail` 綁定欄位。
 
+### 22.19 登入成功後的前端導流規則（2026-03-09）
+- 本次不新增 REST API，但補充登入頁與 OAuth callback 的前端導流約束。
+- `LoginPage` 規則：
+  - 從 `/login` 發起 Google OAuth 時，不可把 `/login` 本身寫入 `oauthReturnTo`。
+  - 若沒有有效的 `returnTo`，預設應導向 `/`。
+  - 若使用者已經處於 `isAuthenticated=true`，登入頁需自動導向有效的 `returnTo` 或 `/`。
+- `AuthCallback` 規則：
+  - 讀取 `oauthReturnTo` / `returnTo` 後，需將 `/login` 視為無效返回頁。
+  - 若返回頁無效，需改導向 `/`。
+- 預期效果：
+  - Google 登入成功後不再停留登入頁。
+  - 使用者不會因為登入成功卻仍看見登入頁而誤以為需要再登入一次。
+
 ---
 
 **文件版本**：v2.0-draft
