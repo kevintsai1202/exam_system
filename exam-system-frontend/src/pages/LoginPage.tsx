@@ -56,7 +56,7 @@ const LoginPage: React.FC = () => {
       sessionStorage.getItem('returnTo') || window.location.pathname
     );
     storeOAuthReturnTarget(returnTo);
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+    window.location.href = `${API_BASE_URL}/api/auth/google/start?returnTo=${encodeURIComponent(returnTo)}`;
   };
 
   /**

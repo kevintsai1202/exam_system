@@ -2284,6 +2284,34 @@ curl -X POST http://localhost:8080/api/answers \
   - 手機第一次登入後，`StudentJoin` 能立即切換到已登入狀態並執行恢復檢查。
   - 不再因頁面只讀一次舊狀態而造成需要第二次登入。
 
+### 22.23 後端托管 Google OAuth 返回頁（2026-03-09）
+
+#### 22.23.1 啟動 Google OAuth 並保存返回頁
+**Endpoint**: `GET /api/auth/google/start`
+
+**描述**: 由後端接收前端提供的 `returnTo`，先以後端 cookie 保存返回頁，再重導向至 Google OAuth 授權端點。
+
+**Query Parameters**:
+- `returnTo` (String, optional): 登入成功後欲返回的前端站內路徑或完整 URL
+
+**Response**:
+- `302 Found`
+- 設定後端 cookie 保存 `returnTo`
+- 再重導向到 `/oauth2/authorization/google`
+
+#### 22.23.2 OAuth success handler 回傳規則
+- Google OAuth 成功後，backend success handler 需：
+  - 產生 JWT token
+  - 從後端 cookie 讀取先前保存的 `returnTo`
+  - 導向前端 `/auth/callback?token=...&returnTo=...`
+  - 同步清除後端保存的 `returnTo` cookie
+
+#### 22.23.3 前端 callback 規則
+- `AuthCallback` 需優先使用 querystring `returnTo`。
+- 若 querystring `returnTo` 缺失，才退回既有前端 storage fallback。
+- 預期效果：
+  - 即使手機掃碼流程跨容器，第一次登入後仍可直接回到原本測驗加入頁。
+
 ---
 
 **文件版本**：v2.0-draft

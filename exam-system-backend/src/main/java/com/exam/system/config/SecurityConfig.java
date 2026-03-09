@@ -4,6 +4,8 @@ import com.exam.system.entity.User;
 import com.exam.system.repository.UserRepository;
 import com.exam.system.service.AuthService;
 import com.exam.system.service.JwtService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +39,7 @@ import java.util.List;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+        private static final String OAUTH_RETURN_TO_COOKIE = "oauth_return_to";
 
         private final UserRepository userRepository;
         private final JwtService jwtService;
@@ -105,10 +108,14 @@ public class SecurityConfig {
 
                                                                 // 產生 JWT Token
                                                                 String token = jwtService.generateToken(user);
+                                                                String returnTo = extractOAuthReturnTarget(request);
+                                                                clearOAuthReturnTargetCookie(response);
                                                                 // 重導向至前端並帶上 token
                                                                 String redirectUrl = frontendUrl + "/auth/callback?token="
-                                                                                +
-                                                                                URLEncoder.encode(token,
+                                                                                + URLEncoder.encode(token,
+                                                                                                StandardCharsets.UTF_8)
+                                                                                + "&returnTo="
+                                                                                + URLEncoder.encode(returnTo,
                                                                                                 StandardCharsets.UTF_8);
                                                                 response.sendRedirect(redirectUrl);
                                                         } catch (Exception ex) {
@@ -167,5 +174,39 @@ public class SecurityConfig {
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", configuration);
                 return source;
+        }
+
+        /**
+         * 從後端 cookie 讀取 OAuth 返回頁
+         */
+        private String extractOAuthReturnTarget(HttpServletRequest request) {
+                if (request.getCookies() == null) {
+                        return "/";
+                }
+
+                for (Cookie cookie : request.getCookies()) {
+                        if (OAUTH_RETURN_TO_COOKIE.equals(cookie.getName())) {
+                                try {
+                                        String decoded = java.net.URLDecoder.decode(cookie.getValue(),
+                                                        StandardCharsets.UTF_8);
+                                        return decoded == null || decoded.isBlank() ? "/" : decoded;
+                                } catch (Exception ignored) {
+                                        return "/";
+                                }
+                        }
+                }
+
+                return "/";
+        }
+
+        /**
+         * 清除後端保存的 OAuth 返回頁 cookie
+         */
+        private void clearOAuthReturnTargetCookie(HttpServletResponse response) {
+                Cookie cookie = new Cookie(OAUTH_RETURN_TO_COOKIE, "");
+                cookie.setHttpOnly(true);
+                cookie.setPath("/");
+                cookie.setMaxAge(0);
+                response.addCookie(cookie);
         }
 }

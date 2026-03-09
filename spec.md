@@ -2035,6 +2035,33 @@ sequenceDiagram
     SJ->>SJ: 執行既有 session 恢復檢查
 ```
 
+### 29.9 手機掃碼 OAuth 返回頁改由後端托管（2026-03-09）
+- 當使用者是透過手機相機掃描 QR Code 再開啟瀏覽器時，OAuth 往返可能跨不同容器，前端的 `sessionStorage`、`localStorage` 與一般 cookie 都可能無法穩定承接掃碼上下文。
+- 因此返回頁策略改為：
+  - 前端發起 Google OAuth 時，不再直接打 `/oauth2/authorization/google`。
+  - 改由後端起始端點先接收 `returnTo`，以後端 domain cookie 托管。
+  - OAuth success handler 從後端 cookie 取回 `returnTo`，再明確附加到前端 `/auth/callback` querystring。
+- 目標：
+  - 手機掃碼首次登入成功後，即使跨相機、系統瀏覽器、WebView，仍可直接回到原始 `StudentJoin?code=...`。
+  - 不再需要第二次重新登入才能進入測驗。
+
+```mermaid
+sequenceDiagram
+    participant SJ as StudentJoin / LoginPage
+    participant BE as Backend OAuth Start
+    participant G as Google OAuth
+    participant SH as OAuth Success Handler
+    participant CB as AuthCallback
+
+    SJ->>BE: /api/auth/google/start?returnTo=/student/join?code=...
+    BE-->>BE: 寫入後端 cookie 保存 returnTo
+    BE->>G: redirect /oauth2/authorization/google
+    G->>SH: callback 到 backend
+    SH-->>SH: 從 cookie 讀取 returnTo
+    SH->>CB: /auth/callback?token=...&returnTo=...
+    CB->>SJ: 導回原本的 StudentJoin URL
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

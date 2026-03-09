@@ -8,12 +8,17 @@ import com.exam.system.entity.User;
 import com.exam.system.repository.UserRepository;
 import com.exam.system.service.AuthService;
 import com.exam.system.service.JwtService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -24,6 +29,7 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+    private static final String OAUTH_RETURN_TO_COOKIE = "oauth_return_to";
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -102,5 +108,23 @@ public class AuthController {
     public ResponseEntity<?> getGoogleLoginUrl() {
         return ResponseEntity.ok(Map.of(
                 "loginUrl", "/oauth2/authorization/google"));
+    }
+
+    /**
+     * 啟動 Google OAuth，並由後端保存返回頁
+     */
+    @GetMapping("/google/start")
+    public void startGoogleLogin(
+            @RequestParam(required = false) String returnTo,
+            HttpServletResponse response) throws IOException {
+        Cookie cookie = new Cookie(
+                OAUTH_RETURN_TO_COOKIE,
+                URLEncoder.encode(returnTo == null ? "/" : returnTo, StandardCharsets.UTF_8));
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 10);
+        response.addCookie(cookie);
+        response.sendRedirect("/oauth2/authorization/google");
     }
 }

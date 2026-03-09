@@ -381,3 +381,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **手機首次登入仍需兩次 - 測試驗證**
   - 執行前端建置，確認 `StudentJoin` 狀態同步修正未破壞既有掃碼與加入流程。
+
+- [x] **手機掃碼 OAuth 後端托管返回頁 - 文件更新**
+  - 更新 `spec.md`、`api.md`，改由後端以 cookie 托管 OAuth 返回頁，不再依賴前端儲存跨容器傳遞。
+
+- [x] **手機掃碼 OAuth 後端托管返回頁 - 前後端實作**
+  - 新增後端 Google OAuth 起始端點與 callback returnTo 回傳，前端改用後端端點發起登入並優先讀取 callback querystring 的 returnTo。
+
+- [x] **手機掃碼 OAuth 後端托管返回頁 - 測試驗證**
+  - 執行後端編譯與前端建置，確認後端托管返回頁未破壞既有登入流程。

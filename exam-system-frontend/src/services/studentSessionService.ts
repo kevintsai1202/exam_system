@@ -126,7 +126,7 @@ export async function bindGmailToStudent(
 export function initiateGoogleLogin(returnUrl?: string): void {
     const nextReturnUrl = returnUrl || window.location.href;
     storeOAuthReturnTarget(nextReturnUrl);
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+    window.location.href = `${API_BASE_URL}/api/auth/google/start?returnTo=${encodeURIComponent(nextReturnUrl)}`;
 }
 
 /**
