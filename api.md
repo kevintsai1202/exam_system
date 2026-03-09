@@ -1683,7 +1683,26 @@ curl -X POST http://localhost:8080/api/answers \
   - 第二次導頁 fallback 到 `/`
 - 此規範不新增後端 endpoint，屬前端消費既有 OAuth2 callback 的行為約束。
 
-## 11.8 學員地區選擇擴充規範（2026-03-07）
+### 11.8 Google OAuth 首次建帳直接登入規範（2026-03-09）
+- 本次不新增 endpoint，沿用：
+  - `GET /oauth2/authorization/google`
+  - 前端 `/auth/callback`
+- 成功回呼要求：
+  - 後端若收到 OAuth 發起時的 `state`，必須在 redirect 到前端 callback 時一併帶回。
+  - 前端 callback 在收到 `token` 後，必須立即建立前端登入態，不可要求使用者再次點擊登入。
+- 前端 callback redirect URL 格式：
+```text
+/auth/callback?token={jwt}&state={urlEncodedOriginalLocation}
+```
+- 前端導頁優先序：
+  1. querystring `state`
+  2. `sessionStorage.returnTo`
+  3. `/`
+- 適用情境：
+  - 從登入頁發起 Google OAuth：登入後返回原始受保護頁或首頁
+  - 從學員加入頁發起 Google OAuth：首次建帳後直接返回加入頁，延續加入測驗流程
+
+## 11.9 學員地區選擇擴充規範（2026-03-07）
 - 本次不新增 endpoint，沿用既有：
   - `POST /api/students/join`
   - `GET /api/locations/statistics/{examId}`

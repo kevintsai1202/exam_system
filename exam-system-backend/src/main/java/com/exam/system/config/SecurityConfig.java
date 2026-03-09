@@ -105,12 +105,18 @@ public class SecurityConfig {
 
                                                                 // 產生 JWT Token
                                                                 String token = jwtService.generateToken(user);
+                                                                String state = request.getParameter("state");
 
                                                                 // 重導向至前端並帶上 token
                                                                 String redirectUrl = frontendUrl + "/auth/callback?token="
                                                                                 +
                                                                                 URLEncoder.encode(token,
                                                                                                 StandardCharsets.UTF_8);
+                                                                if (org.springframework.util.StringUtils.hasText(state)) {
+                                                                        redirectUrl += "&state=" + URLEncoder.encode(
+                                                                                        state,
+                                                                                        StandardCharsets.UTF_8);
+                                                                }
                                                                 response.sendRedirect(redirectUrl);
                                                         } catch (Exception ex) {
                                                                 String redirectUrl = frontendUrl + "/login?error="

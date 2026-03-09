@@ -1834,6 +1834,33 @@ sequenceDiagram
     end
 ```
 
+### 29.1 Google OAuth 首次建帳後需直接登入並返回原頁（2026-03-09）
+- 學員端與登入頁皆可透過 `GET /oauth2/authorization/google` 發起 Google OAuth2。
+- 若為首次使用 Google 登入，後端在建立新 `User` 後，必須於同一次 OAuth callback 直接簽發 JWT，前端不得要求使用者再次點擊登入。
+- 為避免首次建帳後跳回首頁而中斷原流程，OAuth 發起端若帶有 `state`（例如學員加入頁的原始 URL），後端成功回呼後需將該 `state` 一併帶到前端 `/auth/callback`。
+- 前端 `AuthCallback` 導頁優先序：
+  1. callback querystring 的 `state`
+  2. `sessionStorage.returnTo`
+  3. `/`
+- 目標：
+  - 第一次 Google 登入建立帳號後立即成為已登入狀態。
+  - 若從 `StudentJoin` 發起 OAuth，登入完成後直接回到原本的加入頁，沿用已取得的登入資訊繼續加入流程。
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant SJ as StudentJoin / LoginPage
+    participant BE as Backend OAuth2
+    participant CB as AuthCallback
+
+    U->>SJ: 點擊 Google 登入
+    SJ->>BE: /oauth2/authorization/google?state=原頁URL
+    BE-->>BE: 首次登入則建立 User
+    BE-->>CB: /auth/callback?token=JWT&state=原頁URL
+    CB-->>CB: 寫入前端登入態
+    CB-->>SJ: 導回 state 指向頁面
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

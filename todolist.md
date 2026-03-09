@@ -276,3 +276,14 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **手機固定選單預設收合 - 測試驗證（完成）**
   - 已執行前端 `npm run build` 成功，僅保留既有 chunk size warning。
+
+- [x] **OAuth 首次登入註冊後直接登入 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充 Google OAuth 首次建帳後需保留原始 `state/returnTo` 並直接完成前端登入態。
+
+- [x] **OAuth 首次登入註冊後直接登入 - 前後端修正（完成）**
+  - 後端 OAuth success handler 回傳 token 時同步帶回 `state`。
+  - 前端 `AuthCallback` 以 `state` 或 `sessionStorage.returnTo` 還原原頁，避免首次建帳後仍需再次點擊登入。
+
+- [x] **OAuth 首次登入註冊後直接登入 - 測試驗證（完成）**
+  - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
+  - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。

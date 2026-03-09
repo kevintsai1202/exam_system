@@ -29,9 +29,30 @@ const AuthCallback: React.FC = () => {
             redirectTimer = window.setTimeout(() => navigate('/login'), 3000);
         };
 
+        /**
+         * 將 OAuth callback 帶回的導頁目標正規化為站內路徑
+         */
+        const resolveReturnTarget = (rawTarget: string | null): string => {
+            if (!rawTarget) {
+                return '/';
+            }
+
+            try {
+                const parsedUrl = new URL(rawTarget, window.location.origin);
+                if (parsedUrl.origin === window.location.origin) {
+                    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+                }
+            } catch {
+                // 非完整 URL 時改走下方字串判斷
+            }
+
+            return rawTarget.startsWith('/') ? rawTarget : '/';
+        };
+
         const handleCallback = async () => {
             const token = searchParams.get('token');
             const errorParam = searchParams.get('error');
+            const stateParam = searchParams.get('state');
 
             if (errorParam) {
                 setError(decodeURIComponent(errorParam));
@@ -42,8 +63,10 @@ const AuthCallback: React.FC = () => {
             if (token) {
                 try {
                     await login(token);
-                    // 登入成功，導向首頁或原本要去的頁面
-                    const returnTo = sessionStorage.getItem('returnTo') || '/';
+                    // 登入成功後優先返回 OAuth 發起頁，其次才使用受保護路由暫存目標
+                    const returnTo = resolveReturnTarget(
+                        stateParam || sessionStorage.getItem('returnTo')
+                    );
                     sessionStorage.removeItem('returnTo');
                     navigate(returnTo, { replace: true });
                 } catch (err) {
