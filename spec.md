@@ -1883,6 +1883,36 @@ flowchart TD
     C --> D[StudentExam 讀取 path examId 與 querystring sessionId]
 ```
 
+### 29.3 測驗 WebSocket 訂閱穩定性（2026-03-09）
+- 講師監控頁與學員答題頁的測驗主題訂閱，必須等到底層 STOMP 連線真正進入 ready 狀態後才可執行。
+- 不可在僅有「外層狀態顯示 CONNECTED」但 STOMP `connected=false` 的過渡時刻強制呼叫 `subscribe`，否則會造成：
+  - 講師端未收到學員加入事件，名單不即時更新。
+  - 學員重進測驗時出現「訂閱失敗 / There is no underlying STOMP connection」。
+- 連線規則：
+  - 前端需保留欲訂閱的測驗主題與 callback registry。
+  - 若底層 STOMP 尚未 ready，主題先進入待訂閱佇列，待 ready 後再一次補訂閱。
+  - 若發生斷線重連，既有測驗主題（如 `status`、`students`、`question`、`statistics/cumulative`、`leaderboard`、`timer`）需自動恢復訂閱。
+- 目標：
+  - 學員加入後，講師監控頁的學員清單與統計立即更新。
+  - 學員 F5 或重進答題頁後，不因 STOMP 尚未 ready 而出現訂閱錯誤。
+
+```mermaid
+sequenceDiagram
+    participant Page as ExamMonitor / StudentExam
+    participant WS as websocketService
+    participant STOMP as STOMP Client
+
+    Page->>WS: 註冊欲訂閱 topic + callback
+    alt STOMP 尚未 ready
+        WS-->>WS: 放入待訂閱佇列
+        STOMP-->>WS: onConnect / reconnect success
+        WS->>STOMP: 逐一補訂閱所有待訂閱主題
+    else STOMP 已 ready
+        WS->>STOMP: 立即訂閱
+    end
+    STOMP-->>Page: 推送 students / status / question 等事件
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

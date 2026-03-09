@@ -105,6 +105,8 @@ export enum ConnectionStatus {
 class WebSocketService {
   private client: Client | null = null;
   private subscriptions: Map<string, StompSubscription> = new Map();
+  private subscriptionCallbacks: Map<string, SubscriptionCallback> = new Map();
+  private pendingSubscriptions: Set<string> = new Set();
   private connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -145,6 +147,7 @@ class WebSocketService {
 
           this.reconnectAttempts = 0;
           this.updateStatus(ConnectionStatus.CONNECTED);
+          this.restoreSubscriptions();
 
           // 如果是重新連線，觸發重連成功回調
           if (isReconnect) {
@@ -185,6 +188,8 @@ class WebSocketService {
    * 斷線處理
    */
   private handleDisconnect(): void {
+    // 底層連線已失效，既有 STOMP subscription 物件不可再使用
+    this.subscriptions.clear();
     this.updateStatus(ConnectionStatus.DISCONNECTED);
 
     // 嘗試重新連線
@@ -275,46 +280,41 @@ class WebSocketService {
     console.log(`[WebSocket] 嘗試訂閱主題: ${topic}`);
     console.log(`[WebSocket] Client 狀態: connected=${this.client?.connected}, client存在=${!!this.client}, connectionStatus=${this.connectionStatus}`);
 
-    // 檢查連線狀態
-    if (!this.client || this.connectionStatus !== ConnectionStatus.CONNECTED) {
-      const error = new Error(`WebSocket 未連線，無法訂閱（狀態：${this.connectionStatus}）`);
-      console.error('[WebSocket] 訂閱失敗:', error);
-      throw error;
-    }
-
     // 檢查是否已訂閱
     if (this.subscriptions.has(topic)) {
+      this.subscriptionCallbacks.set(topic, callback);
       console.warn(`[WebSocket] 主題 ${topic} 已訂閱`);
       return topic;
     }
 
-    // 等待 client.connected 變為 true（最多等待 100ms）
-    // 因為 STOMP client 內部的 connected 屬性可能在 onConnect callback 之後才被設定
-    const maxWaitTime = 100;
-    const checkInterval = 10;
-    let waitedTime = 0;
+    this.subscriptionCallbacks.set(topic, callback);
 
-    const waitForConnection = (): void => {
-      if (this.client!.connected) {
-        console.log('[WebSocket] Client 已完全連線，開始訂閱');
-        this.performSubscribe(topic, callback);
-      } else if (waitedTime < maxWaitTime) {
-        waitedTime += checkInterval;
-        setTimeout(() => waitForConnection(), checkInterval);
-      } else {
-        console.warn('[WebSocket] 等待連線超時，嘗試強制訂閱');
-        this.performSubscribe(topic, callback);
-      }
-    };
+    if (!this.isClientReady()) {
+      console.warn(`[WebSocket] STOMP 尚未 ready，先暫存待訂閱主題: ${topic}`);
+      this.pendingSubscriptions.add(topic);
+      return topic;
+    }
 
-    waitForConnection();
+    this.performSubscribe(topic);
     return topic;
   }
 
   /**
    * 執行實際的訂閱操作
    */
-  private performSubscribe(topic: string, callback: SubscriptionCallback): void {
+  private performSubscribe(topic: string): void {
+    const callback = this.subscriptionCallbacks.get(topic);
+    if (!callback) {
+      console.warn(`[WebSocket] 缺少 callback，略過訂閱: ${topic}`);
+      return;
+    }
+
+    if (!this.isClientReady()) {
+      console.warn(`[WebSocket] STOMP 尚未 ready，延後訂閱: ${topic}`);
+      this.pendingSubscriptions.add(topic);
+      return;
+    }
+
     try {
       // 建立訂閱
       const subscription = this.client!.subscribe(topic, (message: IMessage) => {
@@ -328,11 +328,41 @@ class WebSocketService {
       });
 
       this.subscriptions.set(topic, subscription);
+      this.pendingSubscriptions.delete(topic);
       console.log(`[WebSocket] 訂閱成功: ${topic}`);
     } catch (error) {
+      this.pendingSubscriptions.add(topic);
       console.error(`[WebSocket] 訂閱主題失敗 [${topic}]:`, error);
       throw error;
     }
+  }
+
+  /**
+   * 檢查底層 STOMP client 是否已可安全訂閱
+   */
+  private isClientReady(): boolean {
+    return !!this.client && this.client.connected;
+  }
+
+  /**
+   * 恢復所有已註冊但尚未建立的訂閱
+   */
+  private restoreSubscriptions(): void {
+    const topicsToRestore = new Set<string>([
+      ...this.subscriptionCallbacks.keys(),
+      ...this.pendingSubscriptions.values(),
+    ]);
+
+    if (topicsToRestore.size === 0) {
+      return;
+    }
+
+    console.log('[WebSocket] 準備恢復訂閱，topics:', Array.from(topicsToRestore));
+    topicsToRestore.forEach((topic) => {
+      if (!this.subscriptions.has(topic)) {
+        this.performSubscribe(topic);
+      }
+    });
   }
 
   /**
@@ -345,6 +375,9 @@ class WebSocketService {
       this.subscriptions.delete(topic);
       console.log(`[WebSocket] 取消訂閱: ${topic}`);
     }
+
+    this.pendingSubscriptions.delete(topic);
+    this.subscriptionCallbacks.delete(topic);
   }
 
   /**
@@ -356,6 +389,8 @@ class WebSocketService {
       console.log(`[WebSocket] 取消訂閱: ${topic}`);
     });
     this.subscriptions.clear();
+    this.pendingSubscriptions.clear();
+    this.subscriptionCallbacks.clear();
   }
 
   /**

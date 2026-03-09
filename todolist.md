@@ -327,3 +327,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **講師主控台移除清除 Session 按鈕 - 測試驗證（完成）**
   - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。
+
+- [x] **學員加入即時更新與重進訂閱失敗修正 - 文件更新**
+  - 更新 `spec.md`、`api.md`，補充 WebSocket 訂閱只能在底層 STOMP ready 後執行，且斷線重連後需恢復測驗主題訂閱。
+
+- [x] **學員加入即時更新與重進訂閱失敗修正 - 前端實作**
+  - 修正 `websocketService` 的訂閱時機與重連補訂閱流程，避免講師端學生加入未即時更新，並避免重進測驗出現訂閱失敗。
+
+- [x] **學員加入即時更新與重進訂閱失敗修正 - 測試驗證**
+  - 執行前端建置驗證 WebSocket 修正未破壞既有流程。

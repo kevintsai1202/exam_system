@@ -2186,6 +2186,23 @@ curl -X POST http://localhost:8080/api/answers \
   - 手機版需以點擊展開完整選單，不可依賴 hover。
   - 此調整不得改變任何既有路由與導頁邏輯。
 
+### 22.17 測驗 WebSocket 訂閱穩定性（2026-03-09）
+- 本次不新增 REST API，但補充既有 WebSocket consumer 的前端實作約束。
+- 既有主題不變：
+  - `/topic/exam/{examId}/status`
+  - `/topic/exam/{examId}/students`
+  - `/topic/exam/{examId}/question`
+  - `/topic/exam/{examId}/statistics/cumulative`
+  - `/topic/exam/{examId}/leaderboard`
+  - `/topic/exam/{examId}/timer`
+- 前端訂閱規則：
+  - 僅當底層 STOMP client 已真正 ready 時才可呼叫實際 `subscribe`。
+  - 若 UI 已進入訂閱流程但 STOMP 尚未 ready，主題需先保存在待訂閱佇列。
+  - 當 `onConnect` 或重連成功事件發生時，需自動恢復所有已註冊主題的訂閱。
+- 預期效果：
+  - 講師頁可持續收到學員加入事件，學員列表與統計即時更新。
+  - 學員重進測驗時，不應再出現「There is no underlying STOMP connection」的訂閱錯誤。
+
 ---
 
 **文件版本**：v2.0-draft
