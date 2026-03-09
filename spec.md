@@ -1963,6 +1963,31 @@ flowchart TD
     I -->|否| K[導向原目標頁]
 ```
 
+### 29.6 手機掃碼 OAuth 返回頁持久化備援（2026-03-09）
+- 行動裝置透過 QR Code 進入 `StudentJoin` 後再跳轉 Google OAuth，部分瀏覽器或 App 內 WebView 可能在授權往返後丟失 `sessionStorage`。
+- 因此 OAuth 返回頁保存規則需補強：
+  - 發起 OAuth 前，返回頁需同時保存到 `sessionStorage` 與 `localStorage`。
+  - OAuth callback 成功後，需優先讀取共用 helper 還原返回頁，並在使用後清除兩處暫存。
+- 目標：
+  - 手機掃碼第一次登入成功後，直接回到原本的 `StudentJoin?code=...`。
+  - 回到 `StudentJoin` 後立刻銜接既有 session 恢復流程，不需要第二次再按登入。
+
+```mermaid
+sequenceDiagram
+    participant M as 手機瀏覽器
+    participant SJ as StudentJoin
+    participant LS as sessionStorage/localStorage
+    participant O as Google OAuth
+    participant CB as AuthCallback
+
+    M->>SJ: 掃描 QR Code 進入
+    SJ->>LS: 同步保存 oauthReturnTo 到 sessionStorage + localStorage
+    SJ->>O: 跳轉 Google 登入
+    O->>CB: 返回 /auth/callback?token=...
+    CB->>LS: 讀取 oauthReturnTo（含 localStorage 備援）
+    CB->>SJ: 導回原本 StudentJoin URL
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

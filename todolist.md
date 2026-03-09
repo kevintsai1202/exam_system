@@ -354,3 +354,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **登入仍需兩次操作 - 測試驗證**
   - 執行前端建置，確認登入導向修正未破壞既有 Email / Google 流程。
+
+- [x] **手機掃碼 OAuth 首次登入無法直接進入 - 文件更新**
+  - 更新 `spec.md`、`api.md`，補充行動裝置 OAuth 返回頁需具備 `localStorage` 備援，不可只依賴 `sessionStorage`。
+
+- [x] **手機掃碼 OAuth 首次登入無法直接進入 - 前端修正**
+  - 統一 OAuth 返回頁暫存邏輯，加入 `localStorage` 備援，確保手機掃碼第一次登入後能回到原始測驗加入頁。
+
+- [x] **手機掃碼 OAuth 首次登入無法直接進入 - 測試驗證**
+  - 執行前端建置，確認 OAuth 返回頁備援修正未破壞既有桌機與登入流程。

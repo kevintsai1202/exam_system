@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { clearOAuthReturnTarget, getOAuthReturnTarget, storeOAuthReturnTarget } from '../services/studentSessionService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD
   ? ''  // 生產環境：相對路徑
@@ -54,7 +55,7 @@ const LoginPage: React.FC = () => {
     const returnTo = resolvePostLoginTarget(
       sessionStorage.getItem('returnTo') || window.location.pathname
     );
-    sessionStorage.setItem('oauthReturnTo', returnTo);
+    storeOAuthReturnTarget(returnTo);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 
@@ -67,9 +68,9 @@ const LoginPage: React.FC = () => {
     }
 
     const returnTo = resolvePostLoginTarget(
-      sessionStorage.getItem('oauthReturnTo') || sessionStorage.getItem('returnTo')
+      getOAuthReturnTarget() || sessionStorage.getItem('returnTo')
     );
-    sessionStorage.removeItem('oauthReturnTo');
+    clearOAuthReturnTarget();
     sessionStorage.removeItem('returnTo');
     navigate(returnTo, { replace: true });
   }, [isAuthenticated, navigate]);

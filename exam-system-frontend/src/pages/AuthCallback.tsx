@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { motion } from 'framer-motion';
+import { clearOAuthReturnTarget, getOAuthReturnTarget } from '../services/studentSessionService';
 
 const AuthCallback: React.FC = () => {
     const navigate = useNavigate();
@@ -65,9 +66,9 @@ const AuthCallback: React.FC = () => {
                     await login(token);
                     // 登入成功後優先返回 OAuth 發起頁，其次才使用受保護路由暫存目標
                     const returnTo = resolveReturnTarget(
-                        sessionStorage.getItem('oauthReturnTo') || sessionStorage.getItem('returnTo')
+                        getOAuthReturnTarget() || sessionStorage.getItem('returnTo')
                     );
-                    sessionStorage.removeItem('oauthReturnTo');
+                    clearOAuthReturnTarget();
                     sessionStorage.removeItem('returnTo');
                     navigate(returnTo, { replace: true });
                 } catch (err) {

@@ -6,6 +6,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD
     ? ''  // 生產環境：相對路徑
     : 'http://localhost:8080'); // 開發環境：完整 URL
+const OAUTH_RETURN_TO_KEY = 'oauthReturnTo';
 
 export interface StudentSessionInfo {
     id: number;
@@ -123,8 +124,33 @@ export async function bindGmailToStudent(
  */
 export function initiateGoogleLogin(returnUrl?: string): void {
     const nextReturnUrl = returnUrl || window.location.href;
-    sessionStorage.setItem('oauthReturnTo', nextReturnUrl);
+    storeOAuthReturnTarget(nextReturnUrl);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+}
+
+/**
+ * 保存 OAuth 返回頁
+ * 同時寫入 sessionStorage 與 localStorage，避免行動裝置跳轉後遺失 sessionStorage
+ */
+export function storeOAuthReturnTarget(returnUrl: string): void {
+    sessionStorage.setItem(OAUTH_RETURN_TO_KEY, returnUrl);
+    localStorage.setItem(OAUTH_RETURN_TO_KEY, returnUrl);
+}
+
+/**
+ * 取得 OAuth 返回頁
+ * 優先讀取 sessionStorage，若不存在則回退至 localStorage
+ */
+export function getOAuthReturnTarget(): string | null {
+    return sessionStorage.getItem(OAUTH_RETURN_TO_KEY) || localStorage.getItem(OAUTH_RETURN_TO_KEY);
+}
+
+/**
+ * 清除 OAuth 返回頁暫存
+ */
+export function clearOAuthReturnTarget(): void {
+    sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
+    localStorage.removeItem(OAUTH_RETURN_TO_KEY);
 }
 
 /**

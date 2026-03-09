@@ -2253,6 +2253,16 @@ curl -X POST http://localhost:8080/api/answers \
   - Google 登入成功後不再停留登入頁。
   - 使用者不會因為登入成功卻仍看見登入頁而誤以為需要再登入一次。
 
+### 22.20 手機掃碼 OAuth 返回頁備援（2026-03-09）
+- 本次不新增 REST API，但補充行動裝置 OAuth 返回頁保存策略。
+- 前端規則：
+  - 發起 Google OAuth 前，`oauthReturnTo` 需同時寫入 `sessionStorage` 與 `localStorage`。
+  - `AuthCallback` 讀取返回頁時，需支援從 `localStorage` 備援讀取。
+  - 成功導頁或失敗收斂後，需清除 `sessionStorage` 與 `localStorage` 中的 OAuth 返回頁暫存。
+- 預期效果：
+  - 手機掃描 QR Code 進入 `StudentJoin` 後，第一次 Google 登入成功即可回到原本測驗加入頁。
+  - 不再因行動裝置丟失 `sessionStorage` 而需要第二次登入。
+
 ---
 
 **文件版本**：v2.0-draft
