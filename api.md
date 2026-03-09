@@ -2263,6 +2263,15 @@ curl -X POST http://localhost:8080/api/answers \
   - 手機掃描 QR Code 進入 `StudentJoin` 後，第一次 Google 登入成功即可回到原本測驗加入頁。
   - 不再因行動裝置丟失 `sessionStorage` 而需要第二次登入。
 
+### 22.21 手機掃碼 OAuth 的 cookie 備援（2026-03-09）
+- 本次不新增 REST API，但補充更高韌性的前端返回頁保存策略。
+- 前端規則：
+  - `oauthReturnTo` 除了 `sessionStorage`、`localStorage` 外，還需同步保存至 cookie。
+  - callback 還原返回頁時需支援 cookie fallback。
+  - 導頁完成後需同時清除三處暫存，避免殘留舊返回頁影響下一次登入。
+- 預期效果：
+  - 行動裝置若在掃碼流程中切換 App 內 WebView、系統瀏覽器或不同容器，第一次登入後仍可回到原始加入頁。
+
 ---
 
 **文件版本**：v2.0-draft

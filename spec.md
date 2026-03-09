@@ -1988,6 +1988,30 @@ sequenceDiagram
     CB->>SJ: 導回原本 StudentJoin URL
 ```
 
+### 29.7 手機掃碼跨 WebView / 瀏覽器的 OAuth 返回頁備援（2026-03-09）
+- 若行動裝置掃碼後，Google OAuth 在不同 WebView 或系統瀏覽器之間切換，`sessionStorage` 與 `localStorage` 仍可能同時失效。
+- 因此 OAuth 返回頁需再增加 cookie 層級備援：
+  - 發起 OAuth 前，同一個返回頁需同步寫入 cookie。
+  - OAuth callback 成功後，返回頁讀取順序需為：
+    1. `sessionStorage`
+    2. `localStorage`
+    3. `cookie`
+  - callback 完成導頁後，三處暫存都需清除。
+- 目標：
+  - 即使手機在掃碼頁、Google 授權頁與 callback 頁之間跨容器切換，仍可在第一次登入後回到原始測驗加入頁。
+
+```mermaid
+flowchart TD
+    A[手機掃碼進入 StudentJoin] --> B[保存 oauthReturnTo 到 sessionStorage / localStorage / cookie]
+    B --> C[跳轉 Google OAuth]
+    C --> D[Google 回到 AuthCallback]
+    D --> E{sessionStorage / localStorage 是否仍存在?}
+    E -->|是| F[讀取原始返回頁]
+    E -->|否| G[改讀 cookie 中的返回頁]
+    F --> H[導回 StudentJoin 原始 URL]
+    G --> H
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

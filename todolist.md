@@ -363,3 +363,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **手機掃碼 OAuth 首次登入無法直接進入 - 測試驗證**
   - 執行前端建置，確認 OAuth 返回頁備援修正未破壞既有桌機與登入流程。
+
+- [x] **手機掃碼 OAuth 仍需二次登入 - 文件更新**
+  - 更新 `spec.md`、`api.md`，補充行動裝置 OAuth 返回頁需再加入 cookie 備援，避免跨 WebView / 瀏覽器跳轉時遺失返回目標。
+
+- [x] **手機掃碼 OAuth 仍需二次登入 - 前端修正**
+  - 將 OAuth 返回頁暫存擴充為 sessionStorage + localStorage + cookie 三層備援，並統一 callback 清除邏輯。
+
+- [x] **手機掃碼 OAuth 仍需二次登入 - 測試驗證**
+  - 執行前端建置，確認 cookie 備援修正未破壞既有登入與掃碼流程。
