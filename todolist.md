@@ -309,3 +309,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **Google OAuth 首次登入與學員導頁異常 - 測試驗證（完成）**
   - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
   - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。
+
+- [x] **黑夜模式台灣離島配色可視性修正 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，補充學員加入頁黑夜模式下離島需維持足夠辨識度與對比。
+
+- [x] **黑夜模式台灣離島配色可視性修正 - 前端實作（完成）**
+  - 已調整 `TaiwanMap` 在 dark mode 下的離島色票與描邊，提升金門、連江、澎湖在深色背景上的可見性。
+
+- [x] **黑夜模式台灣離島配色可視性修正 - 測試驗證（完成）**
+  - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。

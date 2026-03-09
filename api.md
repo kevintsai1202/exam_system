@@ -1723,6 +1723,7 @@ curl -X POST http://localhost:8080/api/answers \
 - 前端互動規則：
   - 台灣地圖需限制拖曳邊界與縮放範圍，降低手機誤操作。
   - 若選擇 `OTHER`，前端必須顯示自訂輸入框並要求必填。
+  - 黑夜模式下，`TaiwanMap` 的離島配色與描邊需保持足夠對比，避免離島在深色背景上難以辨識。
 - 統計規則：
   - `GET /api/locations/statistics/{examId}` 回傳的 `locationNames` 需能正確顯示海外固定選項與 `OTHER:{文字}` 的自訂名稱。
 

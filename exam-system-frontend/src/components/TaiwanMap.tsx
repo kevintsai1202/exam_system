@@ -101,6 +101,23 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
         return COUNTY_COLORS[index % COUNTY_COLORS.length];
     };
 
+    /**
+     * 離島在黑夜模式需使用更高對比色，避免在深色背景中難以辨識
+     */
+    const getIslandColor = (code: string) => {
+        if (!isDark) {
+            if (code === 'KIN') return '#ff6b6b';
+            if (code === 'LNN') return '#9f7aea';
+            if (code === 'PEN') return '#38b2ac';
+            return '#3182ce';
+        }
+
+        if (code === 'KIN') return '#ff8fab';
+        if (code === 'LNN') return '#c4b5fd';
+        if (code === 'PEN') return '#67e8f9';
+        return '#f8fafc';
+    };
+
     // Calculate max value for heatmap
     const maxCount = statistics ? Math.max(1, ...Object.values(statistics)) : 1;
 
@@ -173,9 +190,7 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
 
                                     // Island specific overrides for better visibility
                                     if (isIsland && !isSelected) {
-                                        if (code === 'KIN') fillColor = isDark ? '#fc8181' : '#ff6b6b';
-                                        if (code === 'LNN') fillColor = isDark ? '#b794f4' : '#9f7aea';
-                                        if (code === 'PEN') fillColor = isDark ? '#4fd1c5' : '#38b2ac';
+                                        fillColor = getIslandColor(code);
                                     }
 
                                     if (isDark && !isSelected && !isIsland) {
@@ -201,7 +216,7 @@ const TaiwanMap: React.FC<TaiwanMapProps> = ({
                                 // Enhanced stroke for selected item
                                 let strokeColor = isDark ? '#1A202C' : '#FFFFFF';
                                 if (isIsland && !statistics) {
-                                    strokeColor = !isDark ? fillColor : '#1A202C';
+                                    strokeColor = !isDark ? fillColor : 'rgba(248, 250, 252, 0.95)';
                                 }
                                 if (isSelected) {
                                     strokeColor = '#FFFFFF'; // Always white stroke for selection to pop
