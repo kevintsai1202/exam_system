@@ -2012,6 +2012,29 @@ flowchart TD
     G --> H
 ```
 
+### 29.8 StudentJoin 必須響應登入狀態更新（2026-03-09）
+- `StudentJoin` 不可只在元件 mount 當下以一次性 `getState()` 判斷登入狀態。
+- 行為規則：
+  - `StudentJoin` 必須監聽 auth store 的 `user` / `isAuthenticated` 變化。
+  - 當 OAuth callback 完成登入後，即使 `StudentJoin` 已先掛載，也必須在第一次 auth state 更新時：
+    - 回填姓名 / Email
+    - 建立 `googleUser` 對應資料
+    - 觸發既有 session 自動恢復檢查
+- 目標：
+  - 手機第一次 Google 登入成功後，不需要第二次再點登入才能讓 `StudentJoin` 進入已登入邏輯。
+
+```mermaid
+sequenceDiagram
+    participant CB as AuthCallback
+    participant AS as AuthStore
+    participant SJ as StudentJoin
+
+    CB->>AS: login(token)
+    AS-->>SJ: user / isAuthenticated 更新
+    SJ->>SJ: 同步 googleUser / name / email
+    SJ->>SJ: 執行既有 session 恢復檢查
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

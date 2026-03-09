@@ -2272,6 +2272,18 @@ curl -X POST http://localhost:8080/api/answers \
 - 預期效果：
   - 行動裝置若在掃碼流程中切換 App 內 WebView、系統瀏覽器或不同容器，第一次登入後仍可回到原始加入頁。
 
+### 22.22 StudentJoin 的登入狀態同步規則（2026-03-09）
+- 本次不新增 REST API，但補充學員加入頁的前端狀態同步約束。
+- 前端規則：
+  - `StudentJoin` 不可僅在 mount 當下用 `useAuthStore.getState()` 讀取登入資料。
+  - `StudentJoin` 必須直接監聽 auth store 的 reactive 狀態，讓 OAuth callback 完成後第一次 auth 更新即可被頁面接收。
+  - 既有 session 恢復流程仍沿用：
+    - `GET /api/students/session?email=...&examId=...`
+    - fallback：`GET /api/students/gmail-session?email=...&examId=...`
+- 預期效果：
+  - 手機第一次登入後，`StudentJoin` 能立即切換到已登入狀態並執行恢復檢查。
+  - 不再因頁面只讀一次舊狀態而造成需要第二次登入。
+
 ---
 
 **文件版本**：v2.0-draft

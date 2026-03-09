@@ -372,3 +372,12 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 
 - [x] **手機掃碼 OAuth 仍需二次登入 - 測試驗證**
   - 執行前端建置，確認 cookie 備援修正未破壞既有登入與掃碼流程。
+
+- [x] **手機首次登入仍需兩次 - StudentJoin 狀態同步文件更新**
+  - 更新 `spec.md`、`api.md`，補充 `StudentJoin` 必須監聽 auth store 變化，不可只在 mount 當下讀取一次登入狀態。
+
+- [x] **手機首次登入仍需兩次 - StudentJoin 狀態同步修正**
+  - 將 `StudentJoin` 的登入資訊同步改為 reactive，確保 OAuth callback 後第一次狀態更新即可觸發自動恢復流程。
+
+- [x] **手機首次登入仍需兩次 - 測試驗證**
+  - 執行前端建置，確認 `StudentJoin` 狀態同步修正未破壞既有掃碼與加入流程。

@@ -121,32 +121,34 @@ export const StudentJoin: React.FC = () => {
     return () => clearTimeout(timer);
   }, [accessCode]);
 
-  // 檢查是否有暫存的 Google 用戶資訊（從 OAuth 回調返回）或全域登入狀態
+  // 檢查是否有暫存的 Google 用戶資訊（從 OAuth 回調返回）
   useEffect(() => {
-    // 1. 先檢查特定的 Google 暫存資訊 (OAuth Flow)
     const stored = getStoredGoogleUser();
     if (stored) {
       setGoogleUser(stored);
       setName(stored.name);
       setEmail(stored.email);
+    }
+  }, []);
+
+  // 監聽全域登入狀態，確保 OAuth callback 後第一次狀態更新即可同步到 StudentJoin
+  useEffect(() => {
+    if (!authUser) {
       return;
     }
 
-    // 2. 如果沒有暫存資訊，檢查全域認證狀態 (Home Page Login)
-    const { user, isAuthenticated } = useAuthStore.getState();
-    if (isAuthenticated && user) {
-      // 構造 GoogleUserInfo 格式
-      const globalGoogleUser: GoogleUserInfo = {
-        googleId: user.id.toString(), // 注意：這裡可能需要確認 id 格式，但在前端顯示主要用 email/name
-        email: user.email,
-        name: user.name,
-        avatarUrl: user.avatarUrl
-      };
-      setGoogleUser(globalGoogleUser);
-      setName(user.name);
-      setEmail(user.email);
-    }
-  }, []);
+    const globalGoogleUser: GoogleUserInfo = {
+      googleId: authUser.id.toString(),
+      email: authUser.email,
+      name: authUser.name,
+      avatarUrl: authUser.avatarUrl
+    };
+
+    setGoogleUser(globalGoogleUser);
+    setName((currentName) => currentName || authUser.name);
+    setEmail((currentEmail) => currentEmail || authUser.email);
+    setHasCheckedReconnect(false);
+  }, [authUser]);
 
   /**
    * 將既有學員 session 寫入 store 並直接導向答題頁
