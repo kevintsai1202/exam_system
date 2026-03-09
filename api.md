@@ -2203,6 +2203,43 @@ curl -X POST http://localhost:8080/api/answers \
   - 講師頁可持續收到學員加入事件，學員列表與統計即時更新。
   - 學員重進測驗時，不應再出現「There is no underlying STOMP connection」的訂閱錯誤。
 
+### 22.18 學員已加入測驗的掃碼直入（2026-03-09）
+
+#### 22.18.1 查詢指定帳號在指定測驗的既有學員 session
+**Endpoint**: `GET /api/students/session`
+
+**描述**: 依學員 email 與測驗 ID 查詢是否已加入該測驗；若已加入則回傳既有 session，供掃碼或重新進入時直接恢復。
+
+**Query Parameters**:
+- `email` (String): 已登入帳號 email
+- `examId` (Long): 測驗 ID
+
+**Response** (200 OK)
+```json
+{
+  "id": 21,
+  "sessionId": "c9a62eaf-5af2-4d07-8d87-1c2e9f3180ff",
+  "examId": 4,
+  "name": "王小明",
+  "email": "student@example.com",
+  "avatarIcon": "cat",
+  "totalScore": 30,
+  "examStatus": "STARTED"
+}
+```
+
+**Error**
+- `404 Not Found`: 該 email 尚未加入此測驗
+
+#### 22.18.2 前端掃碼導流規則
+- `StudentJoin` 在透過 `accessCode` 取得 `examId` 後，若前端已有登入使用者，需先呼叫 `GET /api/students/session?email=...&examId=...`。
+- 若回傳 200：
+  - 直接寫入學員 store
+  - 直接導向 `/student/exam/{examId}?sessionId=...`
+- 若回傳 404：
+  - 繼續顯示原本的加入表單
+- 此流程以學員 `email` 欄位為主，不可只依賴 `googleEmail` 綁定欄位。
+
 ---
 
 **文件版本**：v2.0-draft

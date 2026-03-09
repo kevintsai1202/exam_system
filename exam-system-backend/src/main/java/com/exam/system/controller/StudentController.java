@@ -104,4 +104,18 @@ public class StudentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * 透過 Email 和 examId 查詢學員會話（用於已登入學員掃碼直接恢復）
+     * GET /api/students/session
+     */
+    @GetMapping("/session")
+    public ResponseEntity<?> getStudentSessionByEmail(
+            @RequestParam String email,
+            @RequestParam Long examId) {
+        log.info("Getting student session by email: {} for exam: {}", email, examId);
+        return studentService.getStudentByEmailAndExam(email, examId)
+                .map(student -> ResponseEntity.ok(student))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
 }

@@ -334,6 +334,19 @@ public class StudentService {
         }
 
         /**
+         * 根據 Email 和測驗 ID 查詢學員（用於已登入學員直接恢復既有 session）
+         *
+         * @param email  學員 Email
+         * @param examId 測驗 ID
+         * @return 學員 DTO（Optional）
+         */
+        @Transactional(readOnly = true)
+        public Optional<StudentDTO> getStudentByEmailAndExam(String email, Long examId) {
+                return studentRepository.findByExamIdAndEmailIgnoreCase(examId, email)
+                                .map(student -> convertToDTO(student, student.getExam()));
+        }
+
+        /**
          * 綁定 Gmail 到現有學員
          *
          * @param sessionId   學員 Session ID

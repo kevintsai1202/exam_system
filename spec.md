@@ -1913,6 +1913,31 @@ sequenceDiagram
     STOMP-->>Page: 推送 students / status / question 等事件
 ```
 
+### 29.4 學員掃碼已加入直接進入（2026-03-09）
+- 若使用者已登入，且該帳號 email 對應的學員已存在於目前掃碼進入的測驗，`StudentJoin` 不應再要求重新填寫姓名、Email、地區與問券欄位。
+- 行為規則：
+  - `StudentJoin` 取得 `accessCode` 後先讀取測驗預覽以取得 `examId`。
+  - 若前端存在已登入使用者，需以 `email + examId` 查詢是否已有既有學員 session。
+  - 若查到既有 session：
+    - 直接寫入 `studentStore.currentStudent`
+    - 直接導向 `/student/exam/{examId}?sessionId=...`
+    - 不顯示個資填寫表單作為中間步驟
+  - 若查無既有 session，才維持原本的加入表單流程。
+- 相容性要求：
+  - 此流程不可只依賴 `googleEmail` 綁定欄位，必須以學員實際加入時保存的 `email` 欄位為主。
+  - 既有 Google 綁定重連流程可保留，但不得成為唯一的既有 session 查詢來源。
+
+```mermaid
+flowchart TD
+    A[學員掃描 QR Code 進入 StudentJoin] --> B[以 accessCode 載入 exam preview]
+    B --> C{目前是否已登入?}
+    C -->|否| D[顯示加入表單]
+    C -->|是| E[以 email + examId 查既有學員 session]
+    E --> F{是否已加入該測驗?}
+    F -->|是| G[寫入 studentStore 並直接導向 StudentExam]
+    F -->|否| D
+```
+
 ### 30. 學員地區選擇擴充（2026-03-07）
 - 學員加入頁 `StudentJoin` 的地區選擇維持台灣地圖為主要入口，但需補強手機操作體驗與海外地區支援。
 - 地圖互動規則：

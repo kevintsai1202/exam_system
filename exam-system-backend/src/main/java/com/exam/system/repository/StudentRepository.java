@@ -97,6 +97,16 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByExamIdAndEmail(Long examId, String email);
 
     /**
+     * 根據測驗 ID 和 Email 查詢學員（忽略大小寫）
+     * 用於已登入學員掃碼時直接恢復既有 session
+     *
+     * @param examId 測驗 ID
+     * @param email  Email
+     * @return 學員實體（Optional）
+     */
+    Optional<Student> findByExamIdAndEmailIgnoreCase(Long examId, String email);
+
+    /**
      * 根據測驗 ID 和姓名查詢學員
      * 用於檢查學員是否已存在（當 Email 為空時）
      *

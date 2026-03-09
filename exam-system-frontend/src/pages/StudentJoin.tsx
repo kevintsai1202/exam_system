@@ -16,11 +16,13 @@ import TaiwanMap, { OVERSEAS_LOCATIONS, TAIWAN_LOCATIONS } from '../components/T
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import { useThemeStore } from '../store/themeStore';
 import {
+  getStudentSessionByEmail,
   getStudentSessionByGmail,
   initiateGoogleLogin,
   getStoredGoogleUser,
   clearStoredGoogleUser,
   type GoogleUserInfo,
+  type StudentSessionInfo,
 } from '../services/studentSessionService';
 import type { AvatarIcon, JoinExamRequest, ExamSurveyFieldConfig } from '../types';
 
@@ -31,6 +33,7 @@ export const StudentJoin: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setCurrentStudent, setJoinContext } = useStudentStore();
+  const authUser = useAuthStore((state) => state.user);
 
   // 從 URL 參數取得 Access Code
   const urlAccessCode = searchParams.get('accessCode') || searchParams.get('code') || '';
@@ -145,32 +148,48 @@ export const StudentJoin: React.FC = () => {
     }
   }, []);
 
-  // 當有 Google 用戶和 examId 時，檢查是否可以斷線重連
+  /**
+   * 將既有學員 session 寫入 store 並直接導向答題頁
+   */
+  const resumeExistingStudentSession = React.useCallback((existingSession: StudentSessionInfo) => {
+    const studentData = {
+      id: existingSession.id,
+      sessionId: existingSession.sessionId,
+      examId: existingSession.examId,
+      name: existingSession.name,
+      email: existingSession.email,
+      avatarIcon: existingSession.avatarIcon as AvatarIcon,
+      totalScore: existingSession.totalScore || 0,
+      joinedAt: existingSession.joinedAt || new Date().toISOString(),
+      examStatus: existingSession.examStatus,
+      location: existingSession.location,
+      surveyData: existingSession.surveyData,
+      currentQuestion: existingSession.currentQuestion,
+      correctAnswersCount: existingSession.correctAnswersCount,
+    };
+    setCurrentStudent(studentData as any);
+    navigate(`/student/exam/${existingSession.examId}?sessionId=${encodeURIComponent(existingSession.sessionId)}`);
+  }, [navigate, setCurrentStudent]);
+
+  // 當已登入帳號與 examId 都就緒時，檢查是否已有既有學員 session
   useEffect(() => {
     const checkReconnect = async () => {
-      if (!googleUser || !examId || hasCheckedReconnect) return;
+      const reconnectEmail = googleUser?.email || authUser?.email;
+      if (!reconnectEmail || !examId || hasCheckedReconnect) return;
 
       setHasCheckedReconnect(true);
       setIsGoogleLoading(true);
 
       try {
-        const existingSession = await getStudentSessionByGmail(googleUser.email, examId);
-        if (existingSession && existingSession.sessionId) {
-          // 找到現有會話，設置 store 並導航到測驗頁面
-          const studentData = {
-            id: existingSession.id,
-            sessionId: existingSession.sessionId,
-            examId: existingSession.examId,
-            name: existingSession.name,
-            email: existingSession.email,
-            avatarIcon: existingSession.avatarIcon as AvatarIcon,
-            totalScore: existingSession.totalScore || 0,
-            joinedAt: new Date().toISOString(),
-          };
-          setCurrentStudent(studentData as any);
+        let existingSession = await getStudentSessionByEmail(reconnectEmail, examId);
 
-          // 導航到測驗頁面
-          navigate(`/student/exam/${examId}?sessionId=${encodeURIComponent(existingSession.sessionId)}`);
+        // 保留 Gmail 綁定查詢作為舊資料相容性備援
+        if (!existingSession && googleUser?.email) {
+          existingSession = await getStudentSessionByGmail(googleUser.email, examId);
+        }
+
+        if (existingSession && existingSession.sessionId) {
+          resumeExistingStudentSession(existingSession);
           return;
         }
       } catch (error) {
@@ -181,7 +200,7 @@ export const StudentJoin: React.FC = () => {
     };
 
     checkReconnect();
-  }, [googleUser, examId, hasCheckedReconnect, setCurrentStudent, setJoinContext, navigate, accessCode]);
+  }, [authUser?.email, examId, googleUser, hasCheckedReconnect, resumeExistingStudentSession]);
 
   /**
    * 處理 Google 登入

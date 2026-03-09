@@ -13,9 +13,13 @@ export interface StudentSessionInfo {
     examId: number;
     name: string;
     email: string;
+    surveyData?: Record<string, string>;
+    location?: string;
     googleEmail?: string;
     avatarIcon: string;
     totalScore: number;
+    correctAnswersCount?: number;
+    joinedAt?: string;
     examStatus: string;
     currentQuestion?: {
         questionId: number;
@@ -63,6 +67,27 @@ export async function getStudentSessionByGmail(
         return null;
     } catch (error) {
         console.error('Failed to get student session by Gmail:', error);
+        return null;
+    }
+}
+
+/**
+ * 透過 Email 和測驗 ID 查詢學員會話
+ */
+export async function getStudentSessionByEmail(
+    email: string,
+    examId: number
+): Promise<StudentSessionInfo | null> {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/students/session?email=${encodeURIComponent(email)}&examId=${examId}`
+        );
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Failed to get student session by email:', error);
         return null;
     }
 }
