@@ -170,7 +170,7 @@ export const StudentJoin: React.FC = () => {
           setCurrentStudent(studentData as any);
 
           // 導航到測驗頁面
-          navigate(`/student/exam?examId=${examId}`);
+          navigate(`/student/exam/${examId}?sessionId=${encodeURIComponent(existingSession.sessionId)}`);
           return;
         }
       } catch (error) {

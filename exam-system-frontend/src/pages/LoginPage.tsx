@@ -30,6 +30,8 @@ const LoginPage: React.FC = () => {
    * 導向後端 Google OAuth2 授權端點
    */
   const handleGoogleLogin = () => {
+    const returnTo = sessionStorage.getItem('returnTo') || window.location.pathname;
+    sessionStorage.setItem('oauthReturnTo', returnTo);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 

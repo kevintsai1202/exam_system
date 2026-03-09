@@ -1688,21 +1688,31 @@ curl -X POST http://localhost:8080/api/answers \
   - `GET /oauth2/authorization/google`
   - 前端 `/auth/callback`
 - 成功回呼要求：
-  - 後端若收到 OAuth 發起時的 `state`，必須在 redirect 到前端 callback 時一併帶回。
   - 前端 callback 在收到 `token` 後，必須立即建立前端登入態，不可要求使用者再次點擊登入。
 - 前端 callback redirect URL 格式：
 ```text
-/auth/callback?token={jwt}&state={urlEncodedOriginalLocation}
+/auth/callback?token={jwt}
 ```
 - 前端導頁優先序：
-  1. querystring `state`
+  1. `sessionStorage.oauthReturnTo`
   2. `sessionStorage.returnTo`
   3. `/`
 - 適用情境：
   - 從登入頁發起 Google OAuth：登入後返回原始受保護頁或首頁
   - 從學員加入頁發起 Google OAuth：首次建帳後直接返回加入頁，延續加入測驗流程
+- 實作約束：
+  - 前端發起 OAuth 前，需先將原始返回頁保存至 `sessionStorage.oauthReturnTo`
+  - 不可自行覆寫 OAuth `state` 參數，以免與 Spring Security 內建 state 機制衝突
 
-## 11.9 學員地區選擇擴充規範（2026-03-07）
+## 11.9 學員答題頁導向路由一致性（2026-03-09）
+- 本次不新增 endpoint，但補充前端路由約束：
+  - `StudentJoin` 成功加入後，必須導向 `/student/exam/{examId}?sessionId={UUID}`
+  - Gmail / Google 斷線重連成功後，也必須導向同一格式
+- 目的：
+  - 保持與 React Router 路由 `/student/exam/:examId` 一致
+  - 避免正式環境以 `/student/exam?examId=...` 導頁時命中不到前端路由而顯示 404
+
+## 11.10 學員地區選擇擴充規範（2026-03-07）
 - 本次不新增 endpoint，沿用既有：
   - `POST /api/students/join`
   - `GET /api/locations/statistics/{examId}`

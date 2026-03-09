@@ -298,3 +298,14 @@ pm run build ���̪� flow�A�T�{F5 ��i�۰ʧ@ localStorage ��
 - [x] **管理員介面增加使用者刪除功能 - 測試驗證（完成）**
   - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
   - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。
+
+- [x] **Google OAuth 首次登入與學員導頁異常 - 文件更新（完成）**
+  - 已更新 `spec.md`、`api.md`，改用前端 sessionStorage 保存 OAuth 返回頁，並修正學員答題頁導向路徑規範。
+
+- [x] **Google OAuth 首次登入與學員導頁異常 - 前後端修正（完成）**
+  - 已移除前端手動覆蓋 OAuth `state` 的做法，改由前端本地保存返回頁。
+  - 已修正 `StudentJoin` 導向 `StudentExam` 的路徑，統一路由格式為 `/student/exam/:examId`。
+
+- [x] **Google OAuth 首次登入與學員導頁異常 - 測試驗證（完成）**
+  - 已執行後端 `mvn -DskipTests compile`（Java 21）成功。
+  - 已執行前端 `npm run build` 成功（僅保留既有 chunk size warning）。

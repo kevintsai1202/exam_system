@@ -97,9 +97,9 @@ export async function bindGmailToStudent(
  * Google OAuth 登入（重導向方式）
  */
 export function initiateGoogleLogin(returnUrl?: string): void {
-    const state = returnUrl || window.location.href;
-    const encodedState = encodeURIComponent(state);
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/google?state=${encodedState}`;
+    const nextReturnUrl = returnUrl || window.location.href;
+    sessionStorage.setItem('oauthReturnTo', nextReturnUrl);
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
 /**

@@ -52,7 +52,6 @@ const AuthCallback: React.FC = () => {
         const handleCallback = async () => {
             const token = searchParams.get('token');
             const errorParam = searchParams.get('error');
-            const stateParam = searchParams.get('state');
 
             if (errorParam) {
                 setError(decodeURIComponent(errorParam));
@@ -65,8 +64,9 @@ const AuthCallback: React.FC = () => {
                     await login(token);
                     // 登入成功後優先返回 OAuth 發起頁，其次才使用受保護路由暫存目標
                     const returnTo = resolveReturnTarget(
-                        stateParam || sessionStorage.getItem('returnTo')
+                        sessionStorage.getItem('oauthReturnTo') || sessionStorage.getItem('returnTo')
                     );
+                    sessionStorage.removeItem('oauthReturnTo');
                     sessionStorage.removeItem('returnTo');
                     navigate(returnTo, { replace: true });
                 } catch (err) {

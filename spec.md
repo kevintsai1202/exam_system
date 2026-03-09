@@ -1837,9 +1837,9 @@ sequenceDiagram
 ### 29.1 Google OAuth 首次建帳後需直接登入並返回原頁（2026-03-09）
 - 學員端與登入頁皆可透過 `GET /oauth2/authorization/google` 發起 Google OAuth2。
 - 若為首次使用 Google 登入，後端在建立新 `User` 後，必須於同一次 OAuth callback 直接簽發 JWT，前端不得要求使用者再次點擊登入。
-- 為避免首次建帳後跳回首頁而中斷原流程，OAuth 發起端若帶有 `state`（例如學員加入頁的原始 URL），後端成功回呼後需將該 `state` 一併帶到前端 `/auth/callback`。
+- 為避免首次建帳後跳回首頁而中斷原流程，前端在發起 OAuth 前需先將原始返回頁保存於 `sessionStorage`，callback 成功後再優先取回該值導頁。
 - 前端 `AuthCallback` 導頁優先序：
-  1. callback querystring 的 `state`
+  1. `sessionStorage.oauthReturnTo`
   2. `sessionStorage.returnTo`
   3. `/`
 - 目標：
@@ -1854,11 +1854,26 @@ sequenceDiagram
     participant CB as AuthCallback
 
     U->>SJ: 點擊 Google 登入
-    SJ->>BE: /oauth2/authorization/google?state=原頁URL
+    SJ->>SJ: sessionStorage.oauthReturnTo = 原頁URL
+    SJ->>BE: /oauth2/authorization/google
     BE-->>BE: 首次登入則建立 User
-    BE-->>CB: /auth/callback?token=JWT&state=原頁URL
+    BE-->>CB: /auth/callback?token=JWT
     CB-->>CB: 寫入前端登入態
-    CB-->>SJ: 導回 state 指向頁面
+    CB-->>SJ: 導回 oauthReturnTo 指向頁面
+```
+
+### 29.2 學員答題頁路由一致性（2026-03-09）
+- `StudentExam` 正式路由維持 `/student/exam/{examId}`。
+- `StudentJoin` 在以下情境都必須導向相同格式：
+  - 一般加入成功
+  - Gmail / Google 斷線重連成功
+- `sessionId` 可附於 querystring，但 `examId` 不可再以 querystring 單獨傳遞，避免正式環境靜態路由判斷錯誤導致 404。
+
+```mermaid
+flowchart TD
+    A[StudentJoin 成功加入或重連] --> B[組出 /student/exam/{examId}?sessionId=...]
+    B --> C[React Router 命中 /student/exam/:examId]
+    C --> D[StudentExam 讀取 path examId 與 querystring sessionId]
 ```
 
 ### 30. 學員地區選擇擴充（2026-03-07）
