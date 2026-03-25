@@ -4,9 +4,9 @@ server:
 spring:
   datasource:
     # Zeabur 注入的 PostgreSQL 環境變數：POSTGRES_HOST, POSTGRES_DATABASE, PASSWORD
-    url: jdbc:postgresql://${POSTGRES_HOST:postgresql}:5432/${POSTGRES_DATABASE:exam_system}
-    username: ${POSTGRES_USER:postgres}
-    password: ${PASSWORD:exam_password}
+    url: jdbc:postgresql://${POSTGRES_HOST:postgresql}:${POSTGRES_PORT:5432}/${POSTGRES_DATABASE:exam_system}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:exam_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
