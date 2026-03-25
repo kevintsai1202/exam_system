@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,11 @@ public class Exam {
      * 當前題目開始時間（用於答題時間驗證）
      */
     private LocalDateTime currentQuestionStartedAt;
+
+    /**
+     * 當前題目到期時間（UTC，用於回傳給前端，避免時區問題）
+     */
+    private Instant currentQuestionExpiresAt;
 
     /**
      * 測驗的調查欄位配置列表

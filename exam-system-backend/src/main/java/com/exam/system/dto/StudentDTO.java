@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +122,7 @@ public class StudentDTO {
         private Integer questionIndex;
         private String questionText;
         private List<QuestionOptionInfo> options;
-        private LocalDateTime expiresAt;
+        private Instant expiresAt;
     }
 
     /**

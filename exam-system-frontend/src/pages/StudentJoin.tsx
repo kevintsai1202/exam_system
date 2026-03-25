@@ -480,7 +480,7 @@ export const StudentJoin: React.FC = () => {
                 marginBottom: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                color: '#333',
+                color: isDark ? '#fff' : '#333',
               }}
             >
               測驗加入碼 *
@@ -496,14 +496,16 @@ export const StudentJoin: React.FC = () => {
                 width: '100%',
                 padding: '14px',
                 fontSize: '16px',
-                border: '2px solid #e0e0e0',
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0'}`,
                 borderRadius: '8px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 0.2s',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
+                color: isDark ? '#fff' : '#333',
               }}
               onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0')}
             />
           </div>
 
@@ -577,7 +579,7 @@ export const StudentJoin: React.FC = () => {
                 marginBottom: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                color: '#333',
+                color: isDark ? '#fff' : '#333',
               }}
             >
               姓名 *
@@ -593,14 +595,16 @@ export const StudentJoin: React.FC = () => {
                 width: '100%',
                 padding: '14px',
                 fontSize: '16px',
-                border: '2px solid #e0e0e0',
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0'}`,
                 borderRadius: '8px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 0.2s',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
+                color: isDark ? '#fff' : '#333',
               }}
               onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0')}
             />
           </div>
 
@@ -612,7 +616,7 @@ export const StudentJoin: React.FC = () => {
                 marginBottom: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                color: '#333',
+                color: isDark ? '#fff' : '#333',
               }}
             >
               Email *
@@ -628,14 +632,16 @@ export const StudentJoin: React.FC = () => {
                 width: '100%',
                 padding: '14px',
                 fontSize: '16px',
-                border: '2px solid #e0e0e0',
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0'}`,
                 borderRadius: '8px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 0.2s',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
+                color: isDark ? '#fff' : '#333',
               }}
               onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0')}
             />
           </div>
 
@@ -654,7 +660,7 @@ export const StudentJoin: React.FC = () => {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: isDark ? '#fff' : '#333',
                   }}
                 >
                   {fieldName} {isRequired && <span style={{ color: '#f44336' }}>*</span>}
@@ -673,16 +679,17 @@ export const StudentJoin: React.FC = () => {
                     width: '100%',
                     padding: '14px',
                     fontSize: '16px',
-                    border: '2px solid #e0e0e0',
+                    border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0'}`,
                     borderRadius: '8px',
                     outline: 'none',
                     boxSizing: 'border-box',
                     transition: 'border-color 0.2s',
-                    backgroundColor: '#fff',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
+                    color: isDark ? '#fff' : '#333',
                     cursor: 'pointer',
                   }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0')}
                 >
                   <option value="">
                     請選擇（{isRequired ? '必填' : '選填'}）
@@ -710,14 +717,16 @@ export const StudentJoin: React.FC = () => {
                         width: '100%',
                         padding: '14px',
                         fontSize: '16px',
-                        border: '2px solid #e0e0e0',
+                        border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0'}`,
                         borderRadius: '8px',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'border-color 0.2s',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
+                        color: isDark ? '#fff' : '#333',
                       }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = '#1976d2')}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : '#e0e0e0')}
                     />
                   </div>
                 )}

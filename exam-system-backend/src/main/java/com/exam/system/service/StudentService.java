@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -182,13 +183,17 @@ public class StudentService {
                         // 使用 lastPushedQuestionIndex 獲取當前正在答題的題目
                         var question = exam.getQuestions().get(exam.getLastPushedQuestionIndex());
 
+                        // 優先使用儲存的 UTC 到期時間，避免時區問題
+                        Instant expiresAt = exam.getCurrentQuestionExpiresAt() != null
+                                        ? exam.getCurrentQuestionExpiresAt()
+                                        : exam.getCurrentQuestionStartedAt().atZone(java.time.ZoneOffset.UTC)
+                                                        .toInstant().plusSeconds(exam.getQuestionTimeLimit());
+
                         Map<String, Object> questionData = new HashMap<>();
                         questionData.put("questionId", question.getId());
                         questionData.put("questionIndex", exam.getLastPushedQuestionIndex());
                         questionData.put("questionText", question.getQuestionText());
-                        questionData.put("expiresAt", exam.getCurrentQuestionStartedAt()
-                                        .plusSeconds(exam.getQuestionTimeLimit())
-                                        .toString());
+                        questionData.put("expiresAt", expiresAt.toString());
 
                         // 選項列表（不包含正確答案）
                         List<Map<String, Object>> optionsList = question.getOptions().stream()
@@ -280,7 +285,11 @@ public class StudentService {
                                 && exam.getLastPushedQuestionIndex() >= 0
                                 && exam.getLastPushedQuestionIndex() < exam.getQuestions().size()) {
                         var question = exam.getQuestions().get(exam.getLastPushedQuestionIndex());
-                        var expiresAt = exam.getCurrentQuestionStartedAt().plusSeconds(exam.getQuestionTimeLimit());
+                        // 優先使用儲存的 UTC 到期時間，避免時區問題
+                        Instant expiresAt = exam.getCurrentQuestionExpiresAt() != null
+                                        ? exam.getCurrentQuestionExpiresAt()
+                                        : exam.getCurrentQuestionStartedAt().atZone(java.time.ZoneOffset.UTC)
+                                                        .toInstant().plusSeconds(exam.getQuestionTimeLimit());
 
                         // 建立選項列表（不包含正確答案）
                         List<StudentDTO.QuestionOptionInfo> optionsList = question.getOptions().stream()

@@ -270,10 +270,14 @@ public class ExamService {
             throw new BusinessException("QUESTION_ALREADY_PUSHED", "此題目已經推送過了");
         }
 
+        // 計算到期時間（使用 UTC Instant，避免時區問題）
+        Instant expiresAt = Instant.now().plusSeconds(exam.getQuestionTimeLimit());
+
         // 更新當前題目索引（指向下一題）、最後推送索引和題目開始時間
         exam.setCurrentQuestionIndex(questionIndex + 1);
         exam.setLastPushedQuestionIndex(questionIndex);
         exam.setCurrentQuestionStartedAt(LocalDateTime.now());
+        exam.setCurrentQuestionExpiresAt(expiresAt);
         examRepository.save(exam);
 
         // 取得題目資訊
@@ -286,9 +290,6 @@ public class ExamService {
         questionData.put("questionIndex", questionIndex);
         questionData.put("questionText", question.getQuestionText());
         questionData.put("timeLimit", exam.getQuestionTimeLimit());
-
-        // 計算到期時間（使用 UTC 時間戳，避免時區問題）
-        Instant expiresAt = Instant.now().plusSeconds(exam.getQuestionTimeLimit());
         questionData.put("expiresAt", expiresAt);
 
         questionData.put("options", options.stream()
