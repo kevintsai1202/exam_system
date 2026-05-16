@@ -40,6 +40,12 @@ public interface EmailCampaignRepository extends JpaRepository<EmailCampaign, Lo
     Optional<EmailCampaign> findByIdWithRecipients(@Param("id") Long id);
 
     /**
+     * 依 exam owner 取得活動列表（講師隔離用）
+     */
+    @Query("SELECT c FROM EmailCampaign c WHERE c.exam.owner.id = :ownerId ORDER BY c.createdAt DESC")
+    List<EmailCampaign> findByExamOwnerIdOrderByCreatedAtDesc(@Param("ownerId") Long ownerId);
+
+    /**
      * 統計測驗的活動數量
      */
     long countByExamId(Long examId);

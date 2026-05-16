@@ -34,6 +34,8 @@ public class SurveyService {
     private final SurveyAnswerRepository surveyAnswerRepository;
     private final ExamRepository examRepository;
     private final StudentRepository studentRepository;
+    private final OwnershipGuard ownershipGuard;
+    private final CurrentUserProvider currentUserProvider;
 
     /**
      * 建立問券
@@ -42,9 +44,10 @@ public class SurveyService {
     public SurveyDTO createSurvey(SurveyDTO dto) {
         log.info("建立問券: examId={}, title={}", dto.getExamId(), dto.getTitle());
 
-        // 驗證測驗是否存在
+        // 驗證測驗存在且屬於當前使用者
         Exam exam = examRepository.findById(dto.getExamId())
                 .orElseThrow(() -> new ResourceNotFoundException("Exam", dto.getExamId()));
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         // 建立問券
         Survey survey = Survey.builder()
@@ -77,6 +80,7 @@ public class SurveyService {
 
         Survey survey = surveyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey", id));
+        ownershipGuard.assertOwnerOrAdmin(survey);
 
         // 草稿狀態才能編輯
         if (survey.getStatus() != SurveyStatus.DRAFT) {
@@ -111,27 +115,37 @@ public class SurveyService {
     public SurveyDTO getSurvey(Long id) {
         Survey survey = surveyRepository.findByIdWithQuestionsAndOptions(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey", id));
+        ownershipGuard.assertOwnerOrAdmin(survey);
         return toDTO(survey);
     }
 
     /**
-     * 取得測驗的問券列表
+     * 取得測驗的問券列表（限 owner 或 ADMIN）
      */
     @Transactional(readOnly = true)
     public List<SurveyDTO> getSurveysByExamId(Long examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
+        ownershipGuard.assertOwnerOrAdmin(exam);
         return surveyRepository.findByExamId(examId).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
     /**
-     * 取得所有問券列表
+     * 取得問券列表
+     * ADMIN 取全部；INSTRUCTOR 只取自己 exam 下的問券
      */
     @Transactional(readOnly = true)
     public List<SurveyDTO> getAllSurveys() {
-        return surveyRepository.findAll().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        User current = currentUserProvider.requireCurrentUser();
+        List<Survey> surveys;
+        if (current.getRole() == UserRole.ADMIN) {
+            surveys = surveyRepository.findAll();
+        } else {
+            surveys = surveyRepository.findByExamOwnerIdOrderByIdDesc(current.getId());
+        }
+        return surveys.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     /**
@@ -143,6 +157,7 @@ public class SurveyService {
 
         Survey survey = surveyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey", id));
+        ownershipGuard.assertOwnerOrAdmin(survey);
 
         if (survey.getStatus() != SurveyStatus.DRAFT) {
             throw new BusinessException("只有草稿狀態的問券才能啟用");
@@ -166,6 +181,7 @@ public class SurveyService {
 
         Survey survey = surveyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey", id));
+        ownershipGuard.assertOwnerOrAdmin(survey);
 
         if (survey.getStatus() != SurveyStatus.ACTIVE) {
             throw new BusinessException("只有進行中的問券才能關閉");
@@ -184,6 +200,7 @@ public class SurveyService {
 
         Survey survey = surveyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Survey", id));
+        ownershipGuard.assertOwnerOrAdmin(survey);
 
         // 只有草稿或已關閉的問券才能刪除
         if (survey.getStatus() == SurveyStatus.ACTIVE) {

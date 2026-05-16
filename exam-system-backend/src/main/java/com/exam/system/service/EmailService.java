@@ -36,6 +36,8 @@ public class EmailService {
     private final SurveyRepository surveyRepository;
     private final StudentRepository studentRepository;
     private final JavaMailSender mailSender;
+    private final OwnershipGuard ownershipGuard;
+    private final CurrentUserProvider currentUserProvider;
 
     @Value("${spring.mail.username:noreply@example.com}")
     private String fromEmail;
@@ -122,6 +124,7 @@ public class EmailService {
 
         Exam exam = examRepository.findById(dto.getExamId())
                 .orElseThrow(() -> new ResourceNotFoundException("Exam", dto.getExamId()));
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         EmailCampaign campaign = EmailCampaign.builder()
                 .exam(exam)
@@ -167,6 +170,7 @@ public class EmailService {
 
         EmailCampaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EmailCampaign", id));
+        ownershipGuard.assertOwnerOrAdmin(campaign);
 
         if (campaign.getStatus() != CampaignStatus.DRAFT) {
             throw new BusinessException("只有草稿狀態的活動才能編輯");
@@ -196,31 +200,41 @@ public class EmailService {
     public EmailCampaignDTO getCampaign(Long id) {
         EmailCampaign campaign = campaignRepository.findByIdWithRecipients(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EmailCampaign", id));
+        ownershipGuard.assertOwnerOrAdmin(campaign);
         return toCampaignDTO(campaign);
     }
 
     /**
-     * 取得測驗的郵件活動列表
+     * 取得測驗的郵件活動列表（限 owner 或 ADMIN）
      */
     @Transactional(readOnly = true)
     public List<EmailCampaignDTO> getCampaignsByExamId(Long examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exam", examId));
+        ownershipGuard.assertOwnerOrAdmin(exam);
         return campaignRepository.findByExamIdOrderByCreatedAtDesc(examId).stream()
                 .map(this::toCampaignDTO)
                 .collect(Collectors.toList());
     }
 
     /**
-     * 取得所有郵件活動
+     * 取得郵件活動列表
+     * ADMIN 取全部；INSTRUCTOR 只取自己 exam 下的活動
      */
     @Transactional(readOnly = true)
     public List<EmailCampaignDTO> getAllCampaigns() {
-        return campaignRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(this::toCampaignDTO)
-                .collect(Collectors.toList());
+        User current = currentUserProvider.requireCurrentUser();
+        List<EmailCampaign> campaigns;
+        if (current.getRole() == UserRole.ADMIN) {
+            campaigns = campaignRepository.findAllByOrderByCreatedAtDesc();
+        } else {
+            campaigns = campaignRepository.findByExamOwnerIdOrderByCreatedAtDesc(current.getId());
+        }
+        return campaigns.stream().map(this::toCampaignDTO).collect(Collectors.toList());
     }
 
     /**
-     * 刪除郵件活動
+     * 刪除郵件活動（限 owner 或 ADMIN）
      */
     @Transactional
     public void deleteCampaign(Long id) {
@@ -228,6 +242,7 @@ public class EmailService {
 
         EmailCampaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EmailCampaign", id));
+        ownershipGuard.assertOwnerOrAdmin(campaign);
 
         if (campaign.getStatus() == CampaignStatus.SENDING) {
             throw new BusinessException("發送中的活動無法刪除");
@@ -245,6 +260,7 @@ public class EmailService {
 
         EmailCampaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new ResourceNotFoundException("EmailCampaign", campaignId));
+        ownershipGuard.assertOwnerOrAdmin(campaign);
 
         if (campaign.getStatus() != CampaignStatus.DRAFT) {
             throw new BusinessException("只有草稿狀態的活動才能新增收件人");
