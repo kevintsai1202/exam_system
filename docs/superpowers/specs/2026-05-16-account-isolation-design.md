@@ -308,7 +308,35 @@ http.authorizeHttpRequests(auth -> auth
 ```
 但資料隔離仍以 `OwnershipGuard` 在 Service 層為主防線。
 
-### 5.7 新增 API endpoint
+### 5.7 ExamSecurityService auto-recovery 擴展（升級保護）
+
+**需求**：升級重啟導致 `ExamSecurityService.instructorSessions`（in-memory ConcurrentHashMap）清空。對於 `STARTED` 狀態且已推題的測驗，講師重新整理後想推下一題會被 `validateInstructorSession` 擋下。
+
+**現有邏輯**（[ExamSecurityService.java:78-95](../../../exam-system-backend/src/main/java/com/exam/system/service/ExamSecurityService.java#L78-L95)）只在 `currentQuestionStartedAt == null`（從未推題）時 auto-recover。
+
+**設計擴展**：把 auto-recovery 觸發條件放寬為「從未推題 OR 上一題已過期 +5 秒 buffer」。利用既有的 [Exam.currentQuestionExpiresAt](../../../exam-system-backend/src/main/java/com/exam/system/entity/Exam.java#L100) 欄位，無需任何 schema 變更。
+
+```java
+private boolean isLastQuestionConsideredEnded(Exam exam) {
+    if (exam.getCurrentQuestionStartedAt() == null) {
+        return true;  // 從未推題
+    }
+    if (exam.getCurrentQuestionExpiresAt() == null) {
+        return false;  // 推了但沒設過期時間（保守，理論上不會發生）
+    }
+    return Instant.now().isAfter(
+        exam.getCurrentQuestionExpiresAt().plusSeconds(5)
+    );
+}
+```
+
+`validateInstructorSession` 將 `if (exam.getCurrentQuestionStartedAt() == null)` 改為 `if (isLastQuestionConsideredEnded(exam) && StringUtils.hasText(providedSessionId))`。
+
+**邊界澄清**：
+- 不保護「升級時題目仍在計時中」的學員作答體驗——這部分需求明確不在 scope 內。
+- 只確保「升級後下一題可繼續推送」，這是用戶確認的最小可接受體驗。
+
+### 5.8 新增 API endpoint
 
 ```
 PUT /api/exams/{examId}/transfer-owner    Body: { newOwnerId: number }
@@ -620,6 +648,8 @@ root `package.json`：
 | 同 email 但實際是不同人 → 合併成同一 Profile | 用 lowercase email 為 key 是業界做法；極少數衝突 admin 可後續手動拆 |
 | 既有資料只有 admin@example.com，沒有真的「INSTRUCTOR」帳號 | Migration 前必須先在 Zeabur 建立 `MIGRATION_DEFAULT_OWNER_EMAIL` 指定的 user，否則 V3 fail-fast |
 | `ddl-auto: none` 後若 entity 跟 DB 不同步 → query 時才發現 | 未來新欄位一律走 V5/V6 migration；可在 CI 加 schema diff 檢查（OOS） |
+| 升級重啟導致 `instructorSessions` in-memory state 遺失 → 進行中測驗無法推下一題 | 已透過 §5.7「ExamSecurityService auto-recovery 擴展」處理（題目過期 +5s 後自動恢復 session） |
+| 升級時學員當下答題的 WebSocket 連線中斷 | 明確不在 scope（僅保證下一題可推送，用戶確認可接受） |
 
 ---
 
@@ -660,6 +690,7 @@ root `package.json`：
 - `service/SurveyService.java`（同上）
 - `service/EmailService.java`（同上）
 - `service/StudentService.java`（joinExam 加 UPSERT Profile + Relation）
+- `service/ExamSecurityService.java`（擴展 auto-recovery：題目過期 +5s 後允許 recover）
 - `controller/ExamController.java`（加 transfer-owner endpoint）
 - `config/SecurityConfig.java`（補方法級保護）
 - `config/JwtAuthenticationFilter.java`（保留不動，已正確）
@@ -695,13 +726,14 @@ root `package.json`：
 4. 寫 V3 data backfill → 在本地有舊資料的 DB 上跑通
 5. 寫 V4 約束 → 確認 NOT NULL 加得上
 6. 實作 `CurrentUserProvider` + `OwnershipGuard`
-7. 改造 `ExamService` 加 ownership 檢查（單元 + 整合測試）
-8. 改造 `SurveyService` / `EmailService`
-9. 改造 `StudentService.joinExam` 加 UPSERT 邏輯
-10. 新增 `transfer-owner` endpoint + `GET /api/instructor/students`
-11. 前端 AdminDashboard 加轉讓 UI + 403 攔截
-12. 寫 Playwright e2e 4 支 spec
-13. 全 e2e 跑通 → 確認本地驗收
-14. 文件更新（CLAUDE.md / api.md）
+7. 擴展 `ExamSecurityService.validateInstructorSession` auto-recovery 條件（升級保護）
+8. 改造 `ExamService` 加 ownership 檢查（單元 + 整合測試）
+9. 改造 `SurveyService` / `EmailService`
+10. 改造 `StudentService.joinExam` 加 UPSERT 邏輯
+11. 新增 `transfer-owner` endpoint + `GET /api/instructor/students`
+12. 前端 AdminDashboard 加轉讓 UI + 403 攔截
+13. 寫 Playwright e2e 4 支 spec
+14. 全 e2e 跑通 → 確認本地驗收
+15. 文件更新（CLAUDE.md / api.md）
 
 詳細的實作計畫由 `writing-plans` skill 後續產出。
