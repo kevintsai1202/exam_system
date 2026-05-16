@@ -49,12 +49,21 @@ spring:
   #     settings:
   #       web-allow-others: false
 
+  # Flyway migration 設定
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}        # 本地預設啟用；Zeabur 由 application-docker.yml 覆蓋為 false
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+    placeholders:
+      migrationDefaultOwnerEmail: ${MIGRATION_DEFAULT_OWNER_EMAIL:}
+
   # JPA 配置
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     # database-platform: org.hibernate.dialect.H2Dialect  # 舊設定（保留註解）
     hibernate:
-      ddl-auto: update
+      ddl-auto: none                              # schema 完全交給 Flyway
     show-sql: true
     properties:
       hibernate:
