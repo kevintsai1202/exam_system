@@ -37,6 +37,9 @@ public class ExamService {
     private final ExamSecurityService examSecurityService;
     private final SurveyFieldRepository surveyFieldRepository;
     private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final OwnershipGuard ownershipGuard;
+
     /**
      * 建構子注入（使用 @Lazy 解決循環依賴）
      */
@@ -50,7 +53,9 @@ public class ExamService {
             @Lazy StatisticsService statisticsService,
             ExamSecurityService examSecurityService,
             SurveyFieldRepository surveyFieldRepository,
-            ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository
+            ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository,
+            CurrentUserProvider currentUserProvider,
+            OwnershipGuard ownershipGuard
     ) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
@@ -62,6 +67,8 @@ public class ExamService {
         this.examSecurityService = examSecurityService;
         this.surveyFieldRepository = surveyFieldRepository;
         this.examSurveyFieldConfigRepository = examSurveyFieldConfigRepository;
+        this.currentUserProvider = currentUserProvider;
+        this.ownershipGuard = ownershipGuard;
     }
 
     /**
@@ -74,6 +81,9 @@ public class ExamService {
     public ExamDTO createExam(ExamDTO examDTO) {
         log.info("Creating new exam: {}", examDTO.getTitle());
 
+        // 取得當前登入講師作為測驗 owner
+        User currentUser = currentUserProvider.requireCurrentUser();
+
         // 最多重試 5 次以處理並發 accessCode 衝突
         int maxRetries = 5;
         for (int attempt = 0; attempt < maxRetries; attempt++) {
@@ -81,7 +91,7 @@ public class ExamService {
                 // 生成唯一的 accessCode
                 String accessCode = qrCodeService.generateAccessCode();
 
-                // 建立測驗實體
+                // 建立測驗實體並指定 owner
                 Exam exam = Exam.builder()
                         .title(examDTO.getTitle())
                         .description(examDTO.getDescription())
@@ -89,6 +99,7 @@ public class ExamService {
                         .status(ExamStatus.CREATED)
                         .currentQuestionIndex(0)
                         .accessCode(accessCode)
+                        .owner(currentUser)
                         .build();
 
                 // 儲存測驗以獲得 ID（如果 accessCode 重複會拋出 DataIntegrityViolationException）
@@ -151,21 +162,29 @@ public class ExamService {
     }
 
     /**
-     * 取得所有測驗
+     * 取得測驗列表
+     * ADMIN 可看到所有測驗；INSTRUCTOR 只能看到自己建立的測驗
      *
      * @return 測驗 DTO 列表
      */
     @Transactional(readOnly = true)
     public List<ExamDTO> getAllExams() {
-        log.info("Getting all exams");
-        List<Exam> exams = examRepository.findAll();
+        User currentUser = currentUserProvider.requireCurrentUser();
+        List<Exam> exams;
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            log.info("Getting all exams (admin: {})", currentUser.getId());
+            exams = examRepository.findAll();
+        } else {
+            log.info("Getting exams for owner: {}", currentUser.getId());
+            exams = examRepository.findByOwnerIdOrderByCreatedAtDesc(currentUser.getId());
+        }
         return exams.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     /**
-     * 根據 ID 取得測驗
+     * 根據 ID 取得測驗（限 owner 或 ADMIN）
      *
      * @param examId 測驗 ID
      * @return 測驗 DTO
@@ -173,6 +192,7 @@ public class ExamService {
     @Transactional(readOnly = true)
     public ExamDTO getExam(Long examId) {
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
         return convertToDTO(exam);
     }
 
@@ -202,6 +222,7 @@ public class ExamService {
         log.info("Starting exam: {}", examId);
 
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         // 驗證測驗狀態：只允許 CREATED 狀態的測驗啟動
         if (exam.getStatus() != ExamStatus.CREATED) {
@@ -317,6 +338,7 @@ public class ExamService {
         log.info("Ending exam: {} by instructor session: {}", examId, instructorSessionId);
 
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         // 驗證講師權限（使用 ExamSecurityService）
         if (!examSecurityService.validateInstructorSession(exam, instructorSessionId)) {
@@ -373,8 +395,12 @@ public class ExamService {
     public ExamDTO duplicateExam(Long examId) {
         log.info("Duplicating exam: {}", examId);
 
-        // 查找原測驗
+        // 查找原測驗並驗證 ownership
         Exam originalExam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(originalExam);
+
+        // 複製的測驗歸屬於當前使用者
+        User currentUser = currentUserProvider.requireCurrentUser();
 
         // 最多重試 5 次以處理並發 accessCode 衝突
         int maxRetries = 5;
@@ -389,6 +415,7 @@ public class ExamService {
                         .questionTimeLimit(originalExam.getQuestionTimeLimit())
                         .status(ExamStatus.CREATED)
                         .accessCode(accessCode)
+                        .owner(currentUser)
                         .build();
 
                 newExam = examRepository.save(newExam);
@@ -483,8 +510,9 @@ public class ExamService {
     public ExamDTO updateExam(Long examId, ExamDTO examDTO) {
         log.info("Updating exam: {}", examId);
 
-        // 查找測驗
+        // 查找測驗並驗證 ownership
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         // 驗證測驗狀態（只有 CREATED 狀態可以編輯）
         if (exam.getStatus() != ExamStatus.CREATED) {
@@ -663,11 +691,11 @@ public class ExamService {
     public void clearExamSession(Long examId) {
         log.info("Clearing session for exam: {}", examId);
 
+        Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
+
         // 清除記憶體中的 instructorSession
         examSecurityService.clearInstructorSession(examId);
-
-        // 重置測驗的題目推送狀態
-        Exam exam = findExamById(examId);
 
         // 只有已啟動的測驗才需要重置
         if (exam.getStatus() == ExamStatus.STARTED) {
@@ -689,8 +717,9 @@ public class ExamService {
     public void reorderQuestions(Long examId, List<Long> questionIds) {
         log.info("Reordering questions for exam: {}, new order: {}", examId, questionIds);
 
-        // 1. 驗證測驗狀態（僅 CREATED 狀態可調整）
+        // 1. 驗證測驗狀態（僅 CREATED 狀態可調整）並驗證 ownership
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
         if (exam.getStatus() != ExamStatus.CREATED) {
             throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已啟動或結束，無法調整順序");
         }
@@ -737,11 +766,12 @@ public class ExamService {
     public void reorderOptions(Long questionId, List<Long> optionIds) {
         log.info("Reordering options for question: {}, new order: {}", questionId, optionIds);
 
-        // 1. 驗證題目所屬測驗狀態
+        // 1. 驗證題目所屬測驗狀態並驗證 ownership
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Question", questionId));
 
         Exam exam = question.getExam();
+        ownershipGuard.assertOwnerOrAdmin(exam);
         if (exam.getStatus() != ExamStatus.CREATED) {
             throw new BusinessException("EXAM_ALREADY_STARTED", "測驗已啟動或結束，無法調整順序");
         }
@@ -799,8 +829,9 @@ public class ExamService {
         showOptionLabels = showOptionLabels != null ? showOptionLabels : true;
         showExamInfo = showExamInfo != null ? showExamInfo : true;
 
-        // 取得測驗和題目資料
+        // 取得測驗並驗證 ownership
         Exam exam = findExamById(examId);
+        ownershipGuard.assertOwnerOrAdmin(exam);
         List<Question> allQuestions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);
 
         // 只匯出標記為可匯出的題目
@@ -916,9 +947,10 @@ public class ExamService {
     public ExamExportDTO exportToJson(Long examId) {
         log.info("Exporting exam {} to JSON", examId);
 
-        // 查詢測驗
+        // 查詢測驗並驗證 ownership
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new ResourceNotFoundException("測驗不存在，ID: " + examId));
+        ownershipGuard.assertOwnerOrAdmin(exam);
 
         // 查詢題目和選項
         List<Question> questions = questionRepository.findByExamIdOrderByQuestionOrderAsc(examId);

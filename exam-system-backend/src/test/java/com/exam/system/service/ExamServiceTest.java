@@ -62,7 +62,16 @@ class ExamServiceTest {
     @Mock
     private ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @Mock
+    private OwnershipGuard ownershipGuard;
+
     private ExamService examService;
+
+    /** 測試用的測驗擁有者 */
+    private User testOwner;
 
     private Exam testExam;
     private ExamDTO testExamDTO;
@@ -71,7 +80,7 @@ class ExamServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 手動建立 ExamService 實例
+        // 手動建立 ExamService 實例（含新增的 currentUserProvider 與 ownershipGuard）
         examService = new ExamService(
                 examRepository,
                 questionRepository,
@@ -82,8 +91,19 @@ class ExamServiceTest {
                 statisticsService,
                 examSecurityService,
                 surveyFieldRepository,
-                examSurveyFieldConfigRepository
+                examSurveyFieldConfigRepository,
+                currentUserProvider,
+                ownershipGuard
         );
+
+        // 建立測試講師；多數測試不需要真正的 security 驗證，透過 mock 繞過
+        testOwner = new User();
+        testOwner.setId(1L);
+        testOwner.setEmail("instructor@test.com");
+        testOwner.setRole(UserRole.INSTRUCTOR);
+        // lenient：ownershipGuard 是 mock（void 方法什麼都不做），
+        // 只有直接呼叫 currentUserProvider 的方法（createExam、getAllExams）才會用到此 stub
+        lenient().when(currentUserProvider.requireCurrentUser()).thenReturn(testOwner);
 
         // 建立測試資料
         testExam = TestDataBuilder.createExam();
