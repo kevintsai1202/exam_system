@@ -180,6 +180,8 @@ CREATE TABLE student_profile (
 CREATE INDEX idx_student_profile_google_id ON student_profile(google_id);
 
 -- 2. 講師 ↔ 學員關係表
+--    uq_instructor_profile 自動建 composite btree；其涵蓋 leading column 查詢，
+--    不再額外建 idx_isr_instructor。idx_isr_profile 仍需要（非 leading）。
 CREATE TABLE instructor_student_relation (
     id                   BIGSERIAL PRIMARY KEY,
     instructor_id        BIGINT NOT NULL REFERENCES users(id),
@@ -189,8 +191,7 @@ CREATE TABLE instructor_student_relation (
     exam_count           INTEGER   NOT NULL DEFAULT 0,
     CONSTRAINT uq_instructor_profile UNIQUE (instructor_id, profile_id)
 );
-CREATE INDEX idx_isr_instructor ON instructor_student_relation(instructor_id);
-CREATE INDEX idx_isr_profile    ON instructor_student_relation(profile_id);
+CREATE INDEX idx_isr_profile ON instructor_student_relation(profile_id);
 
 -- 3. 既有表加欄位（先 nullable，V3 backfill 後 V4 才加 NOT NULL）
 ALTER TABLE exam    ADD COLUMN owner_id   BIGINT REFERENCES users(id);
