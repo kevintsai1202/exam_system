@@ -97,10 +97,10 @@ public class Exam {
     /**
      * 測驗擁有者（建立此測驗的講師）
      * 不設 cascade=REMOVE：避免 admin 不小心刪講師時把所有測驗一起刪
-     * V2-V3 階段 nullable；V4 才加 NOT NULL，屆時同步把 nullable = false 加上
+     * V4 已套用 NOT NULL 約束，entity 同步宣告 nullable=false
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
     /**
