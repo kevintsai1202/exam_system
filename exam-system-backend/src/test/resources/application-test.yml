@@ -15,6 +15,24 @@ spring:
     console:
       enabled: false
 
+  # 測試環境停用 Flyway：schema 由 hibernate ddl-auto: create-drop 全權管理
+  flyway:
+    enabled: false
+
+  # 測試環境 OAuth2 佔位設定：
+  #   application.yml 預設 client-id 為空字串，Spring Security 會因
+  #   "client-id must not be empty" 而無法建立 ClientRegistrationRepository。
+  #   提供測試用假值讓 SecurityConfig.securityFilterChain 可以正常初始化；
+  #   測試不會實際觸發 OAuth2 流程。
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id-placeholder
+            client-secret: test-google-client-secret-placeholder
+            scope: email,profile
+
   # JPA 配置
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
