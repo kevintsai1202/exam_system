@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 /**
  * 跨測驗學員主檔
@@ -38,9 +39,11 @@ public class StudentProfile {
     @Column(length = 100)
     private String googleId;
 
+    /** Google 帳號 Email（透過 OAuth 取得，可能與 email 不同） */
     @Column(length = 100)
     private String googleEmail;
 
+    /** 是否已完成 Gmail 驗證（用於後續講師寄信通知） */
     @Builder.Default
     @Column(nullable = false)
     private Boolean isGmailVerified = false;
@@ -49,31 +52,43 @@ public class StudentProfile {
     @Column(length = 20)
     private String avatarIcon;
 
+    /** 建立時間（首次學員加入時記錄） */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** 最近一次更新時間（每次同 email 再加入或 profile 被修改時更新） */
     private LocalDateTime updatedAt;
 
     /**
-     * 建立前回調：強制 email 正規化為 lowercase + trim
+     * 將 email 正規化為 lowercase + trim
+     * 用 Locale.ROOT 避免土耳其 locale 把 "I" 變成 "ı"（dotless i），破壞 unique 識別
+     */
+    private void normalizeEmail() {
+        if (this.email != null) {
+            this.email = this.email.trim().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    /**
+     * 建立前回調：填寫時間欄位 + 強制 email 正規化
      */
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.email != null) {
-            this.email = this.email.toLowerCase().trim();
-        }
+        normalizeEmail();
         if (this.isGmailVerified == null) {
             this.isGmailVerified = false;
         }
     }
 
     /**
-     * 更新前回調：updatedAt 自動填值
+     * 更新前回調：updatedAt 自動填值 + email 一律重做正規化
+     * （避免 service 層忘記正規化導致 unique key 失效）
      */
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+        normalizeEmail();
     }
 }

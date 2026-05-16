@@ -52,4 +52,22 @@ public class InstructorStudentRelation {
     @Builder.Default
     @Column(nullable = false)
     private Integer examCount = 0;
+
+    /**
+     * 建立前回調：時間欄位 fallback 為 now
+     * service 層 UPSERT 通常會明確設定，這層僅作為安全網避免 NOT NULL 違規
+     */
+    @PrePersist
+    protected void onCreate() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (this.firstInteractionAt == null) {
+            this.firstInteractionAt = now;
+        }
+        if (this.lastInteractionAt == null) {
+            this.lastInteractionAt = this.firstInteractionAt;
+        }
+        if (this.examCount == null) {
+            this.examCount = 0;
+        }
+    }
 }
