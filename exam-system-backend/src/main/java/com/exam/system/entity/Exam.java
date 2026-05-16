@@ -95,6 +95,15 @@ public class Exam {
     private LocalDateTime currentQuestionStartedAt;
 
     /**
+     * 測驗擁有者（建立此測驗的講師）
+     * 不設 cascade=REMOVE：避免 admin 不小心刪講師時把所有測驗一起刪
+     * V2-V3 階段 nullable；V4 才加 NOT NULL，屆時同步把 nullable = false 加上
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
+    /**
      * 當前題目到期時間（UTC，用於回傳給前端，避免時區問題）
      */
     private Instant currentQuestionExpiresAt;
