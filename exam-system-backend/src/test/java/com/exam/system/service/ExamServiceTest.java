@@ -68,6 +68,9 @@ class ExamServiceTest {
     @Mock
     private OwnershipGuard ownershipGuard;
 
+    @Mock
+    private UserRepository userRepository;
+
     private ExamService examService;
 
     /** 測試用的測驗擁有者 */
@@ -93,7 +96,8 @@ class ExamServiceTest {
                 surveyFieldRepository,
                 examSurveyFieldConfigRepository,
                 currentUserProvider,
-                ownershipGuard
+                ownershipGuard,
+                userRepository
         );
 
         // 建立測試講師；多數測試不需要真正的 security 驗證，透過 mock 繞過

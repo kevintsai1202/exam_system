@@ -56,6 +56,8 @@ class ExamServiceIsolationTest {
     private SurveyFieldRepository surveyFieldRepository;
     @Mock
     private ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
+    @Mock
+    private UserRepository userRepository;
 
     // ==================== 真實的 ownership chain ====================
 
@@ -93,7 +95,8 @@ class ExamServiceIsolationTest {
                 surveyFieldRepository,
                 examSurveyFieldConfigRepository,
                 currentUserProvider,
-                ownershipGuard
+                ownershipGuard,
+                userRepository
         );
 
         // 建立測試使用者

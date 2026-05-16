@@ -38,6 +38,7 @@ public class StudentService {
         private final LocationService locationService;
         private final StudentProfileRepository studentProfileRepository;
         private final InstructorStudentRelationRepository instructorStudentRelationRepository;
+        private final CurrentUserProvider currentUserProvider;
 
         /**
          * 學員加入測驗
@@ -420,6 +421,51 @@ public class StudentService {
                                 googleEmail, student.getName(), sessionId);
 
                 return convertToDTO(student, student.getExam());
+        }
+
+        // ==================== 講師學員管理方法 ====================
+
+        /**
+         * 取得當前講師的所有學員列表（跨測驗）
+         * ADMIN 取全部；INSTRUCTOR 只取與自己互動的學員
+         *
+         * @return 學員摘要列表（profileId、name、email、examCount、lastInteractionAt）
+         */
+        @Transactional(readOnly = true)
+        public List<Map<String, Object>> getInstructorStudents() {
+                User current = currentUserProvider.requireCurrentUser();
+
+                List<InstructorStudentRelation> relations;
+                if (current.getRole() == UserRole.ADMIN) {
+                        // ADMIN 查所有講師的關聯，以方便全覽
+                        relations = instructorStudentRelationRepository.findAll();
+                } else {
+                        relations = instructorStudentRelationRepository
+                                        .findByInstructorIdOrderByLastInteractionDesc(current.getId());
+                }
+
+                return relations.stream()
+                                .map(rel -> {
+                                        StudentProfile profile = rel.getProfile();
+                                        Map<String, Object> entry = new java.util.LinkedHashMap<>();
+                                        entry.put("profileId", profile.getId());
+                                        entry.put("name", profile.getName());
+                                        // noemail placeholder 對前端無意義，回傳 null
+                                        String email = profile.getEmail();
+                                        entry.put("email", email != null && email.contains("@no-email.local") ? null : email);
+                                        entry.put("avatarIcon", profile.getAvatarIcon());
+                                        entry.put("isGmailVerified", profile.getIsGmailVerified());
+                                        entry.put("examCount", rel.getExamCount());
+                                        entry.put("firstInteractionAt", rel.getFirstInteractionAt());
+                                        entry.put("lastInteractionAt", rel.getLastInteractionAt());
+                                        if (current.getRole() == UserRole.ADMIN) {
+                                                User instructor = rel.getInstructor();
+                                                entry.put("instructorId", instructor.getId());
+                                                entry.put("instructorName", instructor.getName());
+                                        }
+                                        return entry;
+                                })
+                                .collect(Collectors.toList());
         }
 
 }

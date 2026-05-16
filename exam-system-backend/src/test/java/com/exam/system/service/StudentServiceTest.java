@@ -6,6 +6,7 @@ import com.exam.system.entity.*;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.*;
+import com.exam.system.service.CurrentUserProvider;
 import com.exam.system.websocket.WebSocketService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +56,10 @@ class StudentServiceTest {
     /** Phase 11 新增：講師-學員關聯 Repository（UPSERT 用） */
     @Mock
     private InstructorStudentRelationRepository instructorStudentRelationRepository;
+
+    /** Phase 12 新增：讀取當前用戶（getInstructorStudents 使用） */
+    @Mock
+    private CurrentUserProvider currentUserProvider;
 
     @InjectMocks
     private StudentService studentService;

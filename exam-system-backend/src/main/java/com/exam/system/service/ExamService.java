@@ -39,6 +39,7 @@ public class ExamService {
     private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
     private final CurrentUserProvider currentUserProvider;
     private final OwnershipGuard ownershipGuard;
+    private final UserRepository userRepository;
 
     /**
      * 建構子注入（使用 @Lazy 解決循環依賴）
@@ -55,7 +56,8 @@ public class ExamService {
             SurveyFieldRepository surveyFieldRepository,
             ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository,
             CurrentUserProvider currentUserProvider,
-            OwnershipGuard ownershipGuard
+            OwnershipGuard ownershipGuard,
+            UserRepository userRepository
     ) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
@@ -69,6 +71,7 @@ public class ExamService {
         this.examSurveyFieldConfigRepository = examSurveyFieldConfigRepository;
         this.currentUserProvider = currentUserProvider;
         this.ownershipGuard = ownershipGuard;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -564,6 +567,36 @@ public class ExamService {
     }
 
     // ==================== 私有輔助方法 ====================
+
+    /**
+     * 轉移測驗所有權（僅 ADMIN 可執行）
+     *
+     * @param examId     測驗 ID
+     * @param newOwnerId 新 owner 的 User ID（須為 INSTRUCTOR 或 ADMIN）
+     * @return 更新後的測驗 DTO
+     */
+    @Transactional
+    public ExamDTO transferOwner(Long examId, Long newOwnerId) {
+        User current = currentUserProvider.requireCurrentUser();
+        if (current.getRole() != UserRole.ADMIN) {
+            throw new BusinessException("FORBIDDEN", "只有管理員可以轉移測驗所有權");
+        }
+
+        Exam exam = findExamById(examId);
+        User newOwner = userRepository.findById(newOwnerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", newOwnerId));
+
+        // 不允許把測驗轉給一般學員帳號
+        if (newOwner.getRole() == UserRole.STUDENT) {
+            throw new BusinessException("INVALID_OWNER", "測驗所有者必須為講師或管理員角色");
+        }
+
+        log.info("轉移測驗 {} 所有權：{} → {}", examId,
+                exam.getOwner() != null ? exam.getOwner().getId() : "null",
+                newOwnerId);
+        exam.setOwner(newOwner);
+        return convertToDTO(examRepository.save(exam));
+    }
 
     /**
      * 根據 ID 查找測驗，不存在則拋出異常
