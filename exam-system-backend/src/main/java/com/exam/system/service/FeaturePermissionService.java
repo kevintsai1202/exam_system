@@ -2,7 +2,6 @@ package com.exam.system.service;
 
 import com.exam.system.entity.User;
 import com.exam.system.entity.UserRole;
-import com.exam.system.entity.UserTier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -38,34 +37,24 @@ public class FeaturePermissionService {
     }
 
     /**
-     * 判斷是否可使用問券管理
+     * 問券管理：ADMIN 或 INSTRUCTOR 均可（FREE 仍可用，配額由 SURVEY_COUNT 控制）
      *
      * @param user 目前登入使用者
      * @return 是否允許
      */
     public boolean canManageSurveys(User user) {
-        if (user == null) {
-            return false;
-        }
-        if (user.getRole() == UserRole.ADMIN) {
-            return true;
-        }
-        return user.getRole() == UserRole.INSTRUCTOR && user.getTier() == UserTier.PAID;
+        if (user == null) return false;
+        return user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.INSTRUCTOR;
     }
 
     /**
-     * 判斷是否可使用郵件管理
+     * 郵件管理：同上（FREE 仍可進入，發送配額由 MONTHLY_SEND 控制）
      *
      * @param user 目前登入使用者
      * @return 是否允許
      */
     public boolean canManageEmails(User user) {
-        if (user == null) {
-            return false;
-        }
-        if (user.getRole() == UserRole.ADMIN) {
-            return true;
-        }
-        return user.getRole() == UserRole.INSTRUCTOR && user.getTier() == UserTier.PAID;
+        if (user == null) return false;
+        return user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.INSTRUCTOR;
     }
 }
