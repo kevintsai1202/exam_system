@@ -52,6 +52,41 @@ public class StudentProfile {
     @Column(length = 20)
     private String avatarIcon;
 
+    /**
+     * 會員取得來源
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AcquisitionSource acquisitionSource;
+
+    /**
+     * 加入時間（首次成為會員的時間，與 createdAt 可能相同）
+     */
+    private LocalDateTime acquiredAt;
+
+    /**
+     * 來源實體 ID（對應 exam_id / survey_id / campaign_id / import_batch_id）
+     */
+    private Long acquiredViaId;
+
+    /**
+     * 首次同意書取得時間
+     */
+    private LocalDateTime firstConsentAt;
+
+    /**
+     * 同意書版本（對應 config/consent-versions/v{N}.md）
+     */
+    @Column(length = 20)
+    private String consentVersion;
+
+    /**
+     * 講師對此會員的備註
+     */
+    @Lob
+    @Column
+    private String notes;
+
     /** 建立時間（首次學員加入時記錄） */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
