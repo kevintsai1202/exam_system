@@ -555,3 +555,39 @@ export default {
   statistics: statisticsApi,
   surveyField: surveyFieldApi,
 };
+
+import type { QuotaSnapshot, QuotaPolicy, TierChangeRequest, TierChangeLog } from '../types';
+
+/**
+ * Phase 1 Tier & Quota API
+ */
+export const tierQuotaApi = {
+  /** 取得當前登入講師的配額快照 */
+  fetchSnapshot: async (): Promise<QuotaSnapshot> => {
+    const res = await apiClient.get<QuotaSnapshot>('/quota/snapshot');
+    return res.data;
+  },
+
+  /** ADMIN：升降級講師 */
+  changeTier: async (userId: number, req: TierChangeRequest): Promise<void> => {
+    await apiClient.put(`/admin/users/${userId}/tier`, req);
+  },
+
+  /** ADMIN：查看講師升降級歷史 */
+  fetchTierHistory: async (userId: number): Promise<TierChangeLog[]> => {
+    const res = await apiClient.get<TierChangeLog[]>(`/admin/users/${userId}/tier-history`);
+    return res.data;
+  },
+
+  /** ADMIN：列出所有配額政策 */
+  listPolicies: async (): Promise<QuotaPolicy[]> => {
+    const res = await apiClient.get<QuotaPolicy[]>('/admin/quota-policies');
+    return res.data;
+  },
+
+  /** ADMIN：調整某筆配額政策的 limitValue */
+  updatePolicy: async (id: number, limitValue: number): Promise<QuotaPolicy> => {
+    const res = await apiClient.put<QuotaPolicy>(`/admin/quota-policies/${id}`, { limitValue });
+    return res.data;
+  },
+};

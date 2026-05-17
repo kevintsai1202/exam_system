@@ -22,3 +22,6 @@ export * from './survey.types';
 
 // 匯出郵件相關型別
 export * from './email.types';
+
+// 匯出 Tier & Quota 相關型別
+export * from './tier.types';
