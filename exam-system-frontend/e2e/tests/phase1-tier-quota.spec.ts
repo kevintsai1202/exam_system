@@ -73,20 +73,20 @@ test.describe('Phase 1 Tier+Quota API 驗證', () => {
 
         // 找出各維度
         const memberCount = snapshot.items.find((i: any) => i.dimension === 'MEMBER_COUNT');
-        const aiGenCount = snapshot.items.find((i: any) => i.dimension === 'AI_QUESTION_GEN_COUNT');
+        const aiGenCount = snapshot.items.find((i: any) => i.dimension === 'AI_QUESTION_GEN');
 
         // FREE tier：MEMBER_COUNT 應有非零配額（已開放）
         expect(memberCount, 'MEMBER_COUNT 維度應存在').toBeTruthy();
-        expect(memberCount.limitValue).toBeGreaterThanOrEqual(1);
+        expect(memberCount.limit).toBeGreaterThanOrEqual(1);
 
-        // FREE tier：AI_QUESTION_GEN_COUNT limitValue === 0（未開放）
-        expect(aiGenCount, 'AI_QUESTION_GEN_COUNT 維度應存在').toBeTruthy();
-        expect(aiGenCount.limitValue).toBe(0);
+        // FREE tier：AI_QUESTION_GEN limit === 0（未開放）
+        expect(aiGenCount, 'AI_QUESTION_GEN 維度應存在').toBeTruthy();
+        expect(aiGenCount.limit).toBe(0);
     });
 
     test('ADMIN 升級講師為 PAID tier 後快照變更', async ({ request }) => {
         // ADMIN 呼叫 PUT /api/users/{id}/tier 升為 PAID
-        const upgradeRes = await request.put(`${API}/users/${instId}/tier`, {
+        const upgradeRes = await request.put(`${API}/admin/users/${instId}/tier`, {
             headers: {
                 Authorization: `Bearer ${adminToken}`,
                 'Content-Type': 'application/json',
@@ -121,15 +121,15 @@ test.describe('Phase 1 Tier+Quota API 驗證', () => {
         // 驗證 tier 已升為 PAID
         expect(snapshot.tier).toBe('PAID');
 
-        // PAID tier：AI_QUESTION_GEN_COUNT limitValue > 0（已開放）
-        const aiGenCount = snapshot.items.find((i: any) => i.dimension === 'AI_QUESTION_GEN_COUNT');
-        expect(aiGenCount, 'AI_QUESTION_GEN_COUNT 維度應存在').toBeTruthy();
-        expect(aiGenCount.limitValue).toBeGreaterThan(0);
+        // PAID tier：AI_QUESTION_GEN limit > 0（已開放）
+        const aiGenCount = snapshot.items.find((i: any) => i.dimension === 'AI_QUESTION_GEN');
+        expect(aiGenCount, 'AI_QUESTION_GEN 維度應存在').toBeTruthy();
+        expect(aiGenCount.limit).toBeGreaterThan(0);
     });
 
     test('ADMIN 查看 tier 異動歷史有紀錄', async ({ request }) => {
         // ADMIN 呼叫 GET /api/users/{id}/tier-history
-        const res = await request.get(`${API}/users/${instId}/tier-history`, {
+        const res = await request.get(`${API}/admin/users/${instId}/tier-history`, {
             headers: { Authorization: `Bearer ${adminToken}` },
         });
 
