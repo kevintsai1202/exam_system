@@ -419,6 +419,23 @@ java -jar target/exam-system-backend-*.jar
 
 ## 最近更新記錄
 
+### v1.7 - Phase 1 行銷平台基礎建設：Tier + Quota + 配額儀表板 (2026-05)
+
+- ✅ **Flyway 遷移 V6-V7**: `user.tier`、`user.acquisition_source`、`tier_change_log`、`quota_policy`（14 條預設政策 FREE/PAID 7 維度）、`quota_usage` 表
+- ✅ **UserTier enum**: `FREE` / `PAID` 掛到 `User` 實體，`TierExpirationScheduler` 每日自動降回 FREE
+- ✅ **AcquisitionSource + StudentProfile**: 學員進階畫像實體（`StudentProfile` 含 `acquisitionSource`, `company`, `jobTitle`）
+- ✅ **Quota 7 維度**: `MEMBER_COUNT`, `MONTHLY_SEND`, `AI_QUESTION_GEN`, `AI_DATA_ANALYSIS`, `AI_NEWSLETTER_GEN`, `ACTIVE_CAMPAIGNS`, `SURVEY_COUNT`（個人錨點 Lazy reset）
+- ✅ **QuotaService**: `snapshot / check / consume / reserve / confirm / rollback`（完整 TDD 覆蓋）
+- ✅ **TierService**: 升降級 + 寫 `TierChangeLog`，`TierChangeLogDTO` 避免敏感欄位洩漏
+- ✅ **FeaturePermissionService**: 改為 role-based 檢查，附 tier quota 備注（TDD）
+- ✅ **後端 Controller**: `GET /api/quota/snapshot`（INSTRUCTOR/ADMIN）、`PUT /api/admin/users/{id}/tier`（ADMIN）、`GET /api/admin/users/{id}/tier-history`（ADMIN）、`GET /PUT /api/admin/quota-policies`（ADMIN）
+- ✅ **前端 tier.types.ts**: `UserTier`, `QuotaDimension`, `QuotaResetPeriod`, `QuotaItem`, `QuotaSnapshot`, `QuotaPolicy`, `TierChangeRequest`, `TierChangeLog`
+- ✅ **tierQuotaApi**: `apiService.ts` 新增 5 個 API 方法
+- ✅ **InstructorQuotaDashboard**: `/instructor/quota` 頁面，顯示 tier badge + 7 個 `QuotaProgressBar`，FREE 升 PAID 引導
+- ✅ **AdminDashboard Tier 管理 Tab**: 列出所有用戶 tier、升降級操作；配額政策 Tab：列出並編輯 14 條 `QuotaPolicy`
+- ✅ **SecurityConfig**: `/api/quota/**` 限 INSTRUCTOR+、`/api/admin/**` 限 ADMIN
+- ✅ **Playwright e2e 測試**: `e2e/tests/phase1-tier-quota.spec.ts` 驗證 FREE 快照、PAID 升級、tier-history 查詢
+
 ### v1.6 - 帳號隔離與多講師管理 (2026-05)
 
 - ✅ **帳號隔離**: 講師只能看到自己的測驗（`findByOwnerIdOrderByCreatedAtDesc`）
