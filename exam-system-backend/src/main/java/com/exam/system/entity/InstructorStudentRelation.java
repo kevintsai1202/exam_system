@@ -54,6 +54,14 @@ public class InstructorStudentRelation {
     private Integer examCount = 0;
 
     /**
+     * 講師對該會員的自訂標籤 JSON 陣列（例：["VIP","新北場"]）
+     * Phase 1 僅儲存 JSON 字串，前端負責解析與顯示；分眾邏輯在 Phase 4 補上
+     */
+    @Lob
+    @Column
+    private String tags;
+
+    /**
      * 建立前回調：時間欄位 fallback 為 now
      * service 層 UPSERT 通常會明確設定，這層僅作為安全網避免 NOT NULL 違規
      */
