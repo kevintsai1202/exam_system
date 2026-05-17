@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { userApiService } from '../services/userApiService';
-import { examApi } from '../services/apiService';
+import { examApi, tierQuotaApi } from '../services/apiService';
 import type { User } from '../store/authStore';
 import type { Exam } from '../types/exam.types';
+import type { QuotaPolicy, TierChangeRequest } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 /** 頁籤類型 */
-type TabKey = 'users' | 'exams';
+type TabKey = 'users' | 'exams' | 'tiers' | 'policies';
 
 const AdminDashboard: React.FC = () => {
     // ── 共用狀態 ──────────────────────────────────────────────────
@@ -36,6 +37,17 @@ const AdminDashboard: React.FC = () => {
     /** 每張測驗卡片選中的新 owner ID（key=examId） */
     const [selectedNewOwner, setSelectedNewOwner] = useState<Record<number, number>>({});
     const [transferringId, setTransferringId] = useState<number | null>(null);
+
+    // ── Tier 管理狀態 ──────────────────────────────────────────────
+    /** 供 Tier 管理使用的講師/管理員用戶列表（複用 users） */
+    const [tiersLoading, setTiersLoading] = useState(false);
+    const [tiersError, setTiersError] = useState<string | null>(null);
+    const [tierUsers, setTierUsers] = useState<User[]>([]);
+
+    // ── 配額政策管理狀態 ──────────────────────────────────────────
+    const [policies, setPolicies] = useState<QuotaPolicy[]>([]);
+    const [policiesLoading, setPoliciesLoading] = useState(false);
+    const [policiesError, setPoliciesError] = useState<string | null>(null);
 
     // ── 資料載入 ──────────────────────────────────────────────────
 
@@ -71,6 +83,39 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    /**
+     * 載入 Tier 管理用的講師/管理員用戶列表
+     * 直接複用 getAllUsers 並篩選 INSTRUCTOR/ADMIN
+     */
+    const fetchTierUsers = async () => {
+        try {
+            setTiersLoading(true);
+            setTiersError(null);
+            const data = await userApiService.getAllUsers();
+            setTierUsers(data.filter(u => u.role === 'INSTRUCTOR' || u.role === 'ADMIN'));
+        } catch (err: any) {
+            setTiersError(err.message || '無法取得用戶列表');
+        } finally {
+            setTiersLoading(false);
+        }
+    };
+
+    /**
+     * 載入所有配額政策
+     */
+    const fetchPolicies = async () => {
+        try {
+            setPoliciesLoading(true);
+            setPoliciesError(null);
+            const data = await tierQuotaApi.listPolicies();
+            setPolicies(data);
+        } catch (err: any) {
+            setPoliciesError(err.message || '無法取得配額政策');
+        } finally {
+            setPoliciesLoading(false);
+        }
+    };
+
     // 初次載入用戶資料；切換到測驗 tab 時才載入測驗
     useEffect(() => {
         fetchUsers();
@@ -79,6 +124,12 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         if (activeTab === 'exams' && exams.length === 0 && !examsLoading) {
             fetchExams();
+        }
+        if (activeTab === 'tiers' && tierUsers.length === 0 && !tiersLoading) {
+            fetchTierUsers();
+        }
+        if (activeTab === 'policies' && policies.length === 0 && !policiesLoading) {
+            fetchPolicies();
         }
     }, [activeTab]);
 
@@ -195,6 +246,56 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    // ── Tier 管理操作 ──────────────────────────────────────────────
+
+    /**
+     * 升級指定用戶為 PAID tier
+     */
+    const handleUpgradeToPaid = async (targetUser: User) => {
+        const expiresAt = window.prompt(
+            `升級「${targetUser.name || targetUser.email}」為 PAID\n\n請輸入到期日（選填，格式：YYYY-MM-DD），或直接按確定不設到期日：`
+        );
+        if (expiresAt === null) return; // 使用者點取消
+
+        const reason = window.prompt('請輸入升級原因（選填）：') ?? '';
+
+        const req: TierChangeRequest = {
+            targetTier: 'PAID',
+            expiresAt: expiresAt.trim() || null,
+            reason: reason.trim() || undefined,
+        };
+        try {
+            await tierQuotaApi.changeTier(targetUser.id, req);
+            alert(`成功升級「${targetUser.name || targetUser.email}」為 PAID！`);
+            await fetchTierUsers();
+        } catch (err: any) {
+            alert(`升級失敗：${err.message || '未知錯誤'}`);
+        }
+    };
+
+    /**
+     * 降級指定用戶為 FREE tier
+     */
+    const handleDowngradeToFree = async (targetUser: User) => {
+        const reason = window.prompt(
+            `將「${targetUser.name || targetUser.email}」降級為 FREE\n\n請輸入降級原因（選填）：`
+        );
+        if (reason === null) return; // 使用者點取消
+
+        const req: TierChangeRequest = {
+            targetTier: 'FREE',
+            expiresAt: null,
+            reason: reason.trim() || undefined,
+        };
+        try {
+            await tierQuotaApi.changeTier(targetUser.id, req);
+            alert(`成功降級「${targetUser.name || targetUser.email}」為 FREE！`);
+            await fetchTierUsers();
+        } catch (err: any) {
+            alert(`降級失敗：${err.message || '未知錯誤'}`);
+        }
+    };
+
     // ── 可作為 owner 的用戶（INSTRUCTOR 或 ADMIN） ────────────────
     const eligibleOwners = users.filter(u => u.role === 'INSTRUCTOR' || u.role === 'ADMIN');
 
@@ -268,6 +369,12 @@ const AdminDashboard: React.FC = () => {
                     </button>
                     <button style={tabStyle('exams')} onClick={() => setActiveTab('exams')}>
                         測驗管理 {exams.length > 0 ? `(${exams.length})` : ''}
+                    </button>
+                    <button style={tabStyle('tiers')} onClick={() => setActiveTab('tiers')}>
+                        Tier 管理
+                    </button>
+                    <button style={tabStyle('policies')} onClick={() => setActiveTab('policies')}>
+                        配額政策
                     </button>
                 </div>
 
@@ -468,6 +575,172 @@ const AdminDashboard: React.FC = () => {
                         {!examsLoading && !examsError && exams.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', fontSize: '16px' }}>
                                 系統中尚無任何測驗
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {/* ── Tier 管理 Tab ── */}
+                {activeTab === 'tiers' && (
+                    <motion.div
+                        key="tiers"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        style={{ backgroundColor: '#fff', borderRadius: '0 0 12px 12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflowX: 'auto' }}
+                    >
+                        {tiersLoading ? (
+                            <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>載入中...</div>
+                        ) : tiersError ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#f44336' }}>
+                                {tiersError}
+                                <button onClick={fetchTierUsers} style={{ marginLeft: '16px', padding: '8px 16px', backgroundColor: '#1976d2', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>重新載入</button>
+                            </div>
+                        ) : (
+                            <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid #eee' }}>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>Email</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>姓名</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>角色</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>Tier</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>到期日</th>
+                                        <th style={{ padding: '16px', textAlign: 'right', color: '#333', fontWeight: 600 }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tierUsers.map((u) => (
+                                        <tr key={u.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '16px', color: '#333' }}>{u.email}</td>
+                                            <td style={{ padding: '16px', color: '#333', fontWeight: 500 }}>{u.name || '未設定'}</td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                                                    backgroundColor: u.role === 'ADMIN' ? '#ffebee' : '#e8f5e9',
+                                                    color: u.role === 'ADMIN' ? '#c62828' : '#2e7d32'
+                                                }}>
+                                                    {u.role}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                                                    backgroundColor: u.tier === 'PAID' ? '#dbeafe' : '#f3f4f6',
+                                                    color: u.tier === 'PAID' ? '#1e40af' : '#374151'
+                                                }}>
+                                                    {u.tier || 'FREE'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px', color: '#666', fontSize: '13px' }}>
+                                                {u.tierExpiresAt ? u.tierExpiresAt.slice(0, 10) : '—'}
+                                            </td>
+                                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                                    {(u.tier || 'FREE') !== 'PAID' && (
+                                                        <button
+                                                            onClick={() => handleUpgradeToPaid(u)}
+                                                            style={btnStyle('#1565c0', false)}
+                                                        >
+                                                            升 PAID
+                                                        </button>
+                                                    )}
+                                                    {(u.tier || 'FREE') === 'PAID' && (
+                                                        <button
+                                                            onClick={() => handleDowngradeToFree(u)}
+                                                            style={btnStyle('#9e9e9e', false)}
+                                                        >
+                                                            降 FREE
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                        {!tiersLoading && !tiersError && tierUsers.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', fontSize: '16px' }}>
+                                沒有找到任何講師/管理員帳號
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {/* ── 配額政策 Tab ── */}
+                {activeTab === 'policies' && (
+                    <motion.div
+                        key="policies"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        style={{ backgroundColor: '#fff', borderRadius: '0 0 12px 12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflowX: 'auto' }}
+                    >
+                        {policiesLoading ? (
+                            <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>載入中...</div>
+                        ) : policiesError ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#f44336' }}>
+                                {policiesError}
+                                <button onClick={fetchPolicies} style={{ marginLeft: '16px', padding: '8px 16px', backgroundColor: '#1976d2', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>重新載入</button>
+                            </div>
+                        ) : (
+                            <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid #eee' }}>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>Tier</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>維度</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>上限</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', color: '#333', fontWeight: 600 }}>週期</th>
+                                        <th style={{ padding: '16px', textAlign: 'right', color: '#333', fontWeight: 600 }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {policies.map((p) => (
+                                        <tr key={p.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                                                    backgroundColor: p.tier === 'PAID' ? '#dbeafe' : '#f3f4f6',
+                                                    color: p.tier === 'PAID' ? '#1e40af' : '#374151'
+                                                }}>
+                                                    {p.tier}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px', color: '#333', fontWeight: 500 }}>{p.dimension}</td>
+                                            <td style={{ padding: '16px', color: '#333' }}>{p.limitValue.toLocaleString()}</td>
+                                            <td style={{ padding: '16px', color: '#666', fontSize: '13px' }}>
+                                                {p.resetPeriod === 'MONTHLY' ? '月度' : '永久'}
+                                            </td>
+                                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                                                <button
+                                                    onClick={async () => {
+                                                        const input = window.prompt(
+                                                            `調整「${p.tier} / ${p.dimension}」的上限\n\n目前上限：${p.limitValue}\n\n請輸入新上限（整數）：`
+                                                        );
+                                                        if (input === null) return;
+                                                        const newLimit = parseInt(input.trim(), 10);
+                                                        if (isNaN(newLimit) || newLimit < 0) {
+                                                            alert('請輸入有效的非負整數');
+                                                            return;
+                                                        }
+                                                        try {
+                                                            await tierQuotaApi.updatePolicy(p.id, newLimit);
+                                                            await fetchPolicies();
+                                                        } catch (err: any) {
+                                                            alert(`更新失敗：${err.message || '未知錯誤'}`);
+                                                        }
+                                                    }}
+                                                    style={btnStyle('#7b1fa2', false)}
+                                                >
+                                                    編輯
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                        {!policiesLoading && !policiesError && policies.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999', fontSize: '16px' }}>
+                                尚無配額政策資料
                             </div>
                         )}
                     </motion.div>
