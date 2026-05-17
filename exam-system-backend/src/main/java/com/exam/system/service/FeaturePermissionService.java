@@ -2,6 +2,7 @@ package com.exam.system.service;
 
 import com.exam.system.entity.User;
 import com.exam.system.entity.UserRole;
+import com.exam.system.entity.UserTier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +50,7 @@ public class FeaturePermissionService {
         if (user.getRole() == UserRole.ADMIN) {
             return true;
         }
-        return user.getRole() == UserRole.INSTRUCTOR && user.isSurveyManagementEnabled();
+        return user.getRole() == UserRole.INSTRUCTOR && user.getTier() == UserTier.PAID;
     }
 
     /**
@@ -65,6 +66,6 @@ public class FeaturePermissionService {
         if (user.getRole() == UserRole.ADMIN) {
             return true;
         }
-        return user.getRole() == UserRole.INSTRUCTOR && user.isEmailManagementEnabled();
+        return user.getRole() == UserRole.INSTRUCTOR && user.getTier() == UserTier.PAID;
     }
 }
