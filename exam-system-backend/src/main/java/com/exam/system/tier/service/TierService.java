@@ -4,6 +4,7 @@ import com.exam.system.entity.User;
 import com.exam.system.entity.UserTier;
 import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.repository.UserRepository;
+import com.exam.system.tier.dto.TierChangeLogDTO;
 import com.exam.system.tier.entity.TierChangeLog;
 import com.exam.system.tier.repository.TierChangeLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 講師分級服務 — ADMIN 升降級流程，含錨點重設與稽核 log
@@ -81,5 +83,31 @@ public class TierService {
         logRepository.save(TierChangeLog.builder()
                 .owner(target).fromTier(fromTier).toTier(UserTier.FREE)
                 .changedBy(null).reason(reason).build());
+    }
+
+    /**
+     * 查詢指定講師的升降級歷史（依時間倒序）
+     *
+     * @param targetUserId  目標講師 ID
+     * @return              升降級歷史 DTO 清單（不含敏感 User 欄位）
+     */
+    @Transactional(readOnly = true)
+    public List<TierChangeLogDTO> findHistory(Long targetUserId) {
+        // 查詢目標用戶，不存在則拋出例外
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", targetUserId));
+        // 轉換為 DTO，避免序列化原始 User 實體（含敏感欄位）
+        return logRepository.findByOwnerOrderByChangedAtDesc(target).stream()
+                .map(log -> TierChangeLogDTO.builder()
+                        .id(log.getId())
+                        .fromTier(log.getFromTier())
+                        .toTier(log.getToTier())
+                        .reason(log.getReason())
+                        .expiresAt(log.getExpiresAt())
+                        .changedAt(log.getChangedAt())
+                        .changedById(log.getChangedBy() != null ? log.getChangedBy().getId() : null)
+                        .changedByName(log.getChangedBy() != null ? log.getChangedBy().getName() : null)
+                        .build())
+                .toList();
     }
 }

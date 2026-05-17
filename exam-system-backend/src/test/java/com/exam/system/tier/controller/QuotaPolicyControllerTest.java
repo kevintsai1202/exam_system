@@ -103,4 +103,15 @@ class QuotaPolicyControllerTest {
         mockMvc.perform(get("/api/admin/quota-policies"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(roles = {"INSTRUCTOR"})
+    @DisplayName("INSTRUCTOR 嘗試 PUT → 403")
+    void instructor_put_forbidden() throws Exception {
+        // 使用任意 ID — 安全守衛在 controller 主體執行前就會攔截
+        mockMvc.perform(put("/api/admin/quota-policies/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"limitValue\":999}"))
+                .andExpect(status().isForbidden());
+    }
 }

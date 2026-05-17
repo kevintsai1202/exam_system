@@ -1,5 +1,6 @@
 package com.exam.system.tier.controller;
 
+import com.exam.system.exception.ResourceNotFoundException;
 import com.exam.system.tier.dto.QuotaPolicyDTO;
 import com.exam.system.tier.entity.QuotaPolicy;
 import com.exam.system.tier.repository.QuotaPolicyRepository;
@@ -39,7 +40,7 @@ public class QuotaPolicyController {
     @Transactional
     public ResponseEntity<QuotaPolicyDTO> update(@PathVariable Long id, @RequestBody QuotaPolicyDTO req) {
         QuotaPolicy policy = policyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Policy not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("QuotaPolicy", id));
         // limitValue 必須為非負整數，否則回傳 400
         if (req.getLimitValue() == null || req.getLimitValue() < 0) {
             return ResponseEntity.badRequest().build();

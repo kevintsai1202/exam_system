@@ -25,7 +25,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -86,6 +88,27 @@ class TierControllerTest {
         mockMvc.perform(put("/api/admin/users/{id}/tier", instructorId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ADMIN 查詢升降級歷史 → 200 含空陣列（無歷史）")
+    void admin_getHistory_emptyList() throws Exception {
+        // 使用真實 User 實體作為 principal，模擬 JwtAuthenticationFilter 的 ADMIN 行為
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                adminUser, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+        mockMvc.perform(get("/api/admin/users/{id}/tier-history", instructorId)
+                .with(authentication(auth)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = {"INSTRUCTOR"})
+    @DisplayName("INSTRUCTOR 查詢歷史 → 403")
+    void instructor_getHistory_forbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/users/{id}/tier-history", instructorId))
                 .andExpect(status().isForbidden());
     }
 }
