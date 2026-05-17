@@ -2,15 +2,10 @@ package com.exam.system.service;
 
 import com.exam.system.dto.StudentDTO;
 import com.exam.system.dto.WebSocketMessage;
-import com.exam.system.entity.Exam;
-import com.exam.system.entity.ExamStatus;
-import com.exam.system.entity.ExamSurveyFieldConfig;
-import com.exam.system.entity.Student;
+import com.exam.system.entity.*;
 import com.exam.system.exception.BusinessException;
 import com.exam.system.exception.ResourceNotFoundException;
-import com.exam.system.repository.ExamRepository;
-import com.exam.system.repository.ExamSurveyFieldConfigRepository;
-import com.exam.system.repository.StudentRepository;
+import com.exam.system.repository.*;
 import com.exam.system.websocket.WebSocketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +36,9 @@ public class StudentService {
         private final WebSocketService webSocketService;
         private final ExamSurveyFieldConfigRepository examSurveyFieldConfigRepository;
         private final LocationService locationService;
+        private final StudentProfileRepository studentProfileRepository;
+        private final InstructorStudentRelationRepository instructorStudentRelationRepository;
+        private final CurrentUserProvider currentUserProvider;
 
         /**
          * 學員加入測驗
@@ -133,7 +133,28 @@ public class StudentService {
                 // 生成唯一的 sessionId
                 String sessionId = UUID.randomUUID().toString();
 
-                // 建立學員實體
+                // UPSERT StudentProfile（先於 Student 建立，以符合 profile_id NOT NULL 約束）
+                // 有 email → 以 normalized email 為 key；否則產生唯一佔位符
+                String profileEmail = (studentDTO.getEmail() != null && !studentDTO.getEmail().trim().isEmpty())
+                                ? studentDTO.getEmail().trim().toLowerCase(Locale.ROOT)
+                                : "noemail-" + UUID.randomUUID() + "@no-email.local";
+
+                StudentProfile profile = studentProfileRepository.findByEmail(profileEmail)
+                                .map(existing -> {
+                                        existing.setName(studentDTO.getName());
+                                        if (studentDTO.getAvatarIcon() != null) {
+                                                existing.setAvatarIcon(studentDTO.getAvatarIcon());
+                                        }
+                                        return studentProfileRepository.save(existing);
+                                })
+                                .orElseGet(() -> studentProfileRepository.save(StudentProfile.builder()
+                                                .email(profileEmail)
+                                                .name(studentDTO.getName())
+                                                .isGmailVerified(false)
+                                                .avatarIcon(studentDTO.getAvatarIcon())
+                                                .build()));
+
+                // 建立學員實體（含 profile，以符合 NOT NULL 約束）
                 Student student = Student.builder()
                                 .exam(exam)
                                 .sessionId(sessionId)
@@ -144,9 +165,32 @@ public class StudentService {
                                 .location(normalizedLocation)
                                 .avatarIcon(studentDTO.getAvatarIcon())
                                 .totalScore(0)
+                                .profile(profile)
                                 .build();
 
                 student = studentRepository.save(student);
+
+                // UPSERT InstructorStudentRelation（僅在 exam 已指定 owner 時執行）
+                if (exam.getOwner() != null) {
+                        User instructor = exam.getOwner();
+                        LocalDateTime now = LocalDateTime.now();
+                        instructorStudentRelationRepository
+                                        .findByInstructorIdAndProfileId(instructor.getId(), profile.getId())
+                                        .ifPresentOrElse(
+                                                        rel -> {
+                                                                rel.setLastInteractionAt(now);
+                                                                rel.setExamCount(rel.getExamCount() + 1);
+                                                                instructorStudentRelationRepository.save(rel);
+                                                        },
+                                                        () -> instructorStudentRelationRepository
+                                                                        .save(InstructorStudentRelation.builder()
+                                                                                        .instructor(instructor)
+                                                                                        .profile(profile)
+                                                                                        .firstInteractionAt(now)
+                                                                                        .lastInteractionAt(now)
+                                                                                        .examCount(1)
+                                                                                        .build()));
+                }
 
                 log.info("Student joined successfully: {} (sessionId: {})", student.getName(), sessionId);
 
@@ -377,6 +421,51 @@ public class StudentService {
                                 googleEmail, student.getName(), sessionId);
 
                 return convertToDTO(student, student.getExam());
+        }
+
+        // ==================== 講師學員管理方法 ====================
+
+        /**
+         * 取得當前講師的所有學員列表（跨測驗）
+         * ADMIN 取全部；INSTRUCTOR 只取與自己互動的學員
+         *
+         * @return 學員摘要列表（profileId、name、email、examCount、lastInteractionAt）
+         */
+        @Transactional(readOnly = true)
+        public List<Map<String, Object>> getInstructorStudents() {
+                User current = currentUserProvider.requireCurrentUser();
+
+                List<InstructorStudentRelation> relations;
+                if (current.getRole() == UserRole.ADMIN) {
+                        // ADMIN 查所有講師的關聯，以方便全覽
+                        relations = instructorStudentRelationRepository.findAll();
+                } else {
+                        relations = instructorStudentRelationRepository
+                                        .findByInstructorIdOrderByLastInteractionDesc(current.getId());
+                }
+
+                return relations.stream()
+                                .map(rel -> {
+                                        StudentProfile profile = rel.getProfile();
+                                        Map<String, Object> entry = new java.util.LinkedHashMap<>();
+                                        entry.put("profileId", profile.getId());
+                                        entry.put("name", profile.getName());
+                                        // noemail placeholder 對前端無意義，回傳 null
+                                        String email = profile.getEmail();
+                                        entry.put("email", email != null && email.contains("@no-email.local") ? null : email);
+                                        entry.put("avatarIcon", profile.getAvatarIcon());
+                                        entry.put("isGmailVerified", profile.getIsGmailVerified());
+                                        entry.put("examCount", rel.getExamCount());
+                                        entry.put("firstInteractionAt", rel.getFirstInteractionAt());
+                                        entry.put("lastInteractionAt", rel.getLastInteractionAt());
+                                        if (current.getRole() == UserRole.ADMIN) {
+                                                User instructor = rel.getInstructor();
+                                                entry.put("instructorId", instructor.getId());
+                                                entry.put("instructorName", instructor.getName());
+                                        }
+                                        return entry;
+                                })
+                                .collect(Collectors.toList());
         }
 
 }

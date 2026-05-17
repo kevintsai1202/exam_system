@@ -36,8 +36,7 @@ public class RoleController {
                                 "isInstructor",
                                 user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.ADMIN,
                                 "isAdmin", user.getRole() == UserRole.ADMIN,
-                                "surveyManagementEnabled", user.isSurveyManagementEnabled(),
-                                "emailManagementEnabled", user.isEmailManagementEnabled()));
+                                "tier", user.getTier().name()));
         }
 
         /**
@@ -115,8 +114,7 @@ public class RoleController {
                                                 "email", user.getEmail(),
                                                 "name", user.getName(),
                                                 "role", user.getRole().name(),
-                                                "surveyManagementEnabled", user.isSurveyManagementEnabled(),
-                                                "emailManagementEnabled", user.isEmailManagementEnabled()))
+                                                "tier", user.getTier().name()))
                                 .toList();
 
                 return ResponseEntity.ok(users);
@@ -138,16 +136,7 @@ public class RoleController {
 
                 return userRepository.findById(userId)
                                 .map(user -> {
-                                        Boolean surveyManagementEnabled = request.get("surveyManagementEnabled");
-                                        Boolean emailManagementEnabled = request.get("emailManagementEnabled");
-
-                                        if (surveyManagementEnabled != null) {
-                                                user.setSurveyManagementEnabled(surveyManagementEnabled);
-                                        }
-                                        if (emailManagementEnabled != null) {
-                                                user.setEmailManagementEnabled(emailManagementEnabled);
-                                        }
-
+                                        // 此端點已改由 tier 管理，保留結構供後續擴充
                                         userRepository.save(user);
                                         return ResponseEntity.ok(Map.of(
                                                         "success", true,
@@ -156,10 +145,7 @@ public class RoleController {
                                                                         "id", user.getId(),
                                                                         "email", user.getEmail(),
                                                                         "role", user.getRole().name(),
-                                                                        "surveyManagementEnabled",
-                                                                        user.isSurveyManagementEnabled(),
-                                                                        "emailManagementEnabled",
-                                                                        user.isEmailManagementEnabled())));
+                                                                        "tier", user.getTier().name())));
                                 })
                                 .orElse(ResponseEntity.notFound().build());
         }

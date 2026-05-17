@@ -5,6 +5,9 @@ import com.exam.system.entity.Exam;
 import com.exam.system.entity.ExamStatus;
 import com.exam.system.entity.Question;
 import com.exam.system.entity.Student;
+import com.exam.system.entity.StudentProfile;
+import com.exam.system.entity.User;
+import com.exam.system.entity.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,15 +32,33 @@ class ExamRepositoryTest {
     @Autowired
     private ExamRepository examRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private StudentProfileRepository studentProfileRepository;
+
+    /** 測試用 owner（owner_id NOT NULL 必填） */
+    private User testOwner;
+
     private Exam testExam;
 
     @BeforeEach
     void setUp() {
-        // 清空資料庫
+        // 清空資料庫（順序：exam 先、user 後，避免 FK 違反）
         examRepository.deleteAll();
+        userRepository.deleteAll();
 
-        // 建立測試資料
+        // 建立並儲存測試 owner（email、name、role 均為 NOT NULL）
+        testOwner = new User();
+        testOwner.setEmail("repo-test-owner@test.local");
+        testOwner.setName("Test Owner");
+        testOwner.setRole(UserRole.INSTRUCTOR);
+        testOwner = userRepository.save(testOwner);
+
+        // 建立測試資料，並設定 owner
         testExam = TestDataBuilder.createExam();
+        testExam.setOwner(testOwner);
         testExam = examRepository.save(testExam);
     }
 
@@ -48,6 +69,7 @@ class ExamRepositoryTest {
         Exam exam = TestDataBuilder.createExam();
         exam.setAccessCode("NEW001");
         exam.setTitle("新測驗");
+        exam.setOwner(testOwner);
 
         // When
         Exam saved = examRepository.save(exam);
@@ -106,16 +128,19 @@ class ExamRepositoryTest {
         Exam exam1 = TestDataBuilder.createExam();
         exam1.setAccessCode("CODE1");
         exam1.setStatus(ExamStatus.STARTED);
+        exam1.setOwner(testOwner);
         examRepository.save(exam1);
 
         Exam exam2 = TestDataBuilder.createExam();
         exam2.setAccessCode("CODE2");
         exam2.setStatus(ExamStatus.STARTED);
+        exam2.setOwner(testOwner);
         examRepository.save(exam2);
 
         Exam exam3 = TestDataBuilder.createExam();
         exam3.setAccessCode("CODE3");
         exam3.setStatus(ExamStatus.ENDED);
+        exam3.setOwner(testOwner);
         examRepository.save(exam3);
 
         // When
@@ -152,14 +177,26 @@ class ExamRepositoryTest {
     @Test
     @DisplayName("測試查詢測驗並預先載入學員")
     void testFindByIdWithStudents() {
-        // Given - 為測驗新增學員（使用 Exam 的 addStudent 方法確保雙向關聯）
+        // Given - 為測驗新增學員（student.profile_id NOT NULL，需先建立 StudentProfile）
+        StudentProfile p1 = new StudentProfile();
+        p1.setEmail("s1@test.local");
+        p1.setName("學員1");
+        p1 = studentProfileRepository.save(p1);
+
+        StudentProfile p2 = new StudentProfile();
+        p2.setEmail("s2@test.local");
+        p2.setName("學員2");
+        p2 = studentProfileRepository.save(p2);
+
         Student s1 = TestDataBuilder.createStudent(testExam);
         s1.setName("學員1");
         s1.setSessionId("session-1");
+        s1.setProfile(p1);
 
         Student s2 = TestDataBuilder.createStudent(testExam);
         s2.setName("學員2");
         s2.setSessionId("session-2");
+        s2.setProfile(p2);
 
         testExam.addStudent(s1);
         testExam.addStudent(s2);
@@ -210,10 +247,12 @@ class ExamRepositoryTest {
         // Given
         Exam exam1 = TestDataBuilder.createExam();
         exam1.setAccessCode("CODE1");
+        exam1.setOwner(testOwner);
         examRepository.save(exam1);
 
         Exam exam2 = TestDataBuilder.createExam();
         exam2.setAccessCode("CODE2");
+        exam2.setOwner(testOwner);
         examRepository.save(exam2);
 
         // When
@@ -229,10 +268,12 @@ class ExamRepositoryTest {
         // Given
         Exam exam1 = TestDataBuilder.createExam();
         exam1.setAccessCode("CODE1");
+        exam1.setOwner(testOwner);
         examRepository.save(exam1);
 
         Exam exam2 = TestDataBuilder.createExam();
         exam2.setAccessCode("CODE2");
+        exam2.setOwner(testOwner);
         examRepository.save(exam2);
 
         // When

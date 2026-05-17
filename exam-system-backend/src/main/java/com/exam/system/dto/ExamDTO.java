@@ -118,6 +118,16 @@ public class ExamDTO {
     private Integer totalStudents;
 
     /**
+     * 測驗 owner 的 User ID（回應時使用）
+     */
+    private Long ownerId;
+
+    /**
+     * 測驗 owner 的顯示名稱（回應時使用）
+     */
+    private String ownerName;
+
+    /**
      * 測驗的調查欄位配置列表
      */
     @Valid

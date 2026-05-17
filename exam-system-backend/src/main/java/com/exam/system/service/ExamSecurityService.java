@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
@@ -58,6 +59,24 @@ public class ExamSecurityService {
     }
 
     /**
+     * 判斷上一題是否可視為「已結束」
+     * 用於升級重啟後的 auto-recovery 判斷
+     *  - currentQuestionStartedAt 為 null：從未推題
+     *  - currentQuestionExpiresAt + 5 秒已過：上一題確定結束
+     */
+    private boolean isLastQuestionConsideredEnded(Exam exam) {
+        if (exam.getCurrentQuestionStartedAt() == null) {
+            return true;
+        }
+        if (exam.getCurrentQuestionExpiresAt() == null) {
+            return false;
+        }
+        return Instant.now().isAfter(
+            exam.getCurrentQuestionExpiresAt().plusSeconds(5)
+        );
+    }
+
+    /**
      * 驗證講師 Session
      * 依據測驗狀態決定是否需要驗證
      *
@@ -78,17 +97,15 @@ public class ExamSecurityService {
             String storedSessionId = instructorSessions.get(exam.getId());
 
             if (storedSessionId == null) {
-                // 特殊情況：如果測驗已啟動但尚未推送題目（currentQuestionStartedAt 為 null）
-                // 允許自動恢復 session（例如後端重啟的情況）
-                if (exam.getCurrentQuestionStartedAt() == null) {
-                    log.info("Exam {} is STARTED but no question pushed yet, auto-recovering session for provided ID: {}",
-                            exam.getId(), providedSessionId);
-                    // 使用前端提供的 sessionId 重新建立 session
-                    if (providedSessionId != null && !providedSessionId.isEmpty()) {
-                        instructorSessions.put(exam.getId(), providedSessionId);
-                        log.info("Session auto-recovered for exam {}", exam.getId());
-                        return true;
-                    }
+                // Auto-recovery 兩條件：
+                //  (1) 從未推題 (currentQuestionStartedAt == null)
+                //  (2) 上一題已過期超過 5 秒 buffer（升級重啟保護）
+                if (isLastQuestionConsideredEnded(exam)
+                        && StringUtils.hasText(providedSessionId)) {
+                    instructorSessions.put(exam.getId(), providedSessionId);
+                    log.info("Instructor session auto-recovered for exam {} (last question ended or not pushed)",
+                            exam.getId());
+                    return true;
                 }
 
                 log.warn("No instructor session found for exam {} and cannot auto-recover", exam.getId());

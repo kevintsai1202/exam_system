@@ -16,6 +16,12 @@ services:
       - pgdata:/var/lib/postgresql
     networks:
       - exam_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exam_user -d exam_system"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   backend:
     build:
@@ -26,16 +32,31 @@ services:
     environment:
       EXAM_SYSTEM_HOST: ${EXAM_SYSTEM_HOST:-http://localhost}
       SPRING_PROFILES_ACTIVE: docker
-      DB_HOST: ${DB_HOST:-db}
+      # application-docker.yml 使用 POSTGRES_* 變數（非 DB_HOST）
+      POSTGRES_HOST: ${DB_HOST:-db}
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: exam_system
+      POSTGRES_USERNAME: exam_user
+      POSTGRES_PASSWORD: exam_password
+      # exam.security.admin-token 必填
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-exam-e2e-admin}
       TZ: Asia/Taipei
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - exam_network
+    healthcheck:
+      # /api/survey-fields 是 permitAll，不需要認證，適合做健康檢查
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/survey-fields > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
 
   frontend:
     build:

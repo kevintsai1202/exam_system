@@ -62,6 +62,8 @@ export interface Exam {
   questions?: Question[];         // 題目列表
   totalQuestions?: number;        // 總題目數
   totalStudents?: number;         // 總學員數
+  ownerId?: number;               // 測驗 owner 的 User ID（admin 視圖使用）
+  ownerName?: string;             // 測驗 owner 的顯示名稱（admin 視圖使用）
 }
 
 // 建立測驗請求介面

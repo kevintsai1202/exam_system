@@ -349,6 +349,23 @@ public class ExamController {
     }
 
     /**
+     * 轉移測驗所有權（僅 ADMIN 可執行）
+     * PUT /api/exams/{examId}/transfer-owner
+     */
+    @PutMapping("/{examId}/transfer-owner")
+    public ResponseEntity<ExamDTO> transferOwner(
+            @PathVariable Long examId,
+            @RequestBody Map<String, Long> body) {
+        Long newOwnerId = body.get("newOwnerId");
+        if (newOwnerId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("轉移測驗 {} 所有權至 user {}", examId, newOwnerId);
+        ExamDTO updated = examService.transferOwner(examId, newOwnerId);
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
      * 清理檔名，移除不合法字元
      */
     private String sanitizeFilename(String filename) {

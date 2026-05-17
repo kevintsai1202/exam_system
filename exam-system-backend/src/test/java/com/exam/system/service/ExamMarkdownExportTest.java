@@ -2,12 +2,17 @@ package com.exam.system.service;
 
 import com.exam.system.entity.*;
 import com.exam.system.repository.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,14 +36,34 @@ class ExamMarkdownExportTest {
     @Autowired
     private QuestionOptionRepository questionOptionRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Long testExamId;
+
+    /** 測試用管理員，用於繞過 ownership 守衛 */
+    private User testAdmin;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     /**
      * 建立測試資料
      */
     @BeforeEach
     void setUp() {
-        // 建立測驗
+        // 建立測試管理員並設定 SecurityContext（ADMIN 可繞過 ownership 守衛）
+        testAdmin = userRepository.save(User.builder()
+                .email("markdown-test-admin@test.com")
+                .name("Test Admin")
+                .role(UserRole.ADMIN)
+                .build());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(testAdmin, null, Collections.emptyList()));
+
+        // 建立測驗（設定 owner 以符合 NOT NULL 約束）
         Exam exam = Exam.builder()
                 .title("Java 基礎測驗")
                 .description("測試 Java 基本知識")
@@ -46,6 +71,7 @@ class ExamMarkdownExportTest {
                 .status(ExamStatus.CREATED)
                 .accessCode("TEST01")
                 .currentQuestionIndex(0)
+                .owner(testAdmin)
                 .build();
         exam = examRepository.save(exam);
         testExamId = exam.getId();

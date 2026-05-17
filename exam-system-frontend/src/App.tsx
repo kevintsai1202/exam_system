@@ -22,6 +22,7 @@ import AuthCallback from './pages/AuthCallback';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import AdminDashboard from './pages/AdminDashboard';
+import InstructorQuotaDashboard from './pages/InstructorQuotaDashboard';
 
 // 問券調查頁面
 import SurveyManager from './pages/SurveyManager';
@@ -702,6 +703,11 @@ const App: React.FC = () => {
         <Route path="/instructor/survey-fields" element={
           <ProtectedRoute>
             <InstructorGuard component={<SurveyFieldManager />} />
+          </ProtectedRoute>
+        } />
+        <Route path="/instructor/quota" element={
+          <ProtectedRoute>
+            <InstructorGuard component={<InstructorQuotaDashboard />} />
           </ProtectedRoute>
         } />
 
