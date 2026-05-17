@@ -32,12 +32,11 @@ test.describe('Phase 1 Tier+Quota API 驗證', () => {
             data: { email: 'admin@example.com', password: 'admin123' },
         });
         if (!seedAdminRes.ok()) {
-            // Seed admin 不存在，使用新帳號（需環境有特殊 seed 能力）
-            adminToken = await registerAndLogin(request, adminEmail, 'Admin Tier Test');
-        } else {
-            const body = await seedAdminRes.json();
-            adminToken = body.token;
+            throw new Error(
+                `Seed admin 登入失敗 [${seedAdminRes.status()}]，請確認後端 DataInitializer 已建立 admin@example.com / admin123`
+            );
         }
+        adminToken = (await seedAdminRes.json()).token;
 
         // 2. 建立講師帳號並升為 INSTRUCTOR
         instToken = await registerAndLogin(request, instEmail, 'Instructor Tier Test');
@@ -114,7 +113,10 @@ test.describe('Phase 1 Tier+Quota API 驗證', () => {
         const snapshotRes = await request.get(`${API}/quota/snapshot`, {
             headers: { Authorization: `Bearer ${newInstToken}` },
         });
-        expect(snapshotRes.ok(), `升級後 quota/snapshot 應回傳 200，實際 ${snapshotRes.status()}`).toBeTruthy();
+        expect(
+            snapshotRes.ok(),
+            `升級後 quota/snapshot 應回傳 200，實際 ${snapshotRes.status()}: ${await snapshotRes.text()}`,
+        ).toBeTruthy();
 
         const snapshot = await snapshotRes.json();
 
