@@ -120,6 +120,16 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // 403 全域處理：已登入但無操作權限，顯示提示後不導向登入頁
+    if (responseStatus === 403) {
+      const forbiddenMsg =
+        (error.response?.data as any)?.message ||
+        '您沒有執行此操作的權限';
+      // 使用 console.warn 並拋出帶有友善訊息的錯誤給呼叫端處理
+      console.warn('403 Forbidden:', forbiddenMsg);
+      return Promise.reject(new Error(`403: ${forbiddenMsg}`));
+    }
+
     // 優先使用後端返回的錯誤訊息
     let errorMessage = error.message;
     if (error.response?.data) {

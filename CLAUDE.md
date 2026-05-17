@@ -419,6 +419,19 @@ java -jar target/exam-system-backend-*.jar
 
 ## 最近更新記錄
 
+### v1.6 - 帳號隔離與多講師管理 (2026-05)
+
+- ✅ **帳號隔離**: 講師只能看到自己的測驗（`findByOwnerIdOrderByCreatedAtDesc`）
+- ✅ **所有者模型**: Exam 實體新增 `owner (User)` 外鍵，Flyway V2-V4 完成遷移
+- ✅ **OwnershipGuard**: 統一守衛邏輯，ADMIN 可越過、INSTRUCTOR 限 owner 本人
+- ✅ **轉移測驗所有者**: `PUT /api/exams/{id}/transfer-owner`（ADMIN 限定）
+- ✅ **講師學員關聯**: 學員加入測驗時自動 UPSERT `StudentProfile` + `InstructorStudentRelation`
+- ✅ **講師學員列表**: `GET /api/instructor/students`（INSTRUCTOR 見自己、ADMIN 見全部）
+- ✅ **ExamDTO 新增 ownerId/ownerName**: Admin 視圖可顯示測驗所有者
+- ✅ **AdminDashboard 測驗管理 Tab**: 列出所有測驗、支援 UI 轉移 owner
+- ✅ **全域 403 攔截器**: 前端 axios 攔截器區分 401（導回登入）vs 403（顯示錯誤不跳轉）
+- ✅ **Playwright e2e 測試**: 4 個 spec 驗證帳號隔離、403 守衛、owner 轉移、學員關聯
+
 ### v1.5 - 調查欄位與統計增強 (2024-2025)
 - ✅ **調查欄位系統**: 完整實作可配置的調查欄位（occupation, age_range, experience, tech_stack）
 - ✅ **調查欄位統計**: 支援按調查欄位維度統計單題與累積答題結果

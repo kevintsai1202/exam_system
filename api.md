@@ -2314,5 +2314,68 @@ curl -X POST http://localhost:8080/api/answers \
 
 ---
 
-**文件版本**：v2.0-draft
-**最後更新**：2026-03-07
+## 23. 帳號隔離 API（Phase 9-12）
+
+### 23.1 測驗所有者轉移
+
+**Endpoint**: `PUT /api/exams/{examId}/transfer-owner`
+
+**權限**: 僅 ADMIN
+
+**Request Body**:
+```json
+{ "newOwnerId": 42 }
+```
+
+**Response** `200 OK`: 更新後的 ExamDTO（含 `ownerId`、`ownerName`）
+
+**錯誤**:
+- `400`: 缺少 `newOwnerId`
+- `403`: 非 ADMIN 呼叫
+- `404`: 測驗或新 owner 不存在
+- `400 INVALID_OWNER`: 新 owner 為 STUDENT 角色
+
+---
+
+### 23.2 講師的學員列表
+
+**Endpoint**: `GET /api/instructor/students`
+
+**權限**: INSTRUCTOR（只看自己的學員）、ADMIN（看全部，含 `instructorId`/`instructorName` 欄位）
+
+**Response** `200 OK`:
+```json
+[
+  {
+    "profileId": 1,
+    "name": "學員甲",
+    "email": "student@example.com",
+    "avatarIcon": "cat",
+    "isGmailVerified": false,
+    "examCount": 3,
+    "firstInteractionAt": "2026-01-01T00:00:00",
+    "lastInteractionAt": "2026-03-01T12:00:00",
+    // 以下欄位僅 ADMIN 視圖包含：
+    "instructorId": 10,
+    "instructorName": "講師 A"
+  }
+]
+```
+
+**注意**: 以 `@no-email.local` 結尾的 placeholder email 在回應中會被過濾為 `null`。
+
+---
+
+### 23.3 ExamDTO 新增欄位
+
+自 Phase 12 起，`GET /api/exams`、`GET /api/exams/{id}` 的回應包含：
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `ownerId` | `Long` | 測驗 owner 的 User ID |
+| `ownerName` | `String` | 測驗 owner 的顯示名稱（name 或 email fallback） |
+
+---
+
+**文件版本**：v2.1
+**最後更新**：2026-05-17

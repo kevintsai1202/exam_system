@@ -109,6 +109,12 @@ class ExamServiceTest {
         // 只有直接呼叫 currentUserProvider 的方法（createExam、getAllExams）才會用到此 stub
         lenient().when(currentUserProvider.requireCurrentUser()).thenReturn(testOwner);
 
+        // ExamSecurityService session 管理：startExam 建立 session、endExam/startQuestion 驗證 session
+        // 精確 stub：只有 "test-session-id" 才通過驗證，其他 session（null、"wrong-session"）仍回傳 false
+        // 這樣 testEndExam_Success/testStartQuestion_Success 能通過，負向測試依然會拋例外
+        lenient().when(examSecurityService.createInstructorSession(anyLong())).thenReturn("test-session-id");
+        lenient().when(examSecurityService.validateInstructorSession(any(), eq("test-session-id"))).thenReturn(true);
+
         // 建立測試資料
         testExam = TestDataBuilder.createExam();
         testExam.setId(1L);

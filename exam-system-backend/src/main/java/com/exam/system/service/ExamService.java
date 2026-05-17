@@ -685,6 +685,10 @@ public class ExamService {
                 .totalQuestions(exam.getQuestions().size())
                 .totalStudents((int) totalStudents)
                 .surveyFieldConfigs(surveyFieldConfigDTOs)
+                .ownerId(exam.getOwner() != null ? exam.getOwner().getId() : null)
+                .ownerName(exam.getOwner() != null
+                        ? (exam.getOwner().getName() != null ? exam.getOwner().getName() : exam.getOwner().getEmail())
+                        : null)
                 .build();
 
         return dto;

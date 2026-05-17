@@ -44,5 +44,14 @@ export const userApiService = {
      */
     deleteUser: async (userId: number): Promise<void> => {
         await apiClient.delete(`/roles/users/${userId}`);
+    },
+
+    /**
+     * 轉移測驗所有者（需 ADMIN 權限）
+     * @param examId 測驗 ID
+     * @param newOwnerId 新 owner 的用戶 ID（必須為 INSTRUCTOR 或 ADMIN）
+     */
+    transferExamOwner: async (examId: number, newOwnerId: number): Promise<void> => {
+        await apiClient.put(`/exams/${examId}/transfer-owner`, { newOwnerId });
     }
 };
