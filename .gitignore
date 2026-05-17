@@ -70,3 +70,6 @@ package/
 .mcp.json
 # Local DB backups
 *.dump
+
+# Superpowers brainstorm artifacts
+.superpowers/
