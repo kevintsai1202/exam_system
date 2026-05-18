@@ -131,4 +131,15 @@ public class WebSocketService {
         broadcast(destination, payload);
     }
 
+    /**
+     * 廣播學員即時在線人數
+     *
+     * @param examId 測驗 ID
+     * @param payload 包含 onlineCount 的訊息
+     */
+    public void broadcastStudentCount(Long examId, Object payload) {
+        String destination = String.format("/topic/exam/%d/student-count", examId);
+        broadcast(destination, payload);
+    }
+
 }

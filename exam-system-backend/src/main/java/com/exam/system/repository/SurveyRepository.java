@@ -47,6 +47,12 @@ public interface SurveyRepository extends JpaRepository<Survey, Long> {
     Optional<Survey> findByIdWithQuestionsAndOptions(@Param("id") Long id);
 
     /**
+     * 依 exam owner 取得問券列表（講師隔離用）
+     */
+    @Query("SELECT s FROM Survey s WHERE s.exam.owner.id = :ownerId ORDER BY s.id DESC")
+    List<Survey> findByExamOwnerIdOrderByIdDesc(@Param("ownerId") Long ownerId);
+
+    /**
      * 統計測驗的問券數量
      */
     long countByExamId(Long examId);

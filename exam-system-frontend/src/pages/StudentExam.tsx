@@ -221,6 +221,16 @@ export const StudentExam: React.FC = () => {
   );
 
   /**
+   * WebSocket 連線成功後宣告學員上線（presence），
+   * 讓後端能追蹤即時在線人數並廣播給講師。
+   * 重連時也會重新宣告。
+   */
+  useEffect(() => {
+    if (!examId || !isConnected) return;
+    websocketService.announcePresence(parseInt(examId));
+  }, [examId, isConnected]);
+
+  /**
    * 訂閱個人專屬的題目推送主題
    * 當學生在題目已推送後才加入時，後端會推送當前題目到個人主題
    */

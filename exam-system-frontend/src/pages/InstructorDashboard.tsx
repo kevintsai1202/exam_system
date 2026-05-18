@@ -462,6 +462,35 @@ export const InstructorDashboard: React.FC = () => {
             📊 管理調查欄位
           </button>
 
+          <button
+            onClick={() => navigate('/instructor/quota')}
+            style={{
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#0891b2',
+              backgroundColor: '#fff',
+              border: '2px solid #0891b2',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(8, 145, 178, 0.1)',
+              transition: 'all 0.2s ease',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#e0f2fe';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(8, 145, 178, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(8, 145, 178, 0.1)';
+            }}
+          >
+            📈 配額儀表板
+          </button>
+
           {canManageSurveys() && (
             <button
               onClick={() => navigate('/surveys')}

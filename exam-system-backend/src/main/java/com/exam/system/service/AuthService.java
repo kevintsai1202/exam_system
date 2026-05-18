@@ -139,8 +139,7 @@ public class AuthService {
                 .role(user.getRole().name())
                 .googleLinked(StringUtils.hasText(user.getGoogleId()))
                 .passwordSet(StringUtils.hasText(user.getPasswordHash()))
-                .surveyManagementEnabled(user.isSurveyManagementEnabled())
-                .emailManagementEnabled(user.isEmailManagementEnabled())
+                .tier(user.getTier().name())
                 .build();
     }
 

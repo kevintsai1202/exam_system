@@ -138,6 +138,7 @@ interface ExamWebSocketCallbacks {
   onCumulativeUpdated?: SubscriptionCallback;
   onLeaderboardUpdated?: SubscriptionCallback;
   onTimerUpdate?: SubscriptionCallback;
+  onStudentCountChanged?: SubscriptionCallback;
 }
 
 export const useExamWebSocket = (
@@ -195,6 +196,11 @@ export const useExamWebSocket = (
 
       if (callbacksRef.current.onTimerUpdate) {
         const topic = websocketService.subscribeTimer(examId, callbacksRef.current.onTimerUpdate);
+        topics.push(topic);
+      }
+
+      if (callbacksRef.current.onStudentCountChanged) {
+        const topic = websocketService.subscribeStudentCount(examId, callbacksRef.current.onStudentCountChanged);
         topics.push(topic);
       }
 

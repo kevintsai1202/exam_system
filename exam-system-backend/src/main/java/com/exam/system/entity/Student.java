@@ -115,6 +115,14 @@ public class Student {
     private Integer totalScore = 0;
 
     /**
+     * 對應的跨測驗學員主檔（V3 backfill 後所有 student 都會有對應 profile）
+     * V4 已套用 NOT NULL 約束，entity 同步宣告 nullable=false
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_id", nullable = false)
+    private StudentProfile profile;
+
+    /**
      * 加入時間
      */
     @Column(nullable = false, updatable = false)

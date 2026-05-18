@@ -58,6 +58,7 @@ export const ExamMonitor: React.FC = () => {
   const [isQuestionTimeExpired, setIsQuestionTimeExpired] = useState(false); // 當前題目時間是否已結束
   const [enableStudentNewAnimation, setEnableStudentNewAnimation] = useState(true); // 是否啟用學員列表 NEW 動畫
   const [hasReviewedPreExamStats, setHasReviewedPreExamStats] = useState(false); // 是否已完成開測前統計展示確認
+  const [onlineCount, setOnlineCount] = useState<number>(0); // 即時在線學員人數
 
   // 統計自動獲取定時器
   const statisticsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -181,6 +182,17 @@ export const ExamMonitor: React.FC = () => {
     }
   }, [setLeaderboard]);
 
+  /**
+   * 學員即時在線人數更新
+   * 後端在學員連線/斷線時廣播 { onlineCount: number }
+   */
+  const handleStudentCountChanged = useCallback((message: WebSocketMessage) => {
+    const msg = message as any;
+    if (typeof msg?.onlineCount === 'number') {
+      setOnlineCount(msg.onlineCount);
+    }
+  }, []);
+
   // WebSocket 連線
   const { isConnected } = useExamWebSocket(
     examId ? parseInt(examId) : null,
@@ -191,6 +203,7 @@ export const ExamMonitor: React.FC = () => {
       onStatisticsUpdated: handleStatisticsUpdated,
       onCumulativeUpdated: handleCumulativeUpdated,
       onLeaderboardUpdated: handleLeaderboardUpdated,
+      onStudentCountChanged: handleStudentCountChanged,
     }
   );
 
@@ -862,7 +875,7 @@ export const ExamMonitor: React.FC = () => {
               )}
 
               {/* 學員列表 */}
-              <StudentList students={students} showScore={isEnded} maxHeight="600px" enableNewAnimation={enableStudentNewAnimation} />
+              <StudentList students={students} showScore={isEnded} maxHeight="600px" enableNewAnimation={enableStudentNewAnimation} onlineCount={onlineCount} />
             </div>
           )}
 

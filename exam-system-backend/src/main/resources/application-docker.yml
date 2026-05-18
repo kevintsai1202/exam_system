@@ -9,6 +9,9 @@ spring:
     password: ${POSTGRES_PASSWORD:exam_password}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:false}       # Zeabur 預設禁用，要 migrate 時手動 enable
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

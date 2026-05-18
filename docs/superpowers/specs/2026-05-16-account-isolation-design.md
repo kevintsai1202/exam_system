@@ -423,6 +423,9 @@ CREATE TABLE student_profile (
 );
 CREATE INDEX idx_student_profile_google_id ON student_profile(google_id);
 
+-- uq_instructor_profile 是 (instructor_id, profile_id) 的 composite unique；
+-- 其自動建立的 btree 已可服務「指定講師的所有學員」查詢（leading column），
+-- 不再額外建 idx_isr_instructor。idx_isr_profile 仍需要（profile_id 非 leading column）。
 CREATE TABLE instructor_student_relation (
     id BIGSERIAL PRIMARY KEY,
     instructor_id BIGINT NOT NULL REFERENCES users(id),
@@ -432,8 +435,7 @@ CREATE TABLE instructor_student_relation (
     exam_count INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT uq_instructor_profile UNIQUE (instructor_id, profile_id)
 );
-CREATE INDEX idx_isr_instructor ON instructor_student_relation(instructor_id);
-CREATE INDEX idx_isr_profile    ON instructor_student_relation(profile_id);
+CREATE INDEX idx_isr_profile ON instructor_student_relation(profile_id);
 
 ALTER TABLE exam    ADD COLUMN owner_id   BIGINT REFERENCES users(id);
 ALTER TABLE student ADD COLUMN profile_id BIGINT REFERENCES student_profile(id);

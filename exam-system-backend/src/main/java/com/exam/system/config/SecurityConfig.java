@@ -87,6 +87,10 @@ public class SecurityConfig {
                                                 .hasAnyRole("INSTRUCTOR", "ADMIN")
                                                 .requestMatchers("/api/images/upload").hasAnyRole("INSTRUCTOR", "ADMIN")
                                                 .requestMatchers("/api/roles/**").hasRole("ADMIN")
+                                                // 配額查詢 — 講師或管理員
+                                                .requestMatchers("/api/quota/**").hasAnyRole("INSTRUCTOR", "ADMIN")
+                                                // 管理員專用 API
+                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                                 // 其他 API 需要認證
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2

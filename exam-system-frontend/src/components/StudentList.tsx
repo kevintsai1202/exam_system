@@ -20,6 +20,7 @@ interface StudentListProps {
   maxHeight?: string | number;            // 最大高度（預設無限制）
   emptyMessage?: string;                  // 空列表提示訊息
   enableNewAnimation?: boolean;           // 是否啟用 NEW 動畫（預設 true）
+  onlineCount?: number;                   // 即時 WebSocket 在線人數（0 表示不顯示）
 }
 
 /**
@@ -33,6 +34,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   maxHeight,
   emptyMessage = '尚無學員加入',
   enableNewAnimation = true,
+  onlineCount = 0,
 }) => {
   const displayTotal = totalStudents ?? students.length;
   const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
@@ -105,6 +107,13 @@ export const StudentList: React.FC<StudentListProps> = ({
         overflow: 'hidden',
       }}
     >
+      {/* 在線人數綠點動畫 keyframes */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.85); }
+        }
+      `}</style>
       {/* 標題列 */}
       <div
         style={{
@@ -126,17 +135,50 @@ export const StudentList: React.FC<StudentListProps> = ({
         >
           學員列表
         </h3>
-        <div
-          style={{
-            padding: '6px 12px',
-            backgroundColor: '#1976d2',
-            color: '#fff',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '600',
-          }}
-        >
-          {displayTotal} 人
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 即時在線人數徽章（onlineCount > 0 時才顯示） */}
+          {onlineCount > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '6px 12px',
+                backgroundColor: '#e8f5e9',
+                color: '#2e7d32',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: '1px solid #a5d6a7',
+              }}
+            >
+              {/* 綠色閃爍圓點，代表即時連線 */}
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4caf50',
+                  display: 'inline-block',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+              {onlineCount} 人在線
+            </div>
+          )}
+          {/* 已加入總人數 */}
+          <div
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#1976d2',
+              color: '#fff',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: '600',
+            }}
+          >
+            {displayTotal} 人已加入
+          </div>
         </div>
       </div>
 

@@ -19,6 +19,8 @@ export interface User {
   passwordSet?: boolean;
   surveyManagementEnabled?: boolean;
   emailManagementEnabled?: boolean;
+  tier?: string;               // FREE | PAID
+  tierExpiresAt?: string | null;
 }
 
 interface AuthState {

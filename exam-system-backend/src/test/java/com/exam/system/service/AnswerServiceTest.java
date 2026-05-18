@@ -67,6 +67,7 @@ class AnswerServiceTest {
         testExam.setId(1L);
         testExam.setStatus(ExamStatus.STARTED); // 設定測驗狀態為已開始
         testExam.setCurrentQuestionIndex(0); // 設定當前題目索引
+        testExam.setLastPushedQuestionIndex(0); // 設定最後推送題目索引（AnswerService 驗證必填）
         testExam.setCurrentQuestionStartedAt(LocalDateTime.now()); // 設定題目開始時間
 
         testStudent = TestDataBuilder.createStudent(testExam);

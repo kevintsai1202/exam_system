@@ -1,0 +1,81 @@
+package com.exam.system.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+/**
+ * 講師 ↔ 學員 關係表
+ * 學員每次參加某講師的測驗時 UPSERT：新關係建立或既有關係 examCount++
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "instructor_student_relation",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_instructor_profile",
+                columnNames = {"instructor_id", "profile_id"}),
+        indexes = {
+                @Index(name = "idx_isr_profile", columnList = "profile_id")
+        })
+public class InstructorStudentRelation {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** 講師（User.role = INSTRUCTOR 或 ADMIN） */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "instructor_id", nullable = false)
+    private User instructor;
+
+    /** 學員主檔 */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_id", nullable = false)
+    private StudentProfile profile;
+
+    /** 首次參賽此講師測驗的時間 */
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime firstInteractionAt;
+
+    /** 最近一次參賽 */
+    @Column(nullable = false)
+    private LocalDateTime lastInteractionAt;
+
+    /** 累積參賽該講師測驗的場次 */
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer examCount = 0;
+
+    /**
+     * 講師對該會員的自訂標籤 JSON 陣列（例：["VIP","新北場"]）
+     * Phase 1 僅儲存 JSON 字串，前端負責解析與顯示；分眾邏輯在 Phase 4 補上
+     */
+    @Lob
+    @Column
+    private String tags;
+
+    /**
+     * 建立前回調：時間欄位 fallback 為 now
+     * service 層 UPSERT 通常會明確設定，這層僅作為安全網避免 NOT NULL 違規
+     */
+    @PrePersist
+    protected void onCreate() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (this.firstInteractionAt == null) {
+            this.firstInteractionAt = now;
+        }
+        if (this.lastInteractionAt == null) {
+            this.lastInteractionAt = this.firstInteractionAt;
+        }
+        if (this.examCount == null) {
+            this.examCount = 0;
+        }
+    }
+}

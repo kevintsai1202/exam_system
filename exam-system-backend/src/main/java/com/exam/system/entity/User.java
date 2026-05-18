@@ -69,18 +69,23 @@ public class User {
     private UserRole role = UserRole.STUDENT;
 
     /**
-     * 是否允許進入問券管理
+     * 訂閱分級（FREE/PAID）
      */
-    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
     @Builder.Default
-    private boolean surveyManagementEnabled = true;
+    private UserTier tier = UserTier.FREE;
 
     /**
-     * 是否允許進入郵件管理
+     * 當前 tier 訂閱起算錨點（配額週期計算用）
+     * 帳號註冊時 = createdAt；升降級時重新錨定為 NOW
      */
-    @Column(nullable = false, columnDefinition = "boolean default true")
-    @Builder.Default
-    private boolean emailManagementEnabled = true;
+    private LocalDateTime tierSubscribedAt;
+
+    /**
+     * PAID 到期時間，過期會自動降為 FREE；FREE 為 NULL
+     */
+    private LocalDateTime tierExpiresAt;
 
     /**
      * 帳號建立時間
@@ -100,6 +105,9 @@ public class User {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.lastLoginAt = LocalDateTime.now();
+        if (this.tierSubscribedAt == null) {
+            this.tierSubscribedAt = this.createdAt;
+        }
     }
 
     /**
