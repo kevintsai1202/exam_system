@@ -274,6 +274,31 @@ class WebSocketService {
   }
 
   /**
+   * 訂閱學員即時在線人數
+   * 後端在學員上/下線時廣播 { onlineCount: number }
+   */
+  subscribeStudentCount(examId: number, callback: SubscriptionCallback): string {
+    const topic = `/topic/exam/${examId}/student-count`;
+    return this.subscribe(topic, callback);
+  }
+
+  /**
+   * 學員宣告上線（發送至後端 /app/exam/{examId}/presence）
+   * 在 WebSocket 連線成功後由 StudentExam 頁面呼叫
+   */
+  announcePresence(examId: number): void {
+    if (!this.client || !this.client.connected) {
+      console.warn('[WebSocket] 尚未連線，無法宣告 presence，examId:', examId);
+      return;
+    }
+    this.client.publish({
+      destination: `/app/exam/${examId}/presence`,
+      body: '{}',
+    });
+    console.log('[WebSocket] 已宣告 presence，examId:', examId);
+  }
+
+  /**
    * 通用訂閱方法
    */
   public subscribe(topic: string, callback: SubscriptionCallback): string {
