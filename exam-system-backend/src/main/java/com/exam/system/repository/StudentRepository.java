@@ -37,7 +37,9 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
      * 不同時抓取 exam.questions 與 answers 兩個 List，避免 Hibernate 的 MultipleBagFetchException。
      */
     @EntityGraph(attributePaths = {"profile", "exam", "answers", "answers.question"})
-    @Query("SELECT DISTINCT s FROM Student s WHERE s.id IN :ids")
+    // 不使用 DISTINCT：PostgreSQL 的 student.survey_data 為 json，無 equality operator 可供 DISTINCT 比較。
+    // EntityGraph 連接答案可能產生重複列，AudienceExportService 會依 Student ID 的 Map 穩定去重。
+    @Query("SELECT s FROM Student s WHERE s.id IN :ids")
     List<Student> findAudienceExportDetails(@Param("ids") List<Long> ids);
 
     /**
