@@ -138,6 +138,9 @@ exam:
 
 # 應用程式 URL 與 JWT 配置
 app:
+  integrations:
+    # 名單中心唯讀同步 token；空值時端點回 503，不可在線上使用預設弱密碼。
+    audience-export-token: ${AUDIENCE_EXPORT_TOKEN:}
   # 前端 URL（對應 SecurityConfig @Value、OAuth2 redirect）
   # Zeabur 部署時設定環境變數 APP_FRONTEND_URL=https://your-domain.zeabur.app
   frontend:

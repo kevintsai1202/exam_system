@@ -4,6 +4,8 @@ import com.exam.system.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +17,28 @@ import java.util.Optional;
  */
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long> {
+
+    /**
+     * 取得增量匯出的穩定 ID 頁面；先分頁 ID，再載入關聯，避免 collection fetch join 讓分頁失效。
+     */
+    @Query("""
+        SELECT s.id FROM Student s
+         WHERE s.joinedAt > :joinedAt
+            OR (s.joinedAt = :joinedAt AND s.id > :studentId)
+         ORDER BY s.joinedAt ASC, s.id ASC
+        """)
+    List<Long> findAudienceExportIds(
+            @Param("joinedAt") java.time.LocalDateTime joinedAt,
+            @Param("studentId") long studentId,
+            Pageable pageable);
+
+    /**
+     * 一次載入匯出需要的人物、測驗與答案。
+     * 不同時抓取 exam.questions 與 answers 兩個 List，避免 Hibernate 的 MultipleBagFetchException。
+     */
+    @EntityGraph(attributePaths = {"profile", "exam", "answers", "answers.question"})
+    @Query("SELECT DISTINCT s FROM Student s WHERE s.id IN :ids")
+    List<Student> findAudienceExportDetails(@Param("ids") List<Long> ids);
 
     /**
      * 根據 sessionId 查詢學員

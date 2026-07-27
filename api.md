@@ -21,6 +21,50 @@
 | 409    | 資源衝突（如重複作答）|
 | 500    | 伺服器內部錯誤        |
 
+## 名單中心唯讀整合 API
+
+### 增量匯出人物與測驗活動
+
+**Endpoint**：`GET /api/integrations/audience-export?since={cursor}&limit={1..500}`
+
+**授權**：`Authorization: Bearer {AUDIENCE_EXPORT_TOKEN}`
+
+- 此 token 與講師 JWT 分離，僅供 `survey-backend` 後端呼叫。
+- 未設定 `AUDIENCE_EXPORT_TOKEN` 時回 `503`，錯誤 token 回 `401`。
+- `since` 格式為 `{joinedAt}|{studentId}`；空值從最早資料開始。
+- 回傳依 `student.joined_at ASC, student.id ASC` 穩定排序，`nextCursor` 可直接用於下一頁。
+- 人物以 `student_profile` 輸出，測驗活動以 `student` 輸出；逐題結果不包含題目文字。
+- `firstConsentAt` 與 `consentVersion` 缺一時，下游不得將人物視為已同意行銷。
+
+```json
+{
+  "nextCursor": "2026-07-27T12:00|288",
+  "profiles": [{
+    "externalProfileId": "259",
+    "email": "student@example.com",
+    "name": "王小明",
+    "createdAt": "2026-07-20T08:00:00Z",
+    "acquisitionSource": "exam",
+    "firstConsentAt": null,
+    "consentVersion": null
+  }],
+  "attempts": [{
+    "externalAttemptId": "288",
+    "externalProfileId": "259",
+    "externalExamId": "16",
+    "examTitle": "測驗名稱",
+    "joinedAt": "2026-07-22T10:00:00Z",
+    "totalScore": 7,
+    "questionCount": 10,
+    "answeredCount": 10,
+    "correctCount": 7,
+    "scoreRate": 0.7,
+    "surveyData": {"occupation": "工程師"},
+    "answers": []
+  }]
+}
+```
+
 ## 錯誤回應格式
 
 ```json

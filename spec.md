@@ -4,6 +4,15 @@
 
 ## 1. 架構與選型
 
+### 名單中心整合邊界（2026-07-27）
+
+- Exam 仍擁有 `student_profile`、`student`、`answer` 等正式資料，不與名單中心共用資料庫。
+- 由 Exam 提供 Bearer token 保護的唯讀增量匯出 API；`survey-backend` 負責預覽、人物合併、訂閱狀態與匯入稽核。
+- cursor 使用 `joinedAt + studentId`，同一時間多筆資料不會遺漏。
+- 匯出人物、測驗摘要、`surveyData` 與逐題作答結果；不匯出題目文字，降低題庫大量外洩風險。
+- Exam 沒有 `firstConsentAt + consentVersion` 完整證據時，下游訂閱狀態只能是 `PENDING`。
+- 部署需設定 `AUDIENCE_EXPORT_TOKEN`；未設定時整合端點關閉。
+
 ### 1.1 技術棧
 - **前端**：React 18+ + TypeScript + Vite
 - **後端**：Spring Boot 3.x + Java 21

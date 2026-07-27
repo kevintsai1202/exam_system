@@ -76,6 +76,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/survey-fields/**").permitAll()
                                                 .requestMatchers("/api/locations/**").permitAll()
                                                 .requestMatchers("/api/session/**").permitAll()
+                                                // 名單中心使用獨立 integration token，Controller 仍會再次驗證。
+                                                .requestMatchers("/api/integrations/audience-export").permitAll()
                                                 .requestMatchers("/ws/**").permitAll()
                                                 .requestMatchers("/h2-console/**").permitAll()
                                                 // OPTIONS 請求允許（CORS preflight）

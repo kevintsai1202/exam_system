@@ -1,3 +1,10 @@
+- [x] **名單中心唯讀匯出 API（2026-07-27）**
+  - 新增 `GET /api/integrations/audience-export`，以獨立 Bearer token 保護。
+  - 以 `joinedAt|studentId` cursor 穩定分頁，單頁上限 500。
+  - 匯出 `student_profile`、測驗摘要、`surveyData` 與逐題結果。
+  - 未具完整同意時間與版本時保留空值，不替下游自動取得行銷同意。
+  - 已新增 token／limit／cursor／DTO 服務測試，並以 Java 21 執行通過。
+
 - [x] **LocalStorage 學員資料持久化 - 文件更新**  
   - 更新 spec.md、api.md，明確規範需同步保存 currentStudent 與 sessionId。  
 
